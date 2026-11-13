@@ -14,6 +14,25 @@ The utility downloads the official USC-SIPI archive volumes (textures, rotated t
 
 The official database describes its images as 8-bit grayscale or 24-bit color and provides the original TIFF files. Some copyright status is uncertain, so keep the acquired corpus local and review the database's copyright notice before redistributing images.
 
+
+### Keep the added TIFFs inside `data/kodak_gray/`
+
+To follow the existing project layout and place all extra grayscale files under the same directory as the original six, run the preparer with an explicit output path:
+
+```bash
+python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+  --output-dir data/kodak_gray
+```
+
+The original six PNG files at the root of `data/kodak_gray/` are left untouched; the downloaded TIFFs are written into separate volume subfolders such as `data/kodak_gray/textures/` and `data/kodak_gray/aerials/`. Then run the EDR1 gate with only that directory:
+
+```bash
+python final_rdhei_protocol_gate_20261022/run_gate.py \
+  --data-dir data/kodak_gray
+```
+
+Use a clean expanded output location (or retain the TIFFs already there) because the preparer deliberately refuses to overwrite existing TIFF corpora.
+
 ## 2. Preserve the original six-image baseline
 
 Keep the existing six source files in a directory named:
