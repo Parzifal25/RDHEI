@@ -1,6 +1,6 @@
 # EDR2 natural-image evaluation
 
-This evaluation is **natural-image only**. The paper-facing corpus contains the exact original six grayscale baselines plus the additional native USC-SIPI grayscale TIFFs. No generated or synthetic images are included in the capacity table or natural-image experiment. Small generated fixtures may be used by unit/CI tests only; they are not experimental observations and must never be quoted as benchmark results.
+This evaluation is **natural-image only**. The paper-facing corpus contains the exact original six grayscale baselines plus the additional native USC-SIPI grayscale TIFFs. No generated or synthetic images are included in the capacity table or natural-image experiment. Small generated fixtures may be used inside isolated unit tests for file-format and input-validation assertions only; they are never passed to the EDR2 experiment runner and are never experimental observations.
 
 ## Dataset preparation
 
@@ -71,6 +71,6 @@ Intermediate reserved/cipher/recovered arrays are removed after each successful 
 
 ## GitHub Actions
 
-The EDR2 natural-image gate workflow has a quick CI-only software test and an opt-in full natural-image job. The CI fixture is a generated test input to exercise protocol plumbing; it is explicitly not part of the paper dataset or the reported experimental results. The full natural-image job verifies that the exact six baseline PNGs are present, downloads the native grayscale USC-SIPI TIFF subset, runs the complete EDR2 gate, and uploads the evidence artifact.
+The EDR2 workflow runs compilation and isolated unit tests by default. Its unit tests create small temporary fixtures to verify grayscale-mode filtering, duplicate detection, archive-path confinement, the receiver input signature, and key-domain separation. These temporary test objects are not passed to the full EDR2 experiment runner. The opt-in full natural-image job verifies that the exact six baseline PNGs are present, downloads the native grayscale USC-SIPI TIFF subset, runs the complete EDR2 gate, and uploads the evidence artifact.
 
-Do not use the CI-only fixture's capacity, bpp or round-trip values in the manuscript.
+No synthetic-image capacity, bpp, PSNR, SSIM, MAE, or round-trip result may appear in the manuscript. Historical EDR1 synthetic-control rows are legacy software-feasibility checks and are excluded from all EDR2 research results.
