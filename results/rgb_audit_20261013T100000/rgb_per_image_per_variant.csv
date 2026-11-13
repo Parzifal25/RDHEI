@@ -1,0 +1,10 @@
+variant,image,shape,status,exact_image,perfect,bit_acc,time_s,capacity_bits,R_exact,R_payload_exact,R_bpp,R_capacity,R_nonce,G_exact,G_payload_exact,G_bpp,G_capacity,G_nonce,B_exact,B_payload_exact,B_bpp,B_capacity,B_nonce,error
+v4_patch3,4.2.03.png,(512, 512, 3),PASS,True,True,100.0,12.467,3319470,True,True,4.149109,1087664,1,True,True,4.222408,1106879,2,True,True,4.291256,1124927,3,
+v4_patch3,4.2.05.png,(512, 512, 3),PASS,True,True,100.0,17.749,4436282,True,True,5.706402,1495899,1,True,True,5.670578,1486508,2,True,True,5.546093,1453875,3,
+v4_patch3,4.2.06.png,(512, 512, 3),PASS,True,True,100.0,12.82,3610119,True,True,4.564751,1196622,1,True,True,4.443718,1164894,2,True,True,4.763042,1248603,3,
+v1_full,4.2.03.png,(512, 512, 3),PASS,True,True,100.0,18.649,3319970,True,True,4.1404,1085371,1,True,True,4.2341,1109950,2,True,True,4.3398,1137649,3,
+v1_full,4.2.05.png,(512, 512, 3),PASS,True,True,100.0,28.11,4436282,True,True,5.686,1490551,1,True,True,5.6431,1479301,2,True,True,5.5094,1444262,3,
+v1_full,4.2.06.png,(512, 512, 3),PASS,True,True,100.0,20.093,3610119,True,True,4.4826,1175088,1,True,True,4.3722,1146135,2,True,True,4.6887,1229117,3,
+v1_full,4.2.07.png,(512, 512, 3),PASS,True,True,100.0,20.006,3610119,True,True,4.2252,1107605,1,True,True,4.7448,1243830,2,True,True,4.841,1269029,3,
+v1_full,images.png,(225, 225, 3),PASS,True,True,100.0,4.537,854397,True,True,5.6257,284799,1,True,True,5.6257,284799,2,True,True,5.6257,284799,3,
+v1_full,lena.png,(512, 512, 3),PASS,True,True,100.0,21.279,4102934,True,True,5.4965,1440885,1,True,True,5.2228,1369121,2,True,True,4.9321,1292928,3,

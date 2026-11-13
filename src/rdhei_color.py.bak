@@ -1,0 +1,244 @@
+import numpy as np
+
+from src.rdhei_core import (
+    content_owner_prepare,
+    sender_embed_encrypt,
+    receiver_extract_recover,
+    run_rdhei
+)
+
+from src.encryption import generate_key
+from src.metrics import evaluate_all
+
+from skimage.metrics import (
+    structural_similarity as sk_ssim,
+    peak_signal_noise_ratio as sk_psnr
+)
+
+
+def psnr_color(orig, rec):
+    """PSNR for RGB image."""
+
+    if np.array_equal(orig, rec):
+        return float("inf")
+
+    return sk_psnr(
+        orig,
+        rec,
+        data_range=255
+    )
+
+
+def ssim_color(orig, rec):
+    """SSIM for RGB image."""
+
+    return sk_ssim(
+        orig,
+        rec,
+        channel_axis=2,
+        data_range=255
+    )
+
+
+def mae_color(orig, rec):
+    """MAE for RGB image."""
+
+    return float(
+        np.abs(
+            orig.astype(np.int32) -
+            rec.astype(np.int32)
+        ).mean()
+    )
+
+
+def run_rdhei_color(
+        image_rgb: np.ndarray,
+        key: bytes,
+        nonce: int = 0,
+        method: str = "med",
+        model=None,
+        device: str = "cpu",
+        patch_size: int = None,
+        seed: int = 42
+) -> dict:
+    """
+    Run RDHEI on a colour (RGB) image by processing
+    each channel independently.
+
+    Args:
+        image_rgb : H×W×3 uint8 array
+        key       : AES encryption key
+        nonce     : AES-CTR nonce
+        method    : "med" or "cnn"
+        model     : CNN model (required if method="cnn")
+        device    : cpu / cuda
+        patch_size: CNN patch size. If None, the patch size
+                    is automatically obtained from the model.
+        seed      : Random seed.
+
+    Returns:
+        bpp          : per-channel average BPP
+        psnr_rec     : PSNR of recovered RGB image
+        ssim_rec     : SSIM of recovered RGB image
+        mae_rec      : MAE of recovered RGB image
+        bit_acc      : bit accuracy across all channels
+        perfect      : True if all channels are perfectly recovered
+        per_channel  : per-channel results
+    """
+
+    assert (
+        image_rgb.ndim == 3
+        and image_rgb.shape[2] == 3
+    )
+
+    h, w, _ = image_rgb.shape
+
+    channel_names = [
+        "R",
+        "G",
+        "B"
+    ]
+
+    per_channel = []
+
+    recovered_rgb = np.zeros_like(
+        image_rgb
+    )
+
+    total_capacity = 0
+    total_correct = 0
+
+    all_perfect = True
+
+    # ------------------------------------------------------
+    # Process each RGB channel independently
+    # ------------------------------------------------------
+
+    for c, ch_name in enumerate(channel_names):
+
+        channel = image_rgb[:, :, c]
+
+        # --------------------------------------------------
+        # Run RDHEI on the current channel.
+        #
+        # IMPORTANT:
+        # patch_size is explicitly propagated so that
+        # CNN-3×3 remains 3×3 throughout the RGB pipeline.
+        # --------------------------------------------------
+
+        r = run_rdhei(
+            image=channel,
+            key=key,
+            nonce=nonce,
+            method=method,
+            model=model,
+            device=device,
+            patch_size=patch_size,
+            seed=seed + c
+        )
+
+        recovered_rgb[:, :, c] = r[
+            "recovered"
+        ]
+
+        total_capacity += r[
+            "capacity"
+        ]
+
+        total_correct += int(
+            np.sum(
+                r["extracted"] ==
+                r["payload"]
+            )
+        )
+
+        if not r["perfect"]:
+            all_perfect = False
+
+        per_channel.append({
+            "channel": ch_name,
+            "bpp":
+                r["capacity"] /
+                (h * w),
+            "capacity":
+                r["capacity"],
+            "perfect":
+                r["perfect"],
+            "bit_acc":
+                r["bit_acc"]
+        })
+
+    # ------------------------------------------------------
+    # Colour BPP
+    #
+    # Report per-channel average BPP so it is directly
+    # comparable with grayscale BPP.
+    # ------------------------------------------------------
+
+    total_bpp = (
+        total_capacity /
+        (h * w * 3)
+    )
+
+    bit_acc = (
+        total_correct /
+        total_capacity *
+        100
+        if total_capacity > 0
+        else 0.0
+    )
+
+    # ------------------------------------------------------
+    # RGB reconstruction metrics
+    # ------------------------------------------------------
+
+    psnr_r = psnr_color(
+        image_rgb,
+        recovered_rgb
+    )
+
+    ssim_r = ssim_color(
+        image_rgb,
+        recovered_rgb
+    )
+
+    mae_r = mae_color(
+        image_rgb,
+        recovered_rgb
+    )
+
+    # ------------------------------------------------------
+    # Return results
+    # ------------------------------------------------------
+
+    return {
+        "method":
+            method,
+
+        "bpp":
+            total_bpp,
+
+        "capacity":
+            total_capacity,
+
+        "bit_acc":
+            bit_acc,
+
+        "perfect":
+            all_perfect,
+
+        "psnr_rec":
+            psnr_r,
+
+        "ssim_rec":
+            ssim_r,
+
+        "mae_rec":
+            mae_r,
+
+        "recovered":
+            recovered_rgb,
+
+        "per_channel":
+            per_channel
+    }

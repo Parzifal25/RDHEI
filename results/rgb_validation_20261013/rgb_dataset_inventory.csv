@@ -1,0 +1,7 @@
+filename,file_size_bytes,pil_mode,shape,channels,dtype,is_genuine_rgb,max_inter_channel_diff,notes
+4.2.03.png,626314,RGB,"(512, 512, 3)",3,uint8,True,251,
+4.2.05.png,424185,RGB,"(512, 512, 3)",3,uint8,True,226,
+4.2.06.png,546687,RGB,"(512, 512, 3)",3,uint8,True,224,
+4.2.07.png,506099,RGB,"(512, 512, 3)",3,uint8,True,227,
+images.png,36063,L,"(225, 225)",1,uint8,False,,Grayscale mode — NOT a genuine RGB image
+lena.png,473831,RGB,"(512, 512, 3)",3,uint8,True,235,

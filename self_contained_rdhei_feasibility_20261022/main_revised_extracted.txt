@@ -1,0 +1,1370 @@
+
+PAGE 1
+Highlights
+A compact CNN pixel predictor for reversible data hiding in en-
+crypted images: capacity, error-distribution analysis and computa-
+tional trade-o
+[Author name 1], [Author name 2], [Author name 3]
+ A 46,881-parameter CNN predictor is evaluated in a label-map MSB-
+replacement RDHEI pipeline.
+ Highest mean gross capacity of the evaluated predictors: 5.190 bpp gray,
+4.884 bpp RGB.
+ Error-distribution analysis explains why lower MAE does not always
+give higher capacity.
+ Exact reversibility is veried in 267 end-to-end runs, from empty to full
+payload.
+ Closed-form complexity and measured runtime quantify a 325× predic-
+tion cost over MED.
+
+PAGE 2
+A compact CNN pixel predictor for reversible data
+hiding in encrypted images: capacity,
+error-distribution analysis and computational trade-o
+[Author name 1] a, ∗, [Author name 2] a , [Author name 3] b
+a [Department, Institution], [City], [Country]
+b [Department, Institution], [City], [Country]
+Abstract
+In prediction-based reversible data hiding in encrypted images (RDHEI), ca-
+pacity is governed by how prediction errors are distributed, which makes the
+predictor a primary design variable. We study a compact convolutional neu-
+ral network (CNN) pixel predictor (46,881 parameters) inside a label-map
+most-signicant-bit (MSB) replacement pipeline in which the content owner
+embeds into the plaintext and encrypts the marked image with AES-CTR.
+Holding the embedding and recovery algebra xed, we compare the CNN
+with MED, GAP and CALIC and with four controlled CNN variants. On
+six standard grayscale benchmark images the CNN reaches a mean gross ca-
+pacity of 5.190 bpp (GAP 5.027) and a mean prediction MAE of 4.46 (GAP
+5.91); on ve genuine RGB images it reaches 4.884 bpp (GAP 4.787) and
+MAE 6.56 (GAP 8.03). The advantage is not uniform: GAP is better on 1
+of 6 grayscale images and on 5 of 15 RGB channels. An error-distribution
+analysis shows why. The error-to-capacity mapping is a non-monotone stair-
+case with a 7-bit reward for exact prediction, so a predictor with lower MAE
+but fewer exactly correct pixels can carry less payload. Exact reversibility
+is veried by direct array comparison in 267 end-to-end runs with payloads
+from zero bits to full capacity (179 with the reference implementation and 88
+with a separately validated vectorized implementation), and recovery unique-
+ness is checked exhaustively over all 256 × 256 (pixel, prediction) pairs. We
+derive closed-form parameter and multiplyaccumulate counts and measure
+∗Corresponding author.
+Email address: [corresponding-author e-mail] ([Author name 1])
+
+PAGE 3
+runtime under a xed protocol: CNN prediction takes 2.08 s per 512 × 512
+image on a laptop CPU, 325× slower than MED, while a separately validated
+vectorized implementation with output identical to the reference on all tested
+cases cuts the complete RGB pipeline from 15.5 s to 10.3 s. The scheme is
+separable but not blind, and its capacities are gross rates under out-of-band
+side information.
+Keywords: Reversible data hiding, Encrypted images, RDHEI,
+Convolutional neural network, Pixel prediction, Prediction-error
+distribution, MSB replacement, Computational complexity
+1. Introduction
+Reversible data hiding (RDH) embeds auxiliary data into a cover image
+such that both the data and the original cover can be restored without error
+[1, 2]. Exact restoration distinguishes RDH from conventional watermarking
+and makes it relevant to medical, forensic, military and archival imaging,
+where even a single modied pixel can be unacceptable. When the cover must
+also remain condential, for example when images are stored on an untrusted
+cloud server that must annotate them without seeing them, the problem
+becomes reversible data hiding in encrypted images (RDHEI) [3, 4, 5]. An
+authorised receiver must be able to decrypt the image, extract the payload
+and recover the cover bit for bit, while parties without the key learn nothing
+about the image content.
+Encryption removes most of the spatial redundancy that plaintext RDH
+relies on. The literature has responded in two ways: vacating room after
+encryption (VRAE) [4, 6, 5, 7] or reserving room before encryption (RRBE)
+[8]. In the RRBE family and in most recent high-capacity schemes [9, 10,
+11, 12, 13], redundancy is measured in the plaintext through pixel prediction:
+the more concentrated the prediction errors, the more bits each pixel can
+carry while preserving a unique inverse. The predictor is therefore not a
+preprocessing detail but a rst-order determinant of capacity [14, 15].
+Rule-based predictors such as MED [16], GAP and CALIC [17] are cheap
+and well understood, but their rules are xed. CNN predictors learn the
+mapping from neighbourhood to pixel value from data and have reduced
+prediction error in plaintext RDH [18, 19, 20] and in RDHEI [21, 22]. What
+is reported less often is the complete accounting a practitioner needs: how
+much capacity a learned predictor adds when the embedding rule is held xed;
+2
+
+PAGE 4
+why it sometimes adds none; whether the pipeline remains exactly reversible
+for arbitrary payload lengths; how architectural choices change the outcome;
+and what inference costs, both asymptotically and on commodity hardware.
+This paper provides that accounting for a compact CNN predictor in-
+side a label-map MSB-replacement RDHEI pipeline. Its contributions are as
+follows.
+1. Controlled predictor comparison. The embedding and recovery
+algebra is held xed and only the predictor changes, so capacity dif-
+ferences between CNN-3 ×3, MED, GAP and CALIC are attributable
+to prediction alone. Results are reported per image and per colour
+channel, including every case in which the CNN does not win.
+2. Error-distribution analysis. We characterise the error-to-capacity
+mapping exactly and use measured error statistics to explain both the
+CNN's gains and its losses, showing that mean absolute error is an
+imperfect proxy for capacity under MSB-replacement embedding.
+3. Architecture ablation. Five trained checkpoints isolate the eect of
+patch size, the residual projection and the training loss on capacity,
+error, parameter count and runtime.
+4. Veried exact reversibility. Reversibility is checked by direct array
+comparison, independently of the pipeline's internal ags, over 267 end-
+to-end runs that include empty, one-bit, partial, near-maximum and
+maximum payloads, and a uniqueness property of the recovery rule is
+veried exhaustively over its nite domain.
+5. Complexity and cost accounting. We give closed-form parameter
+and multiplyaccumulate (MAC) counts, asymptotic costs for every
+stage, and predictor-only and end-to-end runtimes under a documented
+protocol, together with a vectorized implementation whose outputs are
+bitwise identical to the reference.
+The contribution is the controlled comparison, the error-distribution ex-
+planation, the ablation and the cost analysis; we do not propose a new CNN
+architecture, a new embedding rule or a new cryptographic primitive, and we
+do not claim that learned prediction should replace rule-based prediction in
+general. The aim is to quantify, under controlled conditions, what a compact
+learned predictor buys, where it fails, and what it costs. Section 2 reviews
+related work, Section 3 describes the scheme and Section 4 the experimental
+protocol. Section 5 presents and analyses the results, Section 6 discusses
+security and limitations, and Section 7 concludes.
+3
+
+PAGE 5
+2. Related work
+This section reviews plaintext RDH, the two main RDHEI frameworks,
+recent label-map and multi-MSB schemes, rule-based and learned pixel pre-
+dictors, and evaluation practice. Table 1 summarises representative RDHEI
+schemes.
+2.1. Reversible data hiding in plaintext images
+Early RDH schemes exploited either inter-pixel correlation or the shape
+of a statistical distribution. Tian's dierence expansion (DE) [1] transforms
+each pixel pair into its integer average and dierence, doubles the dierence
+and places one payload bit in the vacated least signicant bit; a location
+map records the pairs that would overow and is compressed and embedded
+with the payload. DE achieves close to 0.5 bpp per pass but its distortion
+grows quickly because every expandable dierence is doubled regardless of
+magnitude.
+Ni et al. introduced histogram shifting (HS) [2]. The scheme selects a
+peak bin of the grey-level histogram and an empty or near-empty zero bin,
+shifts the bins between them by one to create a gap next to the peak, and
+embeds one bit in every pixel whose value equals the peak. Distortion is
+bounded by one grey level per pixel and PSNR stays above about 48 dB, but
+capacity is limited to the height of the peak bin, which is small for natural
+images.
+Prediction-error expansion (PEE) combines the two ideas. Each pixel is
+predicted from its neighbours and the prediction-error histogram, rather than
+the grey-level histogram, is expanded or shifted. Because prediction errors of
+natural images follow a sharply peaked, approximately Laplacian distribution
+centred at zero, the peak bins are far higher than in a grey-level histogram,
+and capacity and distortion improve together. Gui et al. generalised PEE
+so that more than one bit can be embedded into small errors and used a
+local complexity measure to direct the payload adaptively to smooth regions,
+where errors are small [14]. Wang et al. made both the predictor and the
+choice of embedding bins adaptive [15], and Yu et al. [23] combined pairwise
+PEE with a decomposition of the two-dimensional prediction-error histogram
+(2D-PEH).
+The lesson of this line of work, and the premise of the present study,
+is that prediction and embedding are coupled. A better predictor does not
+change the embedding rule, but it changes how many pixels fall into the
+4
+
+PAGE 6
+cheapest error bins and therefore how much payload the rule can carry at a
+given distortion.
+2.2. Vacating room after encryption
+In VRAE schemes, the content owner encrypts the original image and
+a data hider, who knows only the ciphertext, makes room for the payload.
+Puech et al. [3] encrypted 4 × 4 blocks with AES and embedded one bit
+per block; the receiver restores each block by comparing the local standard
+deviation of the candidate decryptions, exploiting the fact that a wrongly
+decrypted block looks like noise. Zhang [4] divided a stream-cipher-encrypted
+image into blocks, split each block into two pixel sets and ipped the three
+least signicant bits of one set according to the payload bit. After decryption,
+the receiver recovers the bit and the block by choosing the hypothesis with the
+smaller spatial uctuation. Hong et al. [6] improved the uctuation function
+so that more pixels contribute to it and used side-match ordering, which lets
+already-recovered neighbouring blocks guide later decisions; Liao and Shu [24]
+further rened the uctuation measure using the absolute mean dierence of
+multiple neighbouring pixels. All of these schemes couple extraction with
+decryption and have a non-zero extraction error rate for small blocks.
+Zhang's separable scheme [5] removed this coupling. The data hider com-
+presses the least signicant bits of the encrypted image with a data-hiding
+key and places the payload in the space saved. A receiver with only the data-
+hiding key can extract the payload, a receiver with only the encryption key
+can decrypt an image that closely resembles the original, and a receiver with
+both keys can recover the cover exactly when the payload is small. Qian and
+Zhang [7] compressed selected encrypted bits with distributed source coding
+based on low-density parity-check codes, using the unencrypted neighbours
+available after decryption as side information at the decoder. VRAE has
+the advantage that the content owner does no preprocessing, but because
+encrypted bits have nearly maximal entropy, the room that can be vacated
+is small, typically well below 0.5 bpp.
+2.3. Reserving room before encryption and prediction-based RDHEI
+Ma et al. [8] reversed the order of operations. Before encryption, the con-
+tent owner uses a conventional plaintext RDH algorithm to embed the least
+signicant bits of some pixels into other pixels, which reserves room that the
+data hider later lls by simple substitution after encryption. Because redun-
+dancy is exploited in the plaintext, where it is available, the achievable rate
+5
+
+PAGE 7
+rises sharply and extraction becomes error free. The price is preprocessing
+at the content owner, which is acceptable in most applications because the
+owner already has to encrypt the image.
+Puteaux and Puech [9] observed that the most signicant bit of a pixel
+can usually be predicted from its neighbours. They detect, before encryp-
+tion, the pixels whose MSB would be mispredicted, record them in a loca-
+tion map, and allow the data hider to replace the MSB of every other pixel
+with a payload bit. The receiver decrypts and restores each MSB by predic-
+tion. This shifted the focus of RDHEI from the least to the most signicant
+bit-planes and raised rates to around 1 bpp. Yin et al. [10] combined pixel
+prediction with bit-plane rearrangement and compression: prediction errors
+are computed in the plaintext, their bit-planes are rearranged so that the
+high-order planes are highly compressible, the compressed planes and auxil-
+iary information are encrypted, and the vacated space is oered to the data
+hider. Such schemes are self-contained, in that the receiver regenerates the
+predictions from already-recovered pixels and only compressed auxiliary in-
+formation travels with the image, so their reported rates are net rates.
+2.4. Label maps and multi-MSB embedding
+Generalising the single-MSB idea, a large group of recent schemes assigns
+each pixel a label that states how many of its high-order bits can be predicted
+from the prediction value, and replaces all of those bits with payload. The
+capacity of the image is the sum of the labels, so it is set directly by the
+distribution of prediction errors, and the label map itself must be compressed
+and conveyed to the receiver. Research in this group diers mainly in how
+the prediction is formed and how the label map is coded.
+Ren et al. combined multiple predictions with adaptive Human encoding
+[25], and later with an ecient parametric binary tree labelling [13]. Qi et
+al. [11] and Yue et al. [12] combined adaptive quadtree partitioning of the
+image with MSB prediction. Ankur et al. [26] encoded the label map bit-
+plane by bit-plane with an optimal block size. Zhang et al. [27] combined
+prediction-error modication with basic block compression, and Huang et
+al. [28] used bidirectional encoding to enhance the payload. Qiu [29] and
+Qiu et al. [30] used edge-directed prediction, combined with multi-MSB self-
+prediction and with adaptive entropy coding respectively. Kim et al. [31]
+proposed a pixel shifting approach (PSA) for RDHEI, and Ren et al. [32]
+combined reversible data hiding with authentication of the encrypted image
+on the basis of prediction-error compression.
+6
+
+PAGE 8
+Two observations from this group motivate the present study. First, much
+of the work concentrates on how the label map is coded and how the image
+is partitioned, so the predictor is a design variable that can be studied sep-
+arately. Second, because capacity is a sum of per-pixel labels, the quantity
+that matters is not the mean absolute error but the full distribution of er-
+rors as seen through the label rule. We make this second point explicit in
+Section 5.3.
+2.5. Rule-based pixel predictors
+The median edge detector (MED) of LOCO-I/JPEG-LS [16] predicts a
+pixel from its west, north and north-west neighbours. If the north-west neigh-
+bour is larger than both others it predicts their minimum, if smaller it pre-
+dicts their maximum, and otherwise it predicts the planar value W +N −N W;
+this simple rule detects horizontal and vertical edges at a cost of three reads
+and two comparisons per pixel. The gradient-adjusted predictor (GAP) of
+CALIC [17] estimates the horizontal and vertical gradients from seven causal
+neighbours and selects among sharp-edge, weak-edge and smooth predictions
+using xed thresholds on the gradient dierence. CALIC additionally re-
+nes the GAP value with context-based error feedback. These predictors are
+causal, deterministic and extremely fast, which is why they dominate RDH
+and RDHEI practice, but their rules and thresholds were designed for lossless
+compression and are not adapted to any particular image class.
+2.6. Learned predictors for RDH and RDHEI
+Hu and Xiang [18] combined CNN-based pixel prediction with adaptive
+embedding. Yang and Huang [19] proposed a new CNN-based predictor
+for RDH. Bae et al. [20] studied a CNN-based scheme through the relation
+between PSNR and embedding capacity. In the encrypted domain, Ping et al.
+[21] introduced asymmetric CNN and adaptive-mean predictors for RDHEI,
+and Cheng et al. [22] combined a pixel-level masked autoencoder with polar
+codes.
+These studies indicate that learned predictors can reduce prediction error
+relative to rule-based ones. The present study focuses on three questions:
+whether a capacity gain survives when the embedding rule is held xed and
+only the predictor changes; whether larger receptive elds and larger models
+help for masked single-pixel prediction; and what a learned predictor costs
+at inference, in operations and in wall-clock time, relative to rule-based pre-
+dictors.
+7
+
+PAGE 9
+2.7. Evaluation practice
+Reversible schemes are judged by capacity, usually in bits per pixel, by the
+visual quality of the marked or directly decrypted image, usually by PSNR
+and SSIM [33, 34], and by exactness of recovery. For a scheme that restores
+the cover exactly, PSNR between cover and recovered image is innite and
+SSIM is one, so these gures conrm reversibility but do not distinguish
+between schemes. Most papers report results on a small set of standard test
+images from the USC-SIPI database [35], such as Lena, Airplane, Baboon and
+Peppers, and many also report averages over the BOSSbase [36] or BOWS-2
+collections. In RDHEI, it is also customary to distinguish the gross number of
+bits that the labels allow from the net payload that remains after the auxiliary
+information has been accounted for; only the latter can be compared across
+schemes.
+2.8. Positioning of this work
+The present work lies at the intersection of Sections 2.4 and 2.6. It takes
+the label-map MSB-replacement mechanism as xed and asks how much a
+compact learned predictor changes the label distribution, why, and at what
+cost. It does not propose a new label-map coder, and its rates are gross rather
+than net (Section 3.7); consequently, it compares predictors with one another
+rather than with the published net rates of complete RDHEI schemes.
+3. Proposed scheme
+3.1. Overview
+Fig. 1 summarises the pipeline. The content owner (i) predicts every
+pixel, (ii) converts each absolute prediction error into a per-pixel label giving
+the number n ∈ {0, . . . ,7} of replaceable MSBs and a recovery band, (iii)
+replaces those MSBs with payload bits, and (iv) encrypts the marked image
+with AES-CTR [37, 38]. The receiver decrypts, reads the payload from the
+MSBs, and restores each pixel by a bounded candidate search. Embedding
+therefore happens in the plaintext, before encryption, by the content owner;
+the scheme belongs to the RRBE family [8], with the owner and the data hider
+played by the same party. Only the predictor diers between the compared
+methods.
+Table 2 lists the notation.
+8
+
+PAGE 10
+Table 1: Representative RDHEI schemes. VRAE: vacating room after encryption; RRBE:
+reserving room before encryption; Pred.: prediction-based scheme in which redundancy is
+measured by pixel prediction in the plaintext (several such schemes are variants of RRBE).
+Scheme Frame-
+work
+Redundancy measure /
+predictor
+Room creation and coding
+Puech et al. [3] VRAE Local standard deviation One bit per AES-encrypted
+block
+Zhang [4] VRAE Block uctuation LSB ipping in encrypted
+blocks
+Hong et al. [6] VRAE Improved uctuation, side
+match
+As [4]
+Zhang [5] VRAE  Compression of encrypted
+LSBs; separable
+Qian and
+Zhang [7]
+VRAE Decoder-side neighbours Distributed source coding
+Ma et al. [8] RRBE Plaintext RDH LSBs reserved before
+encryption
+Puteaux and
+Puech [9]
+Pred. MSB prediction MSB substitution with error
+location map
+Yin et al. [10] Pred. Pixel prediction Bit-plane rearrangement and
+compression
+Ren et al.
+[25, 13]
+Pred. Multiple predictors Human / parametric binary
+tree labels
+Qi, Yue et al.
+[11, 12]
+Pred. MSB prediction Adaptive quadtree partition
+Qiu et al.
+[29, 30]
+Pred. Edge-directed prediction Multi-MSB self-prediction /
+entropy coding
+Ping et al. [21] Pred. Asymmetric CNN, adaptive
+mean
+Prediction-based RDHEI
+Cheng et al.
+[22]
+Pred. Masked autoencoder Polar-code coding
+This work Pred. Compact CNN (46,881
+params)
+Per-pixel label map, MSB
+replacement before encryption;
+gross rate
+9
+
+PAGE 11
+Content owner
+Receiver
+Original
+image I
+(gray or
+RGB)
+Predictor
+MED, GAP,
+CALIC or
+CNN-3 ×3
+Label maps
+b, mmin,
+mmax
+MSB
+replacement
+Eq. (7)
+AES-CTR
+encryption
+AES-CTR
+decryption
+Payload
+extraction
+Candidate
+recovery
+Eq. (8)
+Irec = I
++ payload
+transmit
+Side information (out of band): K,
+nonce(s), payload length, b, mmin, mmax, ˆp
+Figure 1: Proposed pipeline. The predictor is the only component that diers between
+compared methods. Side information is delivered out of band (Section 3.7).
+Table 2: Notation.
+Symbol Meaning
+I, I(i, j) Original image (size H × W , Cch channels) and pixel value
+p, ˆp Original pixel and rounded prediction
+e = p − ˆp, ϵ = |e| Signed and absolute prediction error
+n = b(i, j) Number of replaceable MSBs (label) at (i, j)
+mmin, mmax Recovery band for ϵ at (i, j)
+q Integer formed by the next n payload bits
+p′ Marked pixel after MSB replacement
+K, Nc AES key and counter initial value (nonce)
+C Total capacity in bits; BPP = C/(HW )
+P Side length of the CNN input patch
+Irec Recovered image
+10
+
+PAGE 12
+3.2. CNN pixel predictor
+For each pixel, a P × P patch ( P ∈ {3, 5, 7}) centred on the target is
+extracted from the image normalised to [0, 1], using reective padding at the
+borders. The centre is set to zero so that the network cannot observe the
+target:
+ˆpi,j = fθ(Xi,j), X i,j ∈ R1×P ×P . (1)
+The network (Fig. 2) applies two 3 × 3 convolutions with 32 channels, each
+followed by batch normalisation and ReLU and padded to preserve the spatial
+size:
+F1 = ReLU(BN1(Conv1(X))), (2)
+F2 = ReLU(BN2(Conv2(F1))). (3)
+In the residual conguration, a 1 × 1 convolution projects the input to 32
+channels and is added to F2, i.e. F = F2 + Conv1×1(X); otherwise F = F2.
+The attened feature ( 32P 2 values) is passed to a 128-unit hidden layer with
+ReLU and a single sigmoid output scaled to the 8-bit range:
+ˆp = 255 σ(W2 ReLU(W1 vec(F ) + b1) + b2) . (4)
+The prediction is rounded to the nearest integer before use. Closed-form
+parameter and operation counts are given in Section 5.6.
+Masked
+patch
+1×P ×P
+Conv
+3×3
+32 ch
+BN,
+ReLU
+Conv
+3×3
+32 ch
+BN,
+ReLU
++ Flatten 32P 2 FC 128ReLU FC 1Sigmoid ×255
+Conv 1×1,
+32 ch
+residual projection (removed in No-Residual variant)
+Figure 2: CNN predictor. The centre of the input patch is masked to zero. The proposed
+CNN-3 ×3 uses P = 3.
+Training and provenance. The ve checkpoints evaluated here were trained
+by the authors before this study on a separate machine, and the historical
+training logs did not survive. According to the authors' records, training
+used 10,000 BOSSbase grayscale images [36] for 20 epochs. The archived
+11
+
+PAGE 13
+training script species stride-4 patch extraction with horizontal and vertical
+ip augmentation, a 10% validation split with best-validation checkpoint
+selection, Adam (learning rate 10−4, weight decay 10−4), cosine annealing to
+10−6, batch size 256, seed 42, and the weighted L1 loss, which penalises large
+errors more strongly:
+LwL1 = 1N
+NX
+s=1
+
+1 + α |ps − ˆps|255  |ps − ˆps|, α = 2. (5)
+The plain- L1 ablation sets α = 0. As archived, the script is xed to P = 5; the
+3 × 3, 7 × 7 and plain- L1 checkpoints were therefore produced with modied
+settings that were not recorded. Consequently, every result in this paper
+is an evaluation of xed checkpoints, which are identied by their SHA-256
+digests in Table 3; evaluation is reproducible from these checkpoints, but
+training is not fully reproducible from the surviving artefacts. RGB images
+are processed channel by channel with the same grayscale-trained models.
+The test images come from a dierent collection than the training images.
+Table 3: Evaluated checkpoints. Parameter counts were recounted from the loaded models;
+digests are the rst 16 hexadecimal digits of SHA-256.
+Variant File Patch Residual Loss Params SHA-256 (prex)
+CNN-3 ×3 (proposed) v4_patch3.pth 3 yes w L1 46,881 a9021862c753e11b
+CNN-5 ×5 v1_full.pth 5 yes w L1 112,417 51406640acaf6f37
+No-Residual v2_no_residual.pth 5 no w L1 112,353 173f462155c1075d
+Plain- L1 v3_no_weighted_loss.pth 5 yes L1 112,417 1fa025e252d5a3c9
+CNN-7 ×7 v5_patch7.pth 7 yes w L1 210,721 e6996df5f942fca9
+3.3. Error-to-capacity label map
+Let ϵ = |e|. The label of a pixel is computed by scanning bit levels
+r = 7 , 6, . . . ,1 with thresholds ℓr = 2 r−1 − 1, µr = 2 r−1 and hr = 2 r − 1,
+starting from n = 0:
+ if ϵ ≤ ℓr: increment n and continue to level r − 1;
+ if µr < ϵ ≤ hr: increment n and stop, with band [mmin, mmax] =
+[µr + 1, hr];
+ if ϵ = µr: stop without incrementing, with band [µr, µr].
+12
+
+PAGE 14
+If ϵ ≥ 128, no level applies and n = 0 . Evaluating the rule over all 256
+values of ϵ gives the exact staircase in Table 4 and Fig. 3. Three properties
+matter for the analysis in Section 5.3. First, exact prediction is rewarded
+disproportionately: ϵ = 0 carries 7 bits, one more than ϵ = 1. Second, the
+mapping is non-monotone: every power of two ϵ = 2 k ( k ≥ 1) stops at the
+midpoint test and carries one bit fewer than ϵ = 2k + 1, so, for example, ϵ = 2
+carries 5 bits but ϵ = 3 carries 6. Third, there are two dead zones that carry
+nothing, ϵ = 64 and ϵ ≥ 128.
+Table 4: Exact error-to-label staircase (bits carried by a pixel with absolute prediction
+error ϵ).
+ϵ 0 1 2 3 4 57 8 915 16 1731 32 3363 64 65127 ≥128
+n 7 6 5 6 4 5 3 4 2 3 1 2 0 1 0
+0124 8 16 32 64 96 128
+Absolute prediction error |e|  (red: |e| a power of two)
+0
+2
+4
+6n (MSBs)
+Figure 3: Number of replaceable MSBs n as a function of the absolute prediction error.
+Red bars mark powers of two, which carry one bit fewer than their right-hand neighbours.
+Pixels with ϵ ≥ 128 carry no payload.
+The total capacity and rate are
+C =
+H−1X
+i=0
+W −1X
+j=0
+b(i, j), BPP = CHW =
+7X
+n=0
+n πn, (6)
+where πn is the fraction of pixels with label n. Capacity is therefore a linear
+functional of the label distribution, which is itself a deterministic, many-to-
+one function of the error distribution. For RGB images each channel has its
+own label map and the reported BPP is the mean of the three channel rates.
+13
+
+PAGE 15
+3.4. Embedding by MSB replacement
+Pixels are visited in raster order. For a pixel with n > 0, the next n
+payload bits (MSB rst) form q ∈ [0, 2n − 1], and
+p′ = q · 28−n +  p mod 28−n , (7)
+so the lower 8−n bits are preserved. Pixels with n = 0 are unchanged. Every
+q yields a valid 8-bit value, so no overow handling is required. If the payload
+is shorter than C, the remaining positions receive q = 0; this does not aect
+recovery, which depends only on the preserved low bits, the prediction and
+the band.
+3.5. Encryption
+The marked image is encrypted with AES-CTR using a 256-bit key and
+a 128-bit counter initialised from a nonce. For RGB images each channel
+is encrypted with a distinct nonce N (c)c = N0 + c + 1, c ∈ {0, 1, 2}, so no
+keystream segment is reused across channels.
+3.6. Extraction and recovery
+The receiver decrypts with the same key and nonce(s), visits pixels in the
+same raster order, and reads the top n bits of each marked pixel until the
+declared payload length has been collected. Recovery then continues over
+all pixels regardless of payload length. For n >0, let l = p′ mod 28−n. The
+candidate set is
+C(p′, n) = {a · 28−n + l : a = 0, . . . ,2n − 1}, (8)
+and the recovered value is the candidate c satisfying mmin ≤ |c − ˆp| ≤mmax.
+Proposition 1 (Unique recovery) . For every pair (p, ˆp) ∈ {0, . . . ,255}2 with
+label n >0, exactly one element of C(p′, n) satises the band condition, and
+that element is p.
+Because the domain is nite, Proposition 1 was veried exhaustively over
+all 65,536 pairs; it is an exhaustive check of the implementation rather than
+a symbolic proof. It implies that the implementation's fallback (returning p′
+when no candidate qualies) never res for an embedded pixel. Algorithms 1
+and 2 summarise both sides.
+14
+
+PAGE 16
+Algorithm 1 Content owner: prediction, embedding and encryption
+Require: Image I, payload bits P , predictor f , key K, nonce Nc
+Ensure: Encrypted marked image Ienc; side information S
+1: ˆp ← round(f (I)); ϵ ← |I − ˆp|
+2: (b, mmin, mmax) ← LabelMap (ϵ) ▷ Section 3.3
+3: C ← P b; pad P with zeros to length C (truncate if |P | > C)
+4: for each pixel (i, j) in raster order with b(i, j) = n >0 do
+5: q ← next n bits of P ; I ′(i, j) ← q · 28−n + (I(i, j) mod 28−n)
+6: end for
+7: Ienc ← AES- CTRK(I ′; Nc)
+8: S ←(Nc, |P |, b, mmin, mmax, ˆp)
+Algorithm 2 Receiver: decryption, extraction and recovery
+Require: Ienc, key K, side information S
+Ensure: Payload Pext, recovered image Irec
+1: I ′ ← AES- CTR−1K (Ienc; Nc)
+2: for each pixel (i, j) in raster order do
+3: n ← b(i, j)
+4: if n = 0 then Irec(i, j) ← I ′(i, j); continue
+5: end if
+6: if |Pext| < |P | then append top n bits of I ′(i, j) to Pext
+7: end if
+8: l ← I ′(i, j) mod 28−n
+9: Irec(i, j) ← unique c ∈ {a28−n + l} with mmin ≤ |c − ˆp(i, j)| ≤mmax
+10: end for
+11: truncate Pext to |P |
+15
+
+PAGE 17
+3.7. Side information and separability
+Recovery requires the key, nonce(s), payload length and the owner-
+computed maps b, mmin, mmax and ˆp. Because the CNN uses a non-causal
+neighbourhood of the original image, the receiver cannot regenerate ˆp from
+the marked image, so the maps must be delivered out of band. The scheme
+is therefore separable (decryption and extraction are distinct steps with
+distinct inputs) but not blind. The capacities reported in Section 5 are gross
+rates that do not deduct this side information. They compare predictors
+fairly with one another, because all predictors are charged identically, but
+they are not directly comparable with the net rates of self-contained schemes
+such as [9, 10, 13]. Section 6 returns to this point.
+4. Experimental setup
+Test images. The grayscale set consists of six les identied by name as
+the standard benchmark images Airplane, Baboon, Goldhill, Jetplane, Lena
+and Peppers. The colour set consists of ve les named 4.2.03, 4.2.05,
+4.2.06 and 4.2.07, which follow the numbering of the USC-SIPI database [35],
+and a colour Lena image. Before the experiments, every le was decoded
+and checked for resolution and channel mode: the grayscale les are single-
+channel, 512 × 512 except Goldhill ( 720 × 576) and Jetplane ( 1024 × 1024);
+the colour les are 512 × 512 × 3 with channels that are not all identical.
+A sixth candidate colour le that decoded as a single channel was excluded
+from all RGB statistics. All eleven les were included in every reported ex-
+periment. Their origin was not veried against the original distributions, so
+the identication is by name and content type only. Further images were
+examined during development but are not reported; the per-image analysis
+is restricted to this common reference set so that the tables can be read
+alongside published ones. Together the sets cover smooth (Airplane, 4.2.05),
+textured (Baboon, 4.2.03) and mixed content.
+Predictors. MED [16], GAP and CALIC [17] were implemented with causal
+neighbourhoods. In the stand-alone baseline, the rst row and column are
+predicted as zero, following common practice. Within the end-to-end pipeline,
+MED uses edge padding so that the rst row and column also receive real
+predictions; this variant gives slightly higher capacity (4.978 vs. 4.958 bpp
+gray; 4.718 vs. 4.698 bpp RGB) and is reported where it is used. The ve
+CNN checkpoints are listed in Table 9.
+16
+
+PAGE 18
+Metrics. Capacity is the label-map rate of Eq. (6), computed from the orig-
+inal image before embedding with the same mapping for every predictor.
+Prediction MAE is the mean of |I − ˆp| over all pixels (mean over channels for
+RGB). Error statistics use the signed convention e = I − round( ˆI) and xed
+width-one histogram bins; channels are analysed separately and pooled only
+where stated. Exact image recovery is array_equal (I, Irec), and payload
+correctness is bit-wise equality with equal length; both are evaluated outside
+the pipeline, independently of its internal ags. For exactly recovered images
+PSNR is innite, SSIM [33] is one and MAE is zero [34]; we report these as
+reversibility outcomes rather than quality measures.
+Statistical scope. With six grayscale and ve RGB images, and with pixels
+that are not independent experimental units, signicance testing is not jus-
+tied. All comparisons are therefore descriptive: absolute per-image and
+per-channel values, their means, and win counts. No generalisation to all
+natural images is claimed.
+Runtime protocol. Predictor-only time is the wall-clock time, measured with
+a high-resolution performance counter, to produce one prediction map for
+Lena ( 512 × 512, grayscale) after 5 warm-up runs, averaged over 10 timed
+runs, with model loading excluded. End-to-end time is measured on Airplane
+(gray) and 4.2.03 (RGB) at full capacity, averaged over 3 runs with disjoint
+stage boundaries (label map, embedding, encryption, decryption, extraction
+and recovery). Throughput in maps per second is 1000/Tms. All runtime
+gures in Section 5.7 come from a single measurement session and are not
+pooled with earlier sessions.
+Environment and reproducibility. Intel Core i5-8265U (4 cores, 8 threads),
+Linux 6.6 (WSL2), Python 3.10.12, PyTorch 2.14 on CPU, NumPy 2.2.6,
+PyCryptodome 3.24.1. Payload bits were generated with a xed seed (42,
+and 42 + c for RGB channel c); keys were drawn fresh for each run. As
+a reproducibility check, all 410 per-image and per-channel MAE and BPP
+values were recomputed from source and checkpoints in a separate session
+and matched the stored values to within 10−6; the implementation passes its
+16 unit tests.
+17
+
+PAGE 19
+5. Results and analysis
+5.1. Grayscale comparison
+Tables 5 and 6 and Fig. 4 report per-image capacity and prediction MAE.
+CNN-3 ×3 achieves the highest mean capacity, 5.190 bpp, which is 3.2% above
+GAP, 4.7% above MED and 6.1% above CALIC, and the lowest mean MAE,
+4.46, a 24.5% reduction relative to GAP. It is best on ve of six images. On
+Peppers, GAP is better on both measures (5.016 vs. 4.944 bpp, a dierence
+of 0.071 bpp; MAE 5.14 vs. 5.17).
+The relative capacity gain is much smaller than the relative MAE gain.
+Section 5.3 shows that this is a direct consequence of the label staircase:
+errors that are already small gain at most one or two bits when reduced
+further, the 7-bit cap saturates smooth regions, and MAE is dominated by
+large errors in textured regions (Baboon), where the CNN gains most in
+MAE but many pixels remain in the low-reward part of the staircase.
+Table 5: Grayscale capacity (bpp). Best per row in bold.
+Image MED GAP CALIC CNN-3 ×3
+Airplane 5.434,8 5 .465,6 5 .402,2 5.7502
+Baboon 4.198,7 4 .257,0 4 .119,2 4.5576
+Goldhill 5.088,1 5 .112,5 5 .035,5 5.3204
+Jetplane 4.966,7 5 .044,0 4 .873,6 5.1063
+Lena 5.185,6 5 .265,1 5 .149,1 5.4593
+Peppers 4.871,1 5.0157 4.780,4 4 .944,4
+Mean 4.957,5 5 .026,6 4 .893,3 5.1897
+5.2. RGB comparison
+Table 7 and Fig. 5 give the results for the ve genuine RGB images.
+CNN-3 ×3 attains the highest mean capacity, 4.884 bpp (+2.0% over GAP,
++3.9% over MED, +5.7% over CALIC), and the lowest mean MAE, 6.56
+(18.4% below GAP). Per image, the dierence to GAP is +0.241 bpp on
+4.2.03, +0.234 on 4.2.05, +0.003 on 4.2.06, −0.129 on 4.2.07 and +0.137 on
+Lena, so the CNN wins four of ve images, and on 4.2.06 the image-level
+margin is smaller than the channel-level dierences within it.
+Table 8 and Fig. 6 resolve the comparison by channel. CNN-3 ×3 loses
+on exactly 5 of 15 channels, always to GAP: 4.2.06 R ( −0.041 bpp), 4.2.06
+18
+
+PAGE 20
+Table 6: Grayscale prediction MAE (grey levels; lower is better). Best per row in bold.
+Image MED GAP CALIC CNN-3 ×3
+Airplane 4.144,3 4 .018,9 4 .175,1 2.0873
+Baboon 12.719,7 12 .210,0 13 .701,3 8.6664
+Goldhill 5.022,7 4 .893,5 5 .300,0 3.5318
+Jetplane 5.245,6 4 .796,0 5 .783,9 4.4075
+Lena 4.854,6 4 .399,4 4 .956,6 2.9102
+Peppers 5.917,3 5.1399 6.446,7 5 .165,8
+Mean 6.317,4 5 .909,6 6 .727,2 4.4615
+Airplane Baboon Goldhill Jetplane Lena Peppers Mean
+3.5
+4.0
+4.5
+5.0
+5.5
+6.0Capacity (bpp)
+MED GAP CALIC CNN-3×3
+Airplane Baboon Goldhill Jetplane Lena Peppers Mean
+0.0
+2.5
+5.0
+7.5
+10.0
+12.5Prediction MAE
+MED GAP CALIC CNN-3×3
+Figure 4: Grayscale capacity (top) and prediction MAE (bottom) per image.
+19
+
+PAGE 21
+G ( −0.026), 4.2.07 R ( −0.236), 4.2.07 G ( −0.121) and 4.2.07 B ( −0.031).
+The mean-level advantage is therefore not universal superiority. The model
+was trained on grayscale images only, so colour-specic training is a natural
+direction for improvement; Section 5.3 shows that the losses have two distinct
+causes.
+Table 7: RGB capacity (bpp, mean over channels) and prediction MAE for the ve genuine
+RGB images. Best per row in bold.
+Capacity (bpp) Prediction MAE
+Image MED GAP CALIC CNN MED GAP CALIC CNN
+4.2.03 3.910,6 3 .980,2 3 .817,8 4.2209 16.32 15 .58 17 .69 11.85
+4.2.05 5.358,9 5 .407,5 5 .322,1 5.6410 4.43 4 .26 4 .53 2.42
+4.2.06 4.483,6 4 .587,6 4 .383,2 4.5905 9.46 8 .72 10 .32 7.97
+4.2.07 4.728,5 4.8622 4.629,0 4 .733,0 7 .26 6.37 7.98 6 .61
+Lena 5.010,0 5 .095,9 4 .957,0 5.2333 5.78 5 .23 6 .06 3.92
+Mean 4.698,4 4 .786,7 4 .621,8 4.8838 8.65 8 .03 9 .32 6.56
+5.3. Prediction-error analysis
+By Eq. (6), capacity depends on the error distribution only through the
+label staircase of Table 4. Reducing MAE helps only to the extent that it
+moves probability mass into higher steps, and the steps are uneven. The
+measured error statistics expose three mechanisms.
+Exact prediction. Because ϵ = 0 carries 7 bits and ϵ = 1 carries 6, the fraction
+of pixels predicted exactly, π7, has an outsized eect. On 4.2.07 B, CNN-3 ×3
+has the lower MAE (5.300 vs. 5.826 for GAP) but the lower capacity (4.940
+vs. 4.971 bpp): GAP predicts 9.93% of pixels exactly, the CNN only 6.09%.
+The CNN's errors are tighter overall but are rarely exactly zero, and the same
+pattern explains its losses on 4.2.06 R and G. A rounded regression output
+from a network trained with an L1-type loss has no particular reason to land
+exactly on the integer target, whereas a rule-based predictor reproduces it
+exactly whenever the local structure matches its rule.
+Mid-range compression and tail removal. Pooled over the 15 RGB channels,
+GAP and the CNN predict the same fraction of pixels exactly, 8.68%. The
+CNN's aggregate gain therefore comes from elsewhere: it converts GAP's
+20
+
+PAGE 22
+4.2.03 4.2.05 4.2.06 4.2.07 Lena Mean
+3.5
+4.0
+4.5
+5.0
+5.5
+6.0Capacity (bpp)
+MED GAP CALIC CNN-3×3
+4.2.03 4.2.05 4.2.06 4.2.07 Lena Mean
+0
+5
+10
+15Prediction MAE
+MED GAP CALIC CNN-3×3
+Figure 5: RGB capacity (top) and prediction MAE (bottom) per image, averaged over
+channels.
+R 4.2.03
+G
+B R 4.2.05
+G
+B R 4.2.06
+G
+B R 4.2.07
+G
+B R Lena
+G
+B
+−0.2
+0.0
+0.2
+Δ capacity (bpp)
+CNN-3×3 − GAP
+Figure 6: Per-channel capacity dierence between CNN-3 ×3 and GAP. Blue bars mark
+the ve channels on which GAP is better.
+21
+
+PAGE 23
+Table 8: Channel-wise RGB capacity (bpp). Best per channel in bold.
+Image Method R G B
+4.2.03
+MED 3.947,4 3 .870,8 3 .913,7
+GAP 4.042,0 3 .930,8 3 .967,7
+CALIC 3.837,5 3 .778,4 3 .837,4
+CNN-3 ×3 4.1491 4.2224 4.2913
+4.2.05
+MED 5.387,6 5 .358,0 5 .331,1
+GAP 5.427,3 5 .398,9 5 .396,2
+CALIC 5.362,2 5 .328,0 5 .276,1
+CNN-3 ×3 5.7064 5.6706 5.5461
+4.2.06
+MED 4.480,9 4 .359,2 4 .610,8
+GAP 4.6052 4.4692 4.688,4
+CALIC 4.353,4 4 .254,5 4 .541,7
+CNN-3 ×3 4.564,8 4 .443,7 4.7630
+4.2.07
+MED 4.474,4 4 .832,9 4 .878,4
+GAP 4.6523 4.9630 4.9713
+CALIC 4.333,5 4 .746,6 4 .806,9
+CNN-3 ×3 4.416,2 4 .842,5 4 .940,3
+Lena
+MED 5.283,2 4 .970,9 4 .776,0
+GAP 5.364,0 5 .057,3 4 .866,4
+CALIC 5.255,4 4 .924,0 4 .691,5
+CNN-3 ×3 5.5011 5.2380 4.9608
+22
+
+PAGE 24
+mass at ϵ ∈ [8, 63], which carries 1 to 4 bits, into ϵ ∈ [4, 7], which carries 4
+or 5, and it almost eliminates the dead tail ϵ ≥ 128, whose share falls from
+0.20% for GAP to 0.009%. These gains are spread over many pixels and are
+invisible in the exact-prediction fraction.
+Genuinely worse prediction. On 4.2.07 R the CNN has both a higher MAE
+(8.593 vs. 7.481) and a lower capacity ( −0.236 bpp); its label mass shifts
+from n ∈ {5, 6} to n = 4 . This is an ordinary loss of prediction accuracy
+on one colour channel, not an artefact of the mapping. The non-monotone
+boundaries play no measurable role here: the mass at ϵ ∈ {63, 64, 65} is at
+most 0.006% for every predictor, so the ϵ = 64 dead zone, though real, is
+practically negligible on these images.
+These observations show that MAE is an imperfect proxy for capacity un-
+der MSB-replacement embedding, and that a training objective aligned with
+the staircase, for example one that rewards exact prediction, could convert
+the CNN's lower MAE into capacity more eectively than the losses studied
+here. We leave such objectives to future work.
+5.4. Ablation study
+Table 9 and Fig. 7 compare the ve checkpoints. All share the pipeline
+and dier only in the factor named.
+Table 9: CNN ablation. Gray: mean over six images; RGB: mean over ve genuine RGB
+images. Best per column in bold.
+Variant Patch Res. Loss Params Gray RGB
+BPP MAE BPP MAE
+CNN-3 ×3 (proposed) 3×3 ✓ w L1 46,881 5.1897 4.4615 4.8838 6.5558
+CNN-5 ×5 5×5 ✓ w L1 112,417 5.1653 4.5244 4.8372 6.8238
+No-Residual 5×5  w L1 112,353 5.1567 4.5515 4.8322 6.8270
+Plain- L1 5×5 ✓ L1 112,417 5.1727 4.5130 4.8537 6.7637
+CNN-7 ×7 7×7 ✓ w L1 210,721 5.1386 4.6977 4.8185 6.9995
+Patch size. Capacity and accuracy degrade monotonically from 3 × 3 to 5 ×
+5 to 7 × 7 on both image sets (gray: 5.190, 5.165, 5.139 bpp), while the
+parameter count grows 2.4× and 4.5× because the fully connected head scales
+with P 2. For masked single-pixel prediction on these images, the information
+is concentrated in the immediate neighbours, and the additional parameters
+of larger patches appear to add variance rather than useful context.
+23
+
+PAGE 25
+50 100 150 200
+Parameters (×103)
+5.14
+5.15
+5.16
+5.17
+5.18
+5.19Mean capacity (bpp)
+CNN-3×3
+CNN-5×5
+No-Res
+Plain-L1
+CNN-7×7
+Grayscale
+50 100 150 200
+Parameters (×103)
+4.82
+4.84
+4.86
+4.88Mean capacity (bpp)
+CNN-3×3
+CNN-5×5
+No-Res
+Plain-L1
+CNN-7×7
+RGB
+Figure 7: Model size versus mean capacity for the ve CNN checkpoints.
+Residual projection. Removing the residual branch from the 5 × 5 model
+lowers capacity by 0.009 bpp (gray) and 0.005 bpp (RGB) and raises MAE
+slightly; the skip path helps, but only marginally.
+Loss function. At 5 × 5, the plain- L1 model is slightly better than the
+weighted- L1 model: +0.007 bpp gray and +0.017 bpp RGB, with lower MAE
+on both sets. Weighting large errors (Eq. (5)) therefore does not translate
+into capacity here, which is consistent with Section 5.3: capacity is earned
+mainly by small and exactly zero errors, which the weighting de-emphasises.
+A 3 × 3 plain- L1 model was not trained and is left for future work.
+Losing channels. On every one of the ve RGB channels on which CNN-3 ×3
+loses to GAP, all four alternative checkpoints also lose to GAP (e.g. 4.2.07 G:
+GAP 4.963 bpp, best CNN 4.843 bpp). The exceptions are therefore not an
+artefact of choosing one checkpoint, and no variant studied here closes them.
+All ablation dierences are small (below 0.07 bpp) and are measured on
+6+5 images; they should be read as consistent tendencies rather than statis-
+tically established eects. The robust nding is that the smallest model is
+also the most accurate.
+5.5. Exact reversibility
+Table 10 summarises the end-to-end runs. For the reference implemen-
+tation, payload lengths covered 0 bits, 1 bit, 1,000 bits, 25% and 75% of
+capacity, capacity −1 and full capacity for grayscale, and 0 bits, 1,000 bits
+per channel, 25% and full capacity for RGB with per-channel nonces; all
+24
+
+PAGE 26
+ve checkpoints were also run at full capacity on all images. The vectorized
+implementation (Section 5.7) was validated separately on all 11 images with
+MED and CNN-3 ×3 and four payload rules (empty, 1,000 bits, 25% and full
+capacity). In every one of the 267 valid runs the recovered image was pixel-
+identical to the original and the extracted payload was bit-identical to the
+embedded one, so PSNR, SSIM and recovered-image MAE are ∞, 1 and 0.
+The full-capacity bit counts reproduced the label-map capacities exactly (e.g.
+Airplane: 1,431,289 bits with MED and 1,507,378 bits with CNN-3 ×3).
+One additional run requested 64 bits more than capacity. The sender
+embedded only the rst C bits, the receiver extracted exactly C bits, and
+the cover was still recovered exactly; the shortfall in extracted length is the
+detectable signal. We report this as dened interface behaviour, not as a pass,
+and recommend that deployments reject over-capacity requests explicitly.
+Table 10: End-to-end reversibility tests (direct array comparison, independent of pipeline
+ags).
+Test set Predictors Runs Image exact Payload exact
+Gray payload matrix (7 lengths) MED, CNN-3 ×3 84 84/84 84/84
+RGB payload matrix (4 lengths) MED, CNN-3 ×3 40 40/40 40/40
+Five-checkpoint sweep, gray all CNNs 30 30/30 30/30
+Five-checkpoint sweep, RGB all CNNs 25 25/25 25/25
+Vectorized implementation (4 lengths) MED, CNN-3 ×3 88 88/88 88/88
+Total valid runs 267 267/267 267/267
+Over-capacity probe MED 1 1/1 
+5.6. Computational complexity
+Table 11 summarises the asymptotic cost of every stage for an H × W
+image with Cch channels.
+CNN predictor. Counting weights, biases and batch-normalisation ane pa-
+rameters (running statistics are buers, not parameters), the network of Sec-
+tion 3.2 has
+Nparam(P ) = 4096 P 2 + 10,017 (9)
+parameters with the residual branch (64 fewer without it). The term
+4096P 2 = 32P 2 × 128 is the rst fully connected layer; the constant collects
+the convolutions, the projection, batch normalisation and the output layer.
+Eq. (9) reproduces the checkpoint sizes exactly: 46,881, 112,417 and 210,721
+25
+
+PAGE 27
+for P = 3, 5, 7. The number of multiplyaccumulate operations per predicted
+pixel is
+NMAC(P ) = P 2 (288 + 9216 + 32 + 4096) + 128
+= 13,632 P 2 + 128, (10)
+where the four terms are the rst convolution, the second convolution, the
+1 × 1 projection and the rst fully connected layer, and the constant is the
+output layer; batch normalisation, activations and bias additions are not
+counted. This gives 122,816, 340,928 and 668,096 MACs per pixel for P =
+3, 5, 7, of which about 30% lie in the rst fully connected layer. A 512 × 512
+image therefore costs about 3.2 × 1010 MACs with CNN-3 ×3 and 1.75 × 1011
+with CNN-7 ×7, so the predictor is Θ(HW P2) with a large constant. The
+reference implementation additionally extracts patches in a Python loop, an
+extra Θ(HW ) term with a large interpreter constant that the rule-based
+predictors do not have.
+Rule-based predictors. MED, GAP and CALIC are all Θ(HW ) but with ma-
+terially dierent constants: MED reads three neighbours and performs two
+comparisons, GAP reads seven neighbours, computes two three-term gra-
+dients and evaluates a six-way branch, and CALIC reads eight neighbours.
+These constants are visible in the measured times (Section 5.7).
+Label map, embedding and recovery. Label generation is Θ(HW Cch) with
+at most seven threshold tests per pixel. Embedding is Θ(HW Cch) withP
+i ni = C bit operations in total. Recovery tests at most 2ni candidates at
+pixel i, so its worst case is 128 tests per pixel; its expected cost is Pn πn2n
+tests per pixel. Under the measured label distributions this expectation
+is 38.3 for MED, 40.1 for GAP, 36.8 for CALIC and 41.3 for CNN-3 ×3,
+so the predictor with the highest capacity also requires the most recovery
+work, about 8% more than MED. AES-CTR is Θ(HW Cch) with a very small
+constant.
+A smaller parameter count does not by itself imply a lower runtime. Mea-
+sured predictor time grows by 2.6× and 7.5× from P = 3 to P = 5 and
+P = 7 , closer to the MAC ratios ( 2.8×, 5.4×) than to the parameter ra-
+tios ( 2.4×, 4.5×), although the large timing variance of the larger models
+(Table 12) limits this comparison.
+26
+
+PAGE 28
+Table 11: Asymptotic cost per image ( H × W , Cch channels). πn: fraction of pixels with
+label n.
+Stage Time Dominant constant
+MED / GAP / CALIC Θ(HW Cch) 3 / 7 / 8 neighbour reads
+CNN predictor Θ(HW Cch P 2) 13 ,632P 2 + 128 MACs per pixel
+Label map Θ(HW Cch) ≤ 7 threshold tests per pixel
+Embedding Θ(HW Cch) C bit operations in total
+AES-CTR (enc./dec.) Θ(HW Cch) one AES block per 16 bytes
+Recovery Θ(HW Cch) Pn πn2n ≤ 128 tests per pixel
+5.7. Measured runtime
+Table 12 and Fig. 8 report predictor-only runtimes. CNN-3 ×3 needs
+2.08 s per 512 × 512 prediction map in the reference implementation, which
+is 325× slower than MED, 190× slower than CALIC and 102× slower than
+GAP. Within the CNN family it is the fastest, 1.6× faster than the No-
+Residual model and 7.5× faster than CNN-7 ×7. Compact in this paper
+therefore means the smallest of the CNN variants, not cheaper than rule-
+based prediction. Timing on a laptop CPU varies between sessions: an earlier
+session under the same protocol measured 1.71 s for CNN-3 ×3, and the CNN-
+5 ×5 and Plain- L1 models, which have identical architectures, dier by 16%
+in mean time with standard deviations near 2 s. Rankings and orders of
+magnitude were stable across sessions; individual values should be read with
+these variations in mind.
+To separate algorithmic cost from implementation overhead, we also wrote
+vectorized versions of patch extraction, embedding and candidate recovery.
+They are a separate implementation-optimisation experiment: all capacity,
+error and ablation results in this paper were produced by the reference im-
+plementation, and the vectorized code is used only for the timing comparison
+below and for the 88 validation runs in Table 10. On the four channels com-
+pared directly, the vectorized predictor produces predictions bitwise identical
+to the reference (maximum absolute dierence zero), and the vectorized em-
+bedder and receiver produce encrypted images, extracted bits and recovered
+images identical to those of the reference implementation on the eight cases
+compared directly (four images, quarter and full payloads); the 88 vectorized
+runs in Table 10 all pass. The vectorized predictor takes 1.76 s ( −15%, a dif-
+ference of about 1.5 standard deviations), which indicates that the forward
+pass, not patch extraction, dominates CNN prediction.
+27
+
+PAGE 29
+Table 12: Predictor-only runtime on Lena ( 512 × 512), CPU, mean ± s.d. over 10 runs,
+single session.
+Method Params Time (ms) Maps/s vs. MED
+MED  6.40 ± 0.89 156.3 1×
+CALIC  10.97 ± 1.42 91.2 1.7×
+GAP  20.33 ± 3.43 49.2 3.2×
+CNN-3 ×3 (vectorized) 46,881 1,761.1 ± 230.3 0.57 275×
+CNN-3 ×3 46,881 2,082.2 ± 186.6 0.48 325×
+No-Residual ( 5 × 5) 112,353 3,257.7 ± 150.5 0.31 509×
+CNN-5 ×5 112,417 5,320.8 ± 2,054.8 0.19 831×
+Plain- L1 ( 5 × 5) 112,417 6,184.6 ± 1,945.2 0.16 966×
+CNN-7 ×7 210,721 15,623.4 ± 3,482.6 0.06 2441×
+MED CALIC GAP CNN-3×3
+(vect.)
+CNN-3×3 No-Res
+5×5
+CNN-5×5 Plain-L1
+5×5
+CNN-7×7
+101
+102
+103
+104
+105
+Time per 512×512 map (ms)
+6.4
+11.0
+20.3
+1,761 2,082 3,258
+5,321 6,185
+15,623
+Figure 8: Predictor-only runtime (log scale); error bars show one standard deviation.
+28
+
+PAGE 30
+End-to-end, the picture changes (Table 13, Fig. 9). In the reference imple-
+mentation, the per-pixel Python loops for embedding and recovery dominate:
+for Airplane with MED, recovery alone accounts for 3.52 s, or 75% of the 4.67 s
+total, whereas AES-CTR encryption and decryption together take at most
+4 ms even for three 512 × 512 channels. Switching from MED to CNN-3 ×3
+therefore raises the total much less than the predictor-only benchmark sug-
+gests. The vectorized implementation lowers the total by 3365% across the
+four congurations, with outputs identical to the reference on the validated
+cases; on 4.2.03 with CNN-3 ×3 the total falls from 15.5 s to 10.3 s. Because
+vectorization removes loop overhead but leaves the forward pass unchanged,
+the gap between the MED and CNN-3 ×3 totals is a larger fraction of the
+total in the vectorized implementation (2.7 s of 4.3 s on Airplane and 7.3 s of
+10.3 s on 4.2.03), so the relative cost of the learned predictor grows as the rest
+of the pipeline is optimised. Neither implementation is intended for real-time
+use, and we make no such claim.
+Table 13: End-to-end runtime at full capacity (ms; mean of 3 runs, single session). Refer-
+ence: per-pixel loops; vectorized: output-identical implementation.
+Image Method Capacity (bits) Reference Vectorized Change
+Airplane (gray) MED 1,431,289 4,665.7 1,622.0 −65%
+Airplane (gray) CNN-3 ×3 1,507,378 8,044.0 4,325.0 −46%
+4.2.03 (RGB) MED 3,094,742 7,803.0 3,030.0 −61%
+4.2.03 (RGB) CNN-3 ×3 3,319,470 15,504.5 10,317.4 −33%
+0 2500 5000 7500 10000 12500 15000 17500
+End-to-end time at full capacity (ms)
+Airplane, MED
+Airplane, CNN-3×3
+4.2.03, MED
+4.2.03, CNN-3×3
+4.67 s
+1.62 s (-65%)
+8.04 s
+4.33 s (-46%)
+7.80 s
+3.03 s (-61%)
+15.50 s
+10.32 s (-33%)
+Reference (per-pixel loops) Vectorized (output-identical)
+Figure 9: End-to-end runtime at full capacity, reference versus vectorized implementation.
+29
+
+PAGE 31
+5.8. Discussion
+The results support four conclusions. First, under a xed embedding rule
+the learned predictor raises mean capacity by 26% and lowers mean MAE
+by 1834% relative to the rule-based predictors, but not uniformly: GAP
+remains better on one grayscale image and on 5 of 15 RGB channels, and no
+CNN variant studied closes those gaps. Second, the error-distribution anal-
+ysis explains the mismatch between MAE and capacity: the label staircase
+rewards exact prediction disproportionately, and the CNN wins by compress-
+ing mid-range errors and removing the dead tail rather than by predicting
+more pixels exactly. This suggests that training objectives aligned with the
+staircase are a more promising route to capacity than larger models. Third,
+for this masked single-pixel task more context and more parameters hurt
+rather than help, so the best CNN is also the smallest. Fourth, the improve-
+ment costs two to three orders of magnitude in prediction time and about
+8% more expected recovery work. In the reference prototype this is partly
+hidden by per-pixel loop overhead; once that overhead is removed, prediction
+dominates. Whether the trade-o is worthwhile depends on whether capacity
+or throughput is the binding constraint in a given application.
+6. Security analysis and limitations
+Condentiality. The marked image is encrypted with AES-CTR under a 256-
+bit key [37, 38]. Under the standard assumption that AES behaves as a pseu-
+dorandom permutation, CTR mode provides condentiality against chosen-
+plaintext attacks provided that the key is secret and no counter value is ever
+reused under the same key [38]; this is the only security property claimed
+for the encryption layer, and no formal security analysis of the complete
+system is attempted. Within an image, distinct per-channel nonces prevent
+keystream reuse across RGB channels; across images encrypted under the
+same key, nonce uniqueness is the caller's responsibility. An earlier version
+of our RGB code reused one nonce for all channels, which would have exposed
+cR ⊕ cG = I ′R ⊕ I ′G; all results here use the corrected code.
+Integrity. AES-CTR is unauthenticated, so the receiver cannot detect cipher-
+text tampering, and any modication of the ciphertext propagates bit for bit
+into the marked image and breaks exact recovery. Authenticated encryp-
+tion (e.g. AES-GCM) or a MAC over the ciphertext and side information
+should be added in deployment; integrated authentication schemes such as
+[32] address this directly.
+30
+
+PAGE 32
+Side information and net capacity. As discussed in Section 3.7, recovery
+needs the owner's label maps and prediction map, which the receiver can-
+not regenerate because the CNN neighbourhood is non-causal. Transmitted
+uncompressed, this side information exceeds the payload, so the reported
+rates measure predictor quality under a common mapping rather than a de-
+ployable net rate. Making the scheme self-contained requires either a causal
+(raster-order) predictor that the receiver can rerun on already-recovered pix-
+els, so that only a compressed label map must be conveyed, or compression
+and embedding of the maps in the reserved room, as in label-map RDHEI
+schemes [10, 13, 26]. This is the most important direction for future work.
+Scope. No evaluation was performed against malicious senders or receivers,
+key leakage, side channels or lossy re-encoding; any lossy operation destroys
+exactness by design. Statistical tests of the encrypted images (histograms,
+entropy, correlation) were not part of this study. The test set is six grayscale
+and ve RGB images, so all comparisons are descriptive. The dead zones of
+the label map ( ϵ = 64 and ϵ ≥ 128) are a property of the shared embedding
+algebra and were deliberately left unchanged; removing them would consti-
+tute a dierent method. Training was performed on a separate machine and
+its logs did not survive, so training is not fully reproducible; the evaluated
+checkpoints are xed by their digests (Table 3). The test images are iden-
+tied by name and checked for size and channel mode, but their origin was
+not veried against the original distributions.
+7. Conclusion
+This paper evaluated a compact CNN pixel predictor within a label-map
+MSB-replacement RDHEI pipeline, holding the embedding and recovery al-
+gebra xed so that dierences arise from prediction alone. The 46,881-
+parameter CNN-3 ×3 achieved the highest mean gross capacity (5.190 bpp
+grayscale, 4.884 bpp RGB) and the lowest mean prediction error among MED,
+GAP, CALIC and four CNN variants, while GAP remained better on one
+grayscale image and ve of fteen RGB channels. An exact characterisation
+of the error-to-label staircase, combined with measured error statistics, ex-
+plained both outcomes: the CNN gains by compressing mid-range errors and
+removing large-error tails, and loses where a rule-based predictor reproduces
+more pixels exactly. Larger patches and larger models predicted worse, and
+weighting large errors in the loss did not improve capacity. Exact reversibility
+31
+
+PAGE 33
+held in all 267 valid end-to-end runs of the reference and vectorized imple-
+mentations; this is an empirical result over the tested cases, supported by an
+exhaustive check of the per-pixel recovery rule, not a proof for all images and
+payloads. We derived closed-form parameter and MAC counts and measured
+CNN prediction at 325× the cost of MED on a laptop CPU; a vectorized,
+output-identical implementation reduced the complete RGB pipeline time by
+a third. Future work will (i) design a causal learned predictor so that the
+receiver can regenerate predictions and only a compressed label map must
+be conveyed, enabling net-rate comparison with state-of-the-art RDHEI; (ii)
+train with objectives aligned with the label staircase, including colour-specic
+training; (iii) add authenticated encryption; and (iv) extend the evaluation
+to larger image collections.
+CRediT authorship contribution statement
+[To be completed by the authors.]
+Declaration of competing interest
+[To be completed by the authors.]
+Data availability
+[To be completed by the authors: state where the code, checkpoints and
+result les can be obtained.]
+Acknowledgements
+[To be completed by the authors, including any funding statement.]
+References
+[1] J. Tian, Reversible data embedding using a dierence expansion, IEEE
+Transactions on Circuits and Systems for Video Technology 13 (8) (2003)
+890896. doi:10.1109/TCSVT.2003.815962 .
+[2] Z. Ni, Y.-Q. Shi, N. Ansari, W. Su, Reversible data hiding, IEEE Trans-
+actions on Circuits and Systems for Video Technology 16 (3) (2006)
+354362. doi:10.1109/TCSVT.2006.869964 .
+32
+
+PAGE 34
+[3] W. Puech, M. Chaumont, O. Strauss, A reversible data hiding method
+for encrypted images, in: Security, Forensics, Steganography, and Wa-
+termarking of Multimedia Contents X, Vol. 6819 of Proc. SPIE, 2008, p.
+68191E. doi:10.1117/12.766754 .
+[4] X. Zhang, Reversible data hiding in encrypted image, IEEE Signal
+Processing Letters 18 (4) (2011) 255258. doi:10.1109/LSP.2011.
+2114651 .
+[5] X. Zhang, Separable reversible data hiding in encrypted image, IEEE
+Transactions on Information Forensics and Security 7 (2) (2012) 826832.
+doi:10.1109/TIFS.2011.2176120 .
+[6] W. Hong, T.-S. Chen, H.-Y. Wu, An improved reversible data hiding
+in encrypted images using side match, IEEE Signal Processing Letters
+19 (4) (2012) 199202. doi:10.1109/LSP.2012.2187334 .
+[7] Z. Qian, X. Zhang, Reversible data hiding in encrypted images with
+distributed source encoding, IEEE Transactions on Circuits and Systems
+for Video Technology 26 (4) (2016) 636646. doi:10.1109/TCSVT.2015.
+2418611 .
+[8] K. Ma, W. Zhang, X. Zhao, N. Yu, F. Li, Reversible data hiding in
+encrypted images by reserving room before encryption, IEEE Trans-
+actions on Information Forensics and Security 8 (3) (2013) 553562.
+doi:10.1109/TIFS.2013.2248725 .
+[9] P. Puteaux, W. Puech, An ecient MSB prediction-based method for
+high-capacity reversible data hiding in encrypted images, IEEE Trans-
+actions on Information Forensics and Security 13 (7) (2018) 16701681.
+doi:10.1109/TIFS.2018.2799381 .
+[10] Z. Yin, Y. Peng, Y. Xiang, Reversible data hiding in encrypted images
+based on pixel prediction and bit-plane compression, IEEE Transactions
+on Dependable and Secure Computing 19 (2) (2022) 9921002. doi:
+10.1109/TDSC.2020.3019490 .
+[11] K. Qi, M. Zhang, F. Di, Y. Kong, High capacity reversible data hiding in
+encrypted images based on adaptive quadtree partitioning and MSB pre-
+diction, Frontiers of Information Technology & Electronic Engineering
+24 (8) (2023) 11561168. doi:10.1631/FITEE.2200501 .
+33
+
+PAGE 35
+[12] Y. Yue, M. Zhang, F. Di, P. Lai, A reversible data-hiding method for en-
+crypted images based on adaptive quadtree partitioning and MSB predic-
+tion, Applied Sciences 14 (14) (2024) 6376. doi:10.3390/app14146376 .
+[13] H. Ren, T. Chen, M. Li, Z. Yue, D. Han, G. Bai, High-capacity reversible
+data hiding in encrypted images based on multi-predictions and ecient
+parametric binary tree labeling, Digital Signal Processing 161 (2025)
+105096. doi:10.1016/j.dsp.2025.105096 .
+[14] X. Gui, X. Li, B. Yang, A high capacity reversible data hiding scheme
+based on generalized prediction-error expansion and adaptive embed-
+ding, Signal Processing 98 (2014) 370380. doi:10.1016/j.sigpro.
+2013.12.005 .
+[15] D. Wang, X. Zhang, C. Yu, Z. Tang, Reversible data hiding by using
+adaptive pixel value prediction and adaptive embedding bin selection,
+IEEE Signal Processing Letters 26 (11) (2019) 17131717. doi:10.1109/
+LSP.2019.2940873 .
+[16] M. J. Weinberger, G. Seroussi, G. Sapiro, The LOCO-I lossless image
+compression algorithm: Principles and standardization into JPEG-LS,
+IEEE Transactions on Image Processing 9 (8) (2000) 13091324. doi:
+10.1109/83.855427 .
+[17] X. Wu, N. Memon, Context-based, adaptive, lossless image coding,
+IEEE Transactions on Communications 45 (4) (1997) 437444. doi:
+10.1109/26.585919 .
+[18] R. Hu, S. Xiang, Reversible data hiding by using CNN prediction and
+adaptive embedding, IEEE Transactions on Pattern Analysis and Ma-
+chine Intelligence 44 (12) (2022) 1019610208. doi:10.1109/TPAMI.
+2021.3131250 .
+[19] X. Yang, F. Huang, New CNN-based predictor for reversible data hiding,
+IEEE Signal Processing Letters 29 (2022) 26272631. doi:10.1109/LSP.
+2022.3231193 .
+[20] Y.-Y. Bae, D.-J. Cho, K.-H. Jung, A new reversible data hiding method
+using a proportional relation between peak signal-to-noise ratio and
+embedding capacity on convolutional neural network, Applied Sciences
+14 (14) (2024) 6370. doi:10.3390/app14146370 .
+34
+
+PAGE 36
+[21] P. Ping, J. Huo, B. Guo, Novel asymmetric CNN-based and adaptive
+mean predictors for reversible data hiding in encrypted images, Expert
+Systems with Applications 246 (2024) 123270. doi:10.1016/j.eswa.
+2024.123270 .
+[22] Z. Cheng, K. Chen, Q. Guan, Reversible data hiding in encrypted im-
+ages based on pixel-level masked autoencoder and polar code, Signal
+Processing 226 (2025) 109664. doi:10.1016/j.sigpro.2024.109664 .
+[23] C. Yu, X. Zhang, D. Wang, Z. Tang, Reversible data hiding with pairwise
+PEE and 2D-PEH decomposition, Signal Processing 196 (2022) 108527.
+doi:10.1016/j.sigpro.2022.108527 .
+[24] X. Liao, C. Shu, Reversible data hiding in encrypted images based
+on absolute mean dierence of multiple neighboring pixels, Journal
+of Visual Communication and Image Representation 28 (2015) 2127.
+doi:10.1016/j.jvcir.2014.12.007 .
+[25] H. Ren, G.-R. Bai, T.-T. Chen, Z. Yue, R.-Y. Ren, Reversible data
+hiding in encrypted images with multi-prediction and adaptive Hu-
+man encoding, Scientic Reports 13 (2023) 23104. doi:10.1038/
+s41598-023-50186-1 .
+[26] Ankur, R. Kumar, A. K. Sharma, Reversible data hiding in encrypted
+image using bit-plane based label-map encoding with optimal block size,
+Journal of Information Security and Applications 90 (2025) 104005. doi:
+10.1016/j.jisa.2025.104005 .
+[27] X. Zhang, X. Zhang, C. Yu, G. Li, Z. Tang, Reversible data hiding in en-
+crypted images using prediction error modication and basic block com-
+pression, Signal Processing 231 (2025) 109896. doi:10.1016/j.sigpro.
+2025.109896 .
+[28] C.-T. Huang, T. T.-H. Dang, C.-Y. Weng, Reversible data hiding in
+encrypted images based on bidirectional encoding for payload enhancing,
+Journal of Information Security and Applications 93 (2025) 104183. doi:
+10.1016/j.jisa.2025.104183 .
+[29] Y. Qiu, Reversible data hiding in encrypted images based on edge-
+directed prediction and multi-MSB self-prediction, IEEE Access 13
+(2025) 6300063012. doi:10.1109/ACCESS.2025.3558369 .
+35
+
+PAGE 37
+[30] Y. Qiu, K. Chen, X. Lin, G. Li, H. Zeng, High-capacity reversible data
+hiding in encrypted images with edge-directed prediction and adaptive
+entropy coding, IEEE Signal Processing Letters 32 (2025) 30123016.
+doi:10.1109/LSP.2025.3591718 .
+[31] C. Kim, C.-N. Yang, Y.-Q. Lu, Reversible data hiding in encrypted
+images using Pixel Shifting Approach (PSA), Journal of Information Se-
+curity and Applications 87 (2024) 103909. doi:10.1016/j.jisa.2024.
+103909 .
+[32] F. Ren, Z. Zhang, K. Jiang, P. Zhang, T. Yang, Reversible data
+hiding and authentication scheme for encrypted image based on pre-
+diction error compression, Scientic Reports 15 (2025) 11636. doi:
+10.1038/s41598-025-95433-9 .
+[33] Z. Wang, A. C. Bovik, H. R. Sheikh, E. P. Simoncelli, Image quality
+assessment: From error visibility to structural similarity, IEEE Trans-
+actions on Image Processing 13 (4) (2004) 600612. doi:10.1109/TIP.
+2003.819861 .
+[34] A. Horé, D. Ziou, Image quality metrics: PSNR vs. SSIM, in: Proc.
+20th International Conference on Pattern Recognition (ICPR), 2010, pp.
+23662369. doi:10.1109/ICPR.2010.579 .
+[35] A. G. Weber, The USC-SIPI image database, Signal and Image Pro-
+cessing Institute, University of Southern California, https://sipi.usc.
+edu/database/ (1997).
+[36] P. Bas, T. Filler, T. Pevný, Break Our Steganographic System: The
+ins and outs of organizing BOSS, in: Information Hiding (IH 2011), Vol.
+6958 of Lecture Notes in Computer Science, Springer, 2011, pp. 5970.
+doi:10.1007/978-3-642-24178-9_5 .
+[37] National Institute of Standards and Technology, Advanced encryption
+standard (AES), Federal Information Processing Standards Publication
+197, updated May 9, 2023, NIST (2023). doi:10.6028/NIST.FIPS.
+197-upd1 .
+[38] M. Dworkin, Recommendation for block cipher modes of operation:
+Methods and techniques, Special Publication 800-38A, NIST (2001).
+doi:10.6028/NIST.SP.800-38A .
+36

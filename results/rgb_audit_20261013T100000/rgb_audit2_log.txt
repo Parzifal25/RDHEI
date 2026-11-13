@@ -1,0 +1,52 @@
+
+RGB AUDIT 2 — smoke + first-3-color-images sweep, v4_patch3
+Project root: /home/parzifal/RDHEI_Project
+Models dir: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models
+Color dir: /home/parzifal/RDHEI_Project/data/kodak_color
+Output dir: /home/parzifal/RDHEI_Project/results/rgb_audit_20261013T100000
+
+Model: patch=3 residual=True params=46881
+
+Color images: 6
+  4.2.03.png: shape=(512, 512, 3) dtype=uint8
+  4.2.05.png: shape=(512, 512, 3) dtype=uint8
+  4.2.06.png: shape=(512, 512, 3) dtype=uint8
+  4.2.07.png: shape=(512, 512, 3) dtype=uint8
+  images.png: shape=(225, 225, 3) dtype=uint8
+  lena.png: shape=(512, 512, 3) dtype=uint8
+
+
+== Image: 4.2.03.png shape=(512, 512, 3) ==
+  aggregate: status=PASS exact=True perfect=True bit_acc=100.0 capacity=3319470 time=12.467s
+  per-channel pipeline-reported:
+    R: bpp=4.149109 capacity=1087664 perfect=True bit_acc=100.0 nonce=1
+    G: bpp=4.222408 capacity=1106879 perfect=True bit_acc=100.0 nonce=2
+    B: bpp=4.291256 capacity=1124927 perfect=True bit_acc=100.0 nonce=3
+  per-channel independent exact image + payload bit-for-bit:
+    R: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=4.149109 cap=1087664 nonce=1
+    G: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=4.222408 cap=1106879 nonce=2
+    B: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=4.291256 cap=1124927 nonce=3
+
+== Image: 4.2.05.png shape=(512, 512, 3) ==
+  aggregate: status=PASS exact=True perfect=True bit_acc=100.0 capacity=4436282 time=17.749s
+  per-channel pipeline-reported:
+    R: bpp=5.706402 capacity=1495899 perfect=True bit_acc=100.0 nonce=1
+    G: bpp=5.670578 capacity=1486508 perfect=True bit_acc=100.0 nonce=2
+    B: bpp=5.546093 capacity=1453875 perfect=True bit_acc=100.0 nonce=3
+  per-channel independent exact image + payload bit-for-bit:
+    R: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=5.706402 cap=1495899 nonce=1
+    G: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=5.670578 cap=1486508 nonce=2
+    B: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=5.546093 cap=1453875 nonce=3
+
+== Image: 4.2.06.png shape=(512, 512, 3) ==
+  aggregate: status=PASS exact=True perfect=True bit_acc=100.0 capacity=3610119 time=12.82s
+  per-channel pipeline-reported:
+    R: bpp=4.564751 capacity=1196622 perfect=True bit_acc=100.0 nonce=1
+    G: bpp=4.443718 capacity=1164894 perfect=True bit_acc=100.0 nonce=2
+    B: bpp=4.763042 capacity=1248603 perfect=True bit_acc=100.0 nonce=3
+  per-channel independent exact image + payload bit-for-bit:
+    R: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=4.564751 cap=1196622 nonce=1
+    G: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=4.443718 cap=1164894 nonce=2
+    B: exact_image=True payload_exact=True perfect=True bit_acc=100.0 bpp=4.763042 cap=1248603 nonce=3
+
+Variant wall time: 85.59s

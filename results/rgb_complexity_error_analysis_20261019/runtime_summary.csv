@@ -1,0 +1,38 @@
+group,method,mean_ms,std_ms,min_ms,max_ms,median_ms,n
+predictor_only,MED,6.3977,0.8947,4.9994,7.5665,6.4759,10
+predictor_only,GAP,20.3283,3.4287,14.669,24.7868,21.4493,10
+predictor_only,CALIC,10.9713,1.4151,9.5872,14.2702,10.7018,10
+predictor_only,CNN3x3 (v4_patch3.pth),2082.1703,186.626,1908.9988,2556.2583,2038.7854,10
+predictor_only,CNN5x5 (v1_full.pth),5320.8376,2054.7602,3961.8691,10909.4937,4754.5625,10
+predictor_only,CNNNoResidual (v2_no_residual.pth),3257.7302,150.5283,3070.2705,3561.6528,3237.8036,10
+predictor_only,CNNNoWeighted (v3_no_weighted_loss.pth),6184.6242,1945.2287,3812.889,8932.3026,5562.2651,10
+predictor_only,CNN7x7 (v5_patch7.pth),15623.3691,3482.5954,10849.3723,22599.5688,15317.9662,10
+predictor_only,CNN-3x3 vectorized (option 3),1761.096,230.2999,1456.1789,2013.0404,1787.2476,10
+stage,label_map Airplane.png MED,30.9692,1.732,28.9987,32.2502,31.6587,3
+stage,embed Airplane.png MED,36.6476,0.5056,36.1452,37.1564,36.6412,3
+stage,encrypt Airplane.png MED,0.5697,0.0312,0.5506,0.6057,0.5527,3
+stage,decrypt Airplane.png MED,0.5464,0.0245,0.5268,0.5738,0.5386,3
+stage,extract+recover Airplane.png MED,3516.7243,45.9375,3486.3082,3569.5675,3494.2972,3
+stage,TOTAL(original) Airplane.png MED,4665.7302,68.9421,4597.7916,4735.6337,4663.7652,3
+stage,TOTAL(fast-variant) Airplane.png MED,1621.9773,210.9367,1391.9329,1806.3103,1667.6886,3
+stage,label_map Airplane.png CNN3x3,45.4187,3.6195,43.2464,49.5971,43.4127,3
+stage,embed Airplane.png CNN3x3,41.6714,10.0552,35.8172,53.282,35.9149,3
+stage,encrypt Airplane.png CNN3x3,0.5835,0.0393,0.5409,0.6184,0.5913,3
+stage,decrypt Airplane.png CNN3x3,0.5724,0.0369,0.541,0.6131,0.5631,3
+stage,extract+recover Airplane.png CNN3x3,3957.6892,264.7833,3738.962,4252.0636,3882.0421,3
+stage,TOTAL(original) Airplane.png CNN3x3,8044.3278,1471.9328,6796.1698,9667.4876,7669.3262,3
+stage,TOTAL(fast-variant) Airplane.png CNN3x3,4324.5011,1446.5611,3357.894,5987.547,3628.0622,3
+stage,label_map 4.2.03.png MED,118.0937,12.1309,107.3194,131.2329,115.7288,3
+stage,embed 4.2.03.png MED,177.2895,40.5012,150.8386,223.9157,157.1142,3
+stage,encrypt 4.2.03.png MED,3.2698,1.2064,2.0979,4.508,3.2036,3
+stage,decrypt 4.2.03.png MED,3.9789,1.9193,2.5627,6.1633,3.2107,3
+stage,extract+recover 4.2.03.png MED,5118.6867,234.618,4858.7186,5314.6864,5182.6551,3
+stage,TOTAL(original) 4.2.03.png MED,7802.9568,263.1882,7550.5296,8075.7256,7782.6151,3
+stage,TOTAL(fast-variant) 4.2.03.png MED,3030.2253,232.1135,2799.0814,3263.2964,3028.2983,3
+stage,label_map 4.2.03.png CNN3x3,83.9351,1.0298,83.0075,85.0432,83.7545,3
+stage,embed 4.2.03.png CNN3x3,97.0043,1.5279,95.2439,97.9855,97.7836,3
+stage,encrypt 4.2.03.png CNN3x3,1.6474,0.1167,1.5344,1.7674,1.6405,3
+stage,decrypt 4.2.03.png CNN3x3,1.4841,0.0056,1.478,1.4889,1.4854,3
+stage,extract+recover 4.2.03.png CNN3x3,5986.2668,348.9396,5741.2799,6385.7889,5831.7314,3
+stage,TOTAL(original) 4.2.03.png CNN3x3,15504.5472,767.7399,14696.4426,16224.2731,15592.9259,3
+stage,TOTAL(fast-variant) 4.2.03.png CNN3x3,10317.4264,532.23,9824.59,10881.8116,10245.8774,3

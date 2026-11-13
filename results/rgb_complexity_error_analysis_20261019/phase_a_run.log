@@ -1,0 +1,30 @@
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v4_patch3.pth
+  Patch size: 3x3  |  Residual: True  |  Params: 46,881
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v1_full.pth
+  Patch size: 5x5  |  Residual: True  |  Params: 112,417
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v2_no_residual.pth
+  Patch size: 5x5  |  Residual: False  |  Params: 112,353
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v3_no_weighted_loss.pth
+  Patch size: 5x5  |  Residual: True  |  Params: 112,417
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v5_patch7.pth
+  Patch size: 7x7  |  Residual: True  |  Params: 210,721
+[gray] Airplane.png: done
+[gray] Baboon.png: done
+[gray] Goldhill.png: done
+[gray] Jetplane.png: done
+[gray] Lena.png: done
+[gray] Peppers.png: done
+[rgb] 4.2.03.png: done
+[rgb] 4.2.05.png: done
+[rgb] 4.2.06.png: done
+[rgb] 4.2.07.png: done
+[rgb] lena.png: done
+Traceback (most recent call last):
+  File "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/results/rgb_complexity_error_analysis_20261019/phase_a_baseline.py", line 230, in <module>
+    raise SystemExit(main())
+  File "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/results/rgb_complexity_error_analysis_20261019/phase_a_baseline.py", line 164, in main
+    mine = next((x for x in rgb_ch_rows
+  File "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/results/rgb_complexity_error_analysis_20261019/phase_a_baseline.py", line 165, in <genexpr>
+    if x["image"] == r["image"] and x["channel"] == r["channel"]
+KeyError: 'channel'
+EXIT=1

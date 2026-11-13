@@ -1,0 +1,25 @@
+{
+  "paper_identity": "User confirmed main (5).pdf is the same as main (5)(2).pdf",
+  "inputs": [
+    {
+      "path": "/mnt/c/Users/17329/Downloads/main (5).pdf",
+      "sha256": "c14214efdb96707b10f6322c81992f75e903fff6174935f9c550dbf5ec2d8a2a"
+    },
+    {
+      "path": "/mnt/c/Users/17329/Downloads/main.pdf",
+      "sha256": "77e27ab813fe8de0b6508f6df1ad588cc2388173cd1202b1a052ec237b6b0bda"
+    },
+    {
+      "path": "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/NO_RETRAINING_CAPACITY_CALIBRATION_REPORT.md",
+      "sha256": "ccf9ab1dbbdbcfee0d08971596d1e021fce9e8022a95f59425f028f7109cf7bf"
+    }
+  ],
+  "figure2": "Visually inspected extracted page 4 Im4.png; MSB payload replacement then label map in LSB (3 bits).",
+  "paper_pages": 8,
+  "equations_pages": "Equations (8)-(12) and Table 2 on page 4",
+  "prior_audit": {
+    "external_sidecar_mean_bits_per_sample": 15.535591,
+    "conditional_gross_bpp": 5.05063643,
+    "net_payload_demonstrated": false
+  }
+}

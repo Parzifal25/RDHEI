@@ -1,0 +1,6 @@
+variant,checkpoint,patch,residual,params,expected_params
+v4_patch3,v4_patch3.pth,3,True,46881,46881
+v1_full,v1_full.pth,5,True,112417,112417
+v2_no_residual,v2_no_residual.pth,5,False,112353,112353
+v3_no_weighted_loss,v3_no_weighted_loss.pth,5,True,112417,112417
+v5_patch7,v5_patch7.pth,7,True,210721,210721

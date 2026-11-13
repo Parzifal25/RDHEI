@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Airplane.png",
+    "source": "/home/parzifal/RDHEI_Project/data/kodak_gray/Airplane.png",
+    "file_sha256": "7f8b1f59666ca174f7b29012e74ededac54a126b58c06d5a206704b706fe0610",
+    "shape": [
+      512,
+      512
+    ],
+    "pixels_sha256": "5da692fdfdddeb62f11e835d0391c73c349348ed3284cb8b719d0cebf3577a71"
+  },
+  {
+    "name": "Baboon.png",
+    "source": "/home/parzifal/RDHEI_Project/data/kodak_gray/Baboon.png",
+    "file_sha256": "011facaeced920692fb981e475d077784a6496be02ccf5fe8745e0d20c79e879",
+    "shape": [
+      512,
+      512
+    ],
+    "pixels_sha256": "ec56f895304cff5c0153efcfe517a04fcb7edffe7f9cfa8207b4b949cf57168f"
+  },
+  {
+    "name": "Goldhill.png",
+    "source": "/home/parzifal/RDHEI_Project/data/kodak_gray/Goldhill.png",
+    "file_sha256": "bb30071d1326e30a0f981f0fa12ba22a907a62f38b9802cf05ec754b23b84cd1",
+    "shape": [
+      576,
+      720
+    ],
+    "pixels_sha256": "956059e859ba1af1b0bf21c6eacae9e7a0956c949b400b6a1579c44b5b4bca49"
+  },
+  {
+    "name": "Jetplane.png",
+    "source": "/home/parzifal/RDHEI_Project/data/kodak_gray/Jetplane.png",
+    "file_sha256": "5387655110fe834b6421c7f56fc77bd80feb8c10902847309aea638281d8bbc3",
+    "shape": [
+      1024,
+      1024
+    ],
+    "pixels_sha256": "71e53d7e42ee3908f1bd3a2a59e235e533a816e1e03dbab2b67a2c0ab6c1ab75"
+  },
+  {
+    "name": "Lena.png",
+    "source": "/home/parzifal/RDHEI_Project/data/kodak_gray/Lena.png",
+    "file_sha256": "5ca92b8fbb3f446ad92dcdea58b0662e271be90f0630de276762af1e88c0b5fd",
+    "shape": [
+      512,
+      512
+    ],
+    "pixels_sha256": "eb6cd30ede15f638d0fccba36977d7c6a6ae3f31b8bd8f78dffdfcb47437acc7"
+  },
+  {
+    "name": "Peppers.png",
+    "source": "/home/parzifal/RDHEI_Project/data/kodak_gray/Peppers.png",
+    "file_sha256": "e554728dd6b60a0c5d7df075353546c5be48b77b2c0c0d4ae467086c4e3f1986",
+    "shape": [
+      512,
+      512
+    ],
+    "pixels_sha256": "a90f9cdb5111a7bc4c8063e53e3e65ef634639fa27929abaf329f726540a697f"
+  },
+  {
+    "name": "constant128",
+    "source": "synthetic",
+    "file_sha256": null,
+    "shape": [
+      128,
+      128
+    ],
+    "pixels_sha256": "9febfa442e392f042ed554036318921c8bbeb3192d4c4f23d5fa6c6ddb22aeb8"
+  },
+  {
+    "name": "random256",
+    "source": "synthetic",
+    "file_sha256": null,
+    "shape": [
+      256,
+      256
+    ],
+    "pixels_sha256": "9108eb5b8f6bf9b479667cb7dccadc1face99a776b71b15a95ef1b8b34962214"
+  },
+  {
+    "name": "tiny8",
+    "source": "synthetic",
+    "file_sha256": null,
+    "shape": [
+      8,
+      8
+    ],
+    "pixels_sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+  }
+]

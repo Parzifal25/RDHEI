@@ -1,0 +1,126 @@
+{
+  "ciphertext_restoration_checks": [
+    {
+      "image": "Airplane.png",
+      "case": "empty",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Airplane.png",
+      "case": "short",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Airplane.png",
+      "case": "partial",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Airplane.png",
+      "case": "full",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Goldhill.png",
+      "case": "empty",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Goldhill.png",
+      "case": "short",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Goldhill.png",
+      "case": "partial",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Goldhill.png",
+      "case": "full",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Jetplane.png",
+      "case": "empty",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Jetplane.png",
+      "case": "short",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Jetplane.png",
+      "case": "partial",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Jetplane.png",
+      "case": "full",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Lena.png",
+      "case": "empty",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Lena.png",
+      "case": "short",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Lena.png",
+      "case": "partial",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "Lena.png",
+      "case": "full",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "constant128",
+      "case": "empty",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "constant128",
+      "case": "short",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "constant128",
+      "case": "partial",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    },
+    {
+      "image": "constant128",
+      "case": "full",
+      "reserved_ciphertext_exact": true,
+      "no_png_ancillary_metadata": true
+    }
+  ],
+  "slot_split_checks": 91,
+  "wrong_payload_key_rejected": true
+}

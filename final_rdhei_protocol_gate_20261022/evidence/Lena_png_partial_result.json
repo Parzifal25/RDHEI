@@ -1,0 +1,19 @@
+{
+  "image": "Lena.png",
+  "case": "partial",
+  "payload_bits": 7785,
+  "nonce": 202610220015,
+  "image_exact": true,
+  "payload_exact": true,
+  "reserve_encrypt_seconds": 0.21660222799982876,
+  "embed_seconds": 0.25079020799603313,
+  "embed_process_seconds": 0.743518975970801,
+  "receiver_seconds": 5.5800019149901345,
+  "receiver_process_seconds": 6.924091900989879,
+  "receiver_evidence_reads": [
+    "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Lena_png_partial_cipher.png"
+  ],
+  "net_bits": 15570,
+  "within_pixel_backup_boundary": true,
+  "encrypted_payload_changed_bits": 7843
+}

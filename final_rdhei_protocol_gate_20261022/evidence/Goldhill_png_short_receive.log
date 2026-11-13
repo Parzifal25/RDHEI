@@ -1,0 +1,3 @@
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v4_patch3.pth
+  Patch size: 3x3  |  Residual: True  |  Params: 46,881
+{"receiver_seconds": 6.466187373036519, "payload_bits": 37}

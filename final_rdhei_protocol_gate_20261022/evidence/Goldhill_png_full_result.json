@@ -1,0 +1,19 @@
+{
+  "image": "Goldhill.png",
+  "case": "full",
+  "payload_bits": 15091,
+  "nonce": 202610220008,
+  "image_exact": true,
+  "payload_exact": true,
+  "reserve_encrypt_seconds": 0.3604622030397877,
+  "embed_seconds": 0.23643454699777067,
+  "embed_process_seconds": 0.8149379619862884,
+  "receiver_seconds": 6.1335605519707315,
+  "receiver_process_seconds": 7.196240877965465,
+  "receiver_evidence_reads": [
+    "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Goldhill_png_full_cipher.png"
+  ],
+  "net_bits": 15091,
+  "within_pixel_backup_boundary": true,
+  "encrypted_payload_changed_bits": 7470
+}

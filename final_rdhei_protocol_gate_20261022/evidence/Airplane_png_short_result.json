@@ -1,0 +1,19 @@
+{
+  "image": "Airplane.png",
+  "case": "short",
+  "payload_bits": 37,
+  "nonce": 202610220002,
+  "image_exact": true,
+  "payload_exact": true,
+  "reserve_encrypt_seconds": 0.2335820239968598,
+  "embed_seconds": 0.2793395529733971,
+  "embed_process_seconds": 0.8176671990077011,
+  "receiver_seconds": 6.158266143000219,
+  "receiver_process_seconds": 7.478582940006163,
+  "receiver_evidence_reads": [
+    "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Airplane_png_short_cipher.png"
+  ],
+  "net_bits": 29762,
+  "within_pixel_backup_boundary": false,
+  "encrypted_payload_changed_bits": 14919
+}

@@ -1,0 +1,24 @@
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v4_patch3.pth
+  Patch size: 3x3  |  Residual: True  |  Params: 46,881
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v1_full.pth
+  Patch size: 5x5  |  Residual: True  |  Params: 112,417
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v2_no_residual.pth
+  Patch size: 5x5  |  Residual: False  |  Params: 112,353
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v3_no_weighted_loss.pth
+  Patch size: 5x5  |  Residual: True  |  Params: 112,417
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v5_patch7.pth
+  Patch size: 7x7  |  Residual: True  |  Params: 210,721
+[gray] Airplane.png: done
+[gray] Baboon.png: done
+[gray] Goldhill.png: done
+[gray] Jetplane.png: done
+[gray] Lena.png: done
+[gray] Peppers.png: done
+[rgb] 4.2.03.png: done
+[rgb] 4.2.05.png: done
+[rgb] 4.2.06.png: done
+[rgb] 4.2.07.png: done
+[rgb] lena.png: done
+
+reconciliation: 410/410 match, 0 mismatch, 0 missing
+EXIT=0

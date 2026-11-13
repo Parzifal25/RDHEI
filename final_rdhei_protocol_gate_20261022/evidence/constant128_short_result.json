@@ -1,0 +1,19 @@
+{
+  "image": "constant128",
+  "case": "short",
+  "payload_bits": 37,
+  "nonce": 202610220018,
+  "image_exact": true,
+  "payload_exact": true,
+  "reserve_encrypt_seconds": 0.03239715500967577,
+  "embed_seconds": 0.14377192495157942,
+  "embed_process_seconds": 0.47286388801876456,
+  "receiver_seconds": 4.754069952003192,
+  "receiver_process_seconds": 5.985473180015106,
+  "receiver_evidence_reads": [
+    "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/constant128_short_cipher.png"
+  ],
+  "net_bits": 11313,
+  "within_pixel_backup_boundary": true,
+  "encrypted_payload_changed_bits": 5675
+}

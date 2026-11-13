@@ -1,0 +1,50 @@
+D1 predictor-only benchmark (Lena 512x512, warmup 5, repeats 10)
+  [predictor_only] MED                                mean=    6.398 ms
+  [predictor_only] GAP                                mean=   20.328 ms
+  [predictor_only] CALIC                              mean=   10.971 ms
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v4_patch3.pth
+  Patch size: 3x3  |  Residual: True  |  Params: 46,881
+  [predictor_only] CNN3x3 (v4_patch3.pth)             mean= 2082.170 ms
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v1_full.pth
+  Patch size: 5x5  |  Residual: True  |  Params: 112,417
+  [predictor_only] CNN5x5 (v1_full.pth)               mean= 5320.838 ms
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v2_no_residual.pth
+  Patch size: 5x5  |  Residual: False  |  Params: 112,353
+  [predictor_only] CNNNoResidual (v2_no_residual.pth) mean= 3257.730 ms
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v3_no_weighted_loss.pth
+  Patch size: 5x5  |  Residual: True  |  Params: 112,417
+  [predictor_only] CNNNoWeighted (v3_no_weighted_loss.pth) mean= 6184.624 ms
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v5_patch7.pth
+  Patch size: 7x7  |  Residual: True  |  Params: 210,721
+  [predictor_only] CNN7x7 (v5_patch7.pth)             mean=15623.369 ms
+  [predictor_only] CNN-3x3 vectorized (option 3)      mean= 1761.096 ms
+D2 stage-wise benchmark
+  [stage] label_map Airplane.png MED         mean=   30.969 ms
+  [stage] embed Airplane.png MED             mean=   36.648 ms
+  [stage] encrypt Airplane.png MED           mean=    0.570 ms
+  [stage] decrypt Airplane.png MED           mean=    0.546 ms
+  [stage] extract+recover Airplane.png MED   mean= 3516.724 ms
+  [stage] TOTAL(original) Airplane.png MED   mean= 4665.730 ms
+  [stage] TOTAL(fast-variant) Airplane.png MED mean= 1621.977 ms
+  [stage] label_map Airplane.png CNN3x3      mean=   45.419 ms
+  [stage] embed Airplane.png CNN3x3          mean=   41.671 ms
+  [stage] encrypt Airplane.png CNN3x3        mean=    0.584 ms
+  [stage] decrypt Airplane.png CNN3x3        mean=    0.572 ms
+  [stage] extract+recover Airplane.png CNN3x3 mean= 3957.689 ms
+  [stage] TOTAL(original) Airplane.png CNN3x3 mean= 8044.328 ms
+  [stage] TOTAL(fast-variant) Airplane.png CNN3x3 mean= 4324.501 ms
+  [stage] label_map 4.2.03.png MED           mean=  118.094 ms
+  [stage] embed 4.2.03.png MED               mean=  177.289 ms
+  [stage] encrypt 4.2.03.png MED             mean=    3.270 ms
+  [stage] decrypt 4.2.03.png MED             mean=    3.979 ms
+  [stage] extract+recover 4.2.03.png MED     mean= 5118.687 ms
+  [stage] TOTAL(original) 4.2.03.png MED     mean= 7802.957 ms
+  [stage] TOTAL(fast-variant) 4.2.03.png MED mean= 3030.225 ms
+  [stage] label_map 4.2.03.png CNN3x3        mean=   83.935 ms
+  [stage] embed 4.2.03.png CNN3x3            mean=   97.004 ms
+  [stage] encrypt 4.2.03.png CNN3x3          mean=    1.647 ms
+  [stage] decrypt 4.2.03.png CNN3x3          mean=    1.484 ms
+  [stage] extract+recover 4.2.03.png CNN3x3  mean= 5986.267 ms
+  [stage] TOTAL(original) 4.2.03.png CNN3x3  mean=15504.547 ms
+  [stage] TOTAL(fast-variant) 4.2.03.png CNN3x3 mean=10317.426 ms
+done

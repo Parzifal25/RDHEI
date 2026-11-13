@@ -1,0 +1,59 @@
+[
+  {
+    "image": "Airplane.png",
+    "oversized": "payload exceeds net capacity",
+    "nonbinary": "payload must be bits",
+    "corrupted_ciphertext": "authentication failed",
+    "wrong_nonce": "authentication failed",
+    "wrong_key": "authentication failed",
+    "wrong_embed_key": "authentication failed"
+  },
+  {
+    "image": "Baboon.png",
+    "budget_rejection": "nonpositive net capacity"
+  },
+  {
+    "image": "Goldhill.png",
+    "oversized": "payload exceeds net capacity",
+    "nonbinary": "payload must be bits",
+    "corrupted_ciphertext": "authentication failed",
+    "wrong_nonce": "authentication failed",
+    "wrong_key": "authentication failed",
+    "wrong_embed_key": "authentication failed"
+  },
+  {
+    "image": "Jetplane.png",
+    "oversized": "payload exceeds net capacity",
+    "nonbinary": "payload must be bits",
+    "corrupted_ciphertext": "authentication failed",
+    "wrong_nonce": "authentication failed",
+    "wrong_key": "authentication failed",
+    "wrong_embed_key": "authentication failed"
+  },
+  {
+    "image": "Lena.png",
+    "oversized": "payload exceeds net capacity",
+    "nonbinary": "payload must be bits",
+    "corrupted_ciphertext": "authentication failed",
+    "wrong_nonce": "authentication failed",
+    "wrong_key": "authentication failed",
+    "wrong_embed_key": "authentication failed"
+  },
+  {
+    "image": "Peppers.png",
+    "budget_rejection": "nonpositive net capacity"
+  },
+  {
+    "image": "constant128",
+    "oversized": "payload exceeds net capacity",
+    "nonbinary": "payload must be bits",
+    "corrupted_ciphertext": "authentication failed",
+    "wrong_nonce": "authentication failed",
+    "wrong_key": "authentication failed",
+    "wrong_embed_key": "authentication failed"
+  },
+  {
+    "image": "random256",
+    "budget_rejection": "nonpositive net capacity"
+  }
+]

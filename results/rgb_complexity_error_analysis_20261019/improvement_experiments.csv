@@ -1,0 +1,18 @@
+experiment,image,channel,metric,original,variant,difference,notes
+equiv_fast_cnn_predict,4.2.05.png,0,prediction_bitwise_equal,True,True,max_abs_diff=0.000e+00,"vectorized patch extraction, same model/batches/dtype"
+equiv_fast_cnn_predict,4.2.03.png,1,prediction_bitwise_equal,True,True,max_abs_diff=0.000e+00,"vectorized patch extraction, same model/batches/dtype"
+equiv_fast_cnn_predict,4.2.07.png,1,prediction_bitwise_equal,True,True,max_abs_diff=0.000e+00,"vectorized patch extraction, same model/batches/dtype"
+equiv_fast_cnn_predict,Airplane.png,None,prediction_bitwise_equal,True,True,max_abs_diff=0.000e+00,"vectorized patch extraction, same model/batches/dtype"
+equiv_fast_embed_recover,Airplane.png,None,max_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+equiv_fast_embed_recover,Airplane.png,None,quarter_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+equiv_fast_embed_recover,Lena.png,None,max_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+equiv_fast_embed_recover,Lena.png,None,quarter_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+equiv_fast_embed_recover,4.2.03.png,0,max_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+equiv_fast_embed_recover,4.2.03.png,0,quarter_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+equiv_fast_embed_recover,4.2.07.png,2,max_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+equiv_fast_embed_recover,4.2.07.png,2,quarter_payload,stego/ref,"stego_eq=True,ext_eq=True,rec_eq=True","img_exact=True,pay_exact=True",vectorized MSB embedding + candidate recovery vs per-pixel loops
+runtime_predictor_lena,Lena.png,-,mean_ms_per_512x512_map,2329.217+-578.138,3129.131+-1150.300,+799.914 ms (1.343x),"protocol: warmup 5, 10 repeats, perf_counter, CPU; same batches/model"
+runtime_embed_encrypt,Airplane.png,all,mean_ms_full_pipeline_embed_encrypt,1501.6,34.3,-1467.3 ms (0.023x),full capacity payload; includes AES-CTR in both
+runtime_decrypt_extract_recover,Airplane.png,all,mean_ms_full_pipeline_recover,3778.3,1677.3,-2101.0 ms (0.444x),full capacity payload; includes AES-CTR decrypt in both
+runtime_embed_encrypt,4.2.03.png,all,mean_ms_full_pipeline_embed_encrypt,3635.2,98.7,-3536.5 ms (0.027x),full capacity payload; includes AES-CTR in both
+runtime_decrypt_extract_recover,4.2.03.png,all,mean_ms_full_pipeline_recover,7488.4,3597.1,-3891.3 ms (0.480x),full capacity payload; includes AES-CTR decrypt in both

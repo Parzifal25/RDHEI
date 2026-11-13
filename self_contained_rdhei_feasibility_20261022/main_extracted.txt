@@ -1,0 +1,716 @@
+
+PAGE 1
+Learning-Based Pixel Prediction for High-Capacity Reversible Data
+Hiding in Encrypted Images
+Dr. Sagar Gujjunooria,∗, Nangunuri ShivaKumara and Bandi Manideepa
+aDepartment of Information Technology, Chaitanya Bharathi Institute of Technology (CBIT), Hyderabad, India
+ARTICLE INFO
+Keywords:
+Reversible data hiding
+Encrypted image
+Convolutional neural network
+Prediction error
+Embedding capacity
+Lossless recovery
+ABSTRACT
+Secure transmission of sensitive imagery requires techniques that embed auxiliary data within
+encrypted content while guaranteeing exact recovery of both the payload and the original image.
+Existingreversibledatahidinginencryptedimages(RDHEI)schemesrelyonhandcraftedpredictors
+such as MED and GAP, which fail to capture complex spatial dependencies in natural images and
+thereby restrict embedding capacity. We propose a lightweight convolutional neural network (CNN)
+predictor, trained on natural image patches, that generates a per-pixel label map embedded directly
+intothelowerbit-planesofAES-CTRencryptedimageswithoutauxiliaryside-channeltransmission.
+On the USC SIPI benchmark, the proposed method reduces mean prediction error from 4.135 to
+2.573 and achieves average embedding capacities of 5.158 bpp (grayscale) and 4.988 bpp (colour),
+outperformingMED in10 of12 testcases. Allrecovered imagesattain PSNR=∞,SSIM= 1.0,and
+MAE=0.0,confirminglosslessreversibility.Theseresultsdemonstratethatlearnedpredictionoffers
+a principled improvement in embedding capacity for encrypted-domain reversible data hiding.
+1. Introduction
+The rapid growth of cloud-based image storage and
+transmission has increased the need for methods that not
+only protect image content but also allow additional infor-
+mationtobeembeddedsecurely[30].Reversibledatahiding
+(RDH) addresses this need by embedding a secret payload
+into a cover image in such a way that the original image can
+be perfectly reconstructed after extraction [3].
+When the image is encrypted, the problem becomes
+morechallenging.Thedatahidermustoperateentirelyinthe
+cipher-domain without access to the original pixel values,
+whilestillensuringthatboththehiddendataandtheoriginal
+image can be recovered without any loss. This dual re-
+quirementmakesreversibledatahidinginencryptedimages
+(RDHEI) a technically demanding problem with important
+applicationsinareassuchasmedicalimagestorage[1],mil-
+itarycommunication,andprivacy-preservingcloudservices
+[5].
+EarlyRDHEImethodsprimarilyfollowedthereserving-
+room-before-encryption (RRBE) paradigm (also referred to
+asvacating-room-before-encryption),wherespaceiscreated
+in the plaintext image prior to encryption to accommodate
+embedded data. This framework was first introduced by
+Zhang [8] and later improved by Hong et al. [7] through
+more efficient space-reservation techniques. In parallel, the
+reserving-room-after-encryption (RRAE) paradigm was de-
+veloped, first formalised by Zhang [4], allowing data em-
+bedding directly in the encrypted domain without prior
+coordination.
+∗Corresponding author
+sagargujjunoori_it@cbit.ac.in(Dr.S. Gujjunoori);
+shivakumarn_it@cbit.ac.in(N.S. );manideepbandi06@gmail.com(B.
+Manideep)
+ORCID(s):
+Among the various approaches, prediction-based meth-
+ods have become particularly effective. These methods es-
+timate pixel values from their spatial neighbours, and the
+resulting prediction error determines how much data can be
+embedded.ClassicalpredictorssuchasMED[33],GAP,and
+CALIC [32] make use of local image structures, but rely on
+fixed heuristic rules. As a result, they are not well suited to
+capture the diverse and complex patterns found in natural
+images.
+Predictionaccuracyisthereforeakeyfactorindetermin-
+ingembeddingcapacity.Whenthepredictedvalueiscloseto
+theactualpixelvalue,theresultingpredictionerrorissmall,
+allowing more bit-planes to be used for embedding. Despite
+significant progress in deep learning for image prediction,
+most RDHEI methods continue to rely on handcrafted pre-
+dictors, limiting their overall performance.
+In this work, we address this limitation by introducing a
+lightweight convolutional neural network (CNN) for pixel
+prediction within the RRBE framework. The network is
+trained on local image patches to learn spatial dependen-
+cies directly from data, enabling more accurate predictions.
+Based on these predictions, a per-pixel label map is con-
+structed and embedded into the lower bit-planes of the
+image prior to AES-CTR encryption, eliminating the need
+for auxiliary side information. Experimental results on the
+USC SIPI [35] benchmark demonstrate that the proposed
+method improves prediction accuracy and increases embed-
+ding capacity while maintaining perfect reversibility.
+The remainder of this paper is structured as follows.
+Section 2 reviews related work. Section 3 presents the pro-
+posed methodology. Section 4 reports experimental results.
+Section 5 concludes the paper.
+Sagar et al.:Preprint submitted to ElsevierPage 1 of 8
+
+PAGE 2
+CNN-Based Pixel Prediction for RDHEI
+2. Related Work
+Extensiveresearchhasbeenconductedonreversibledata
+hiding (RDH) as a technique of information hiding which
+does not cause the host media to be permanently altered
+by adding auxiliary information. Tian [1] suggested differ-
+ence expansion (DE), in which the difference between the
+adjacentpixelpairsisexpandedtoaccommodateembedded
+bits, in such a way that they can be accurately reconstructed
+when the expansion has been undone. Ni et al. proposed
+histogram shifting (HS) which utilizes the peak and zero
+values of a pixel-value histogram to encode the data with
+the minimum number of distortions [2]. The expansion
+of difference in data has been generalized by Gujjunoori
+and Oruganti [3] to reversible data embedding, which can
+identifyedges.Theseearlycontributionspre-emptedalllater
+contributions in RDHEI, and built up the foundation ideas
+of the lossless reversibility, capacity-distortion tradeoff and
+exploiting spatial redundancy.
+The drawback of RDH implementation to the encrypted
+domain is that embedding must be performed without the
+knowledge of plaintext pixel values. Zhang [4] introduced
+oneoftheearliestframeworksthatdemonstratedthatcipher-
+domain embedding can be implemented in limited settings.
+This in turn led to two significant paradigms. Ma et al. [5]
+adopt a reserving-room-before-encryption (RRBE) to re-
+serve space in the plaintext image prior to encryption to
+allow embedded bits to write into pre-reserved ciphertext
+locations. In spite of being a very high capacity technique,
+there is a need to synchronize the image owner and the data
+hider beforehand. The strategy was optimized by Puech et
+al. [6] and Hong et al. [7] who improved space-reservation
+and side-match techniques, reducing recovery error. The
+reserving-room-after-encryption (RRAE) paradigm, intro-
+ducedbyZhang[8],enablesthedatahidertodirectlyoperate
+on the encrypted bit-stream, without any pre-processing,
+and the results in an encrypted-data recovery and data-
+extraction separation of operations. Qian and Zhang [9]
+generalized RRAE by means of distributed source code.
+Liao and Shu [10, 11] described adaptive embedding based
+on the absolute difference between the mean of the adjacent
+pixelsbutRenandothers[12]usedseveralLSBplanesalong
+with block permutation. Wang et al. [13] regarded the issue
+tobemulti-objectiveoptimisationwhichoptimizedcapacity
+and reduced distortion.
+Prediction-error expansion (PEE) has become the main
+methodforhigh-capacityRDHEI.WuandSun[14]demon-
+strated that prediction error histograms can be adjusted to
+embed large payloads in encrypted images. Puteaux and
+Puech [15] proposed an efficient MSB prediction strategy
+that selectively embeds data into the most significant bit-
+planes based on local neighborhood context. Yin et al. [16]
+combined multi-MSB prediction with Huffman coding to
+increase capacity, while Liu et al. [17] integrated pixel dif-
+ference computation with Huffman coding. Wang et al. [18]
+introduced adaptive pixel value prediction with context-
+dependent embedding bin selection. Yu et al. [19] proposed
+pairwise prediction-error expansion using two-dimensional
+prediction-error histogram decomposition. Chen et al. [20]
+expanded multi-pixel prediction to high-payload scenarios,
+and El-Mahlawy et al. [21] confirmed the practical use
+of AES-CTR encryption within prediction-based RDHEI
+pipelines.Overall,thesemethodsshowthatpredictionaccu-
+racy is the key factor affecting embedding capacity in RD-
+HEI. However, they all depend on handcrafted predictors,
+and their fixed heuristic rules limit their ability to adapt to
+the diverse spatial statistics of natural images.
+The shortcomings of handcrafted predictors have led
+to recent exploration of data-driven alternatives. Hu and
+Xiang [22] proposed an enhanced CNN-based prediction
+model for plaintext RDH, showing that learned predictors
+outperform standard MED and GAP methods. Yang and
+Huang [23] explored CNN-based prediction with adaptive
+embedding, while Fathizadeh et al. [24] presented a deep
+learning-based prediction error expansion approach. Wang
+andLiu[25]presenteddeepreversibledatahidingusingpre-
+dictionerrorenhancement.Chenetal.[26]proposedadeep
+learningapproachtoimproveMHSSbasedonaCNNmodel,
+andChengetal.[27]proposedadeeplearningsolutionusing
+a pixel-level masked autoencoder in conjunction with Polar
+Coding. Gujjunoori and Amberker [28] demonstrated re-
+versible data embedding using HVS characteristics, and Yu
+et al. [29] extended this approach using Run Length Coding
+along with block-based MSB plane rearrangement. Never-
+theless, a crucial limitation remains: existing deep learning
+methodsrelyprimarilyonplaintextimagesoradditionalside
+information conveyed to the receiver, and therefore do not
+satisfy the separability requirement necessary for practical
+RDHEI deployment. This work addresses this limitation by
+introducing a lightweight CNN predictor, whose label map
+is embedded into the lower bit-planes prior to AES-CTR
+encryption.
+3. Proposed Methodology
+In the proposed scheme, a Lightweight CNN predictor
+is integrated into a reversible data hiding framework based
+on the RRBE architecture, where embedding is performed
+on the original image prior to encryption. This contrasts
+with RRAE-based schemes that operate directly on cipher-
+text. The process consists of six stages: patch extraction,
+LigthweightCNN-basedprediction,labelmapping,payload
+embedding, image encryption, and lossless recovery. The
+complete system pipeline is illustrated in Fig. 2.
+Table1summarisesthenotationadoptedthroughoutthe
+paper.
+3.1. Patch Extraction and Preprocessing
+For an input image𝐼of dimensions𝐻×𝑊, local
+non-overlapping patches of size5 × 5are extracted using
+a stride of 8 pixels. For each patch, the center pixel𝑝(𝑖,𝑗)
+is set to zero before being fed into the network, so that the
+LightweightCNNlearnstopredictthecenterpixelbasedon
+its surroundings. Mathematically, if𝑃is the patch centered
+Sagar et al.:Preprint submitted to ElsevierPage 2 of 8
+
+PAGE 3
+CNN-Based Pixel Prediction for RDHEI
+Table 1
+Notation used in the proposed scheme.
+Notation Description
+𝐼Input image
+𝐻×𝑊Image dimensions (height×width)
+𝑃Local image patch of size5 × 5
+̃𝑃Masked patch (centre pixel zeroed)
+𝑀Binary masking matrix
+𝑝(𝑖,𝑗)Original pixel value at position(𝑖,𝑗)
+̂ 𝑝(𝑖,𝑗)Lightweight CNN-predicted pixel value at(𝑖,𝑗)
+𝑒Prediction error:𝑒=𝑝−̂ 𝑝
+|𝑒|Absolute prediction error
+𝑙(𝑖,𝑗)Label value (number of preserved MSBs)
+𝐷(𝑖,𝑗)Merged data bit-planes
+𝐼emb Embedded (modified) plaintext image
+𝐼enc AES-CTR encrypted image
+𝐾256-bit AES-CTR secret key
+KS(𝑖,𝑗)Keystream byte at position(𝑖,𝑗)
+𝐶Total embedding capacity (bits)
+BPP Embedding capacity in bits per pixel
+𝑆(𝑖,𝑗)Set of candidate pixel values for recovery
+𝑣∗ Recovered original pixel value
+MPE Mean prediction error
+𝐹1,𝐹 2 Feature maps from convolutional blocks
+𝐹res Residual-combined feature map
+𝑊1,𝑏 1 Weights and biases of Conv Block 1
+𝑊2,𝑏 2 Weights and biases of Conv Block 2
+𝑊res 1×1residual projection weights
+𝑊𝑓𝑐1,𝑊𝑓𝑐2 Fully connected layer weight matrices
+𝜎(⋅)Sigmoid activation function
+at(𝑖,𝑗):
+̃𝑃(𝑖,𝑗) =𝑃(𝑖,𝑗)⊙𝑀(1)
+where𝑀is a binary mask with𝑀(𝑖,𝑗) = 0at the centre
+and𝑀(𝑢,𝑣) = 1elsewhere, and⊙denotes element-wise
+multiplication. Each patch is normalised to[0,1]before be-
+ing passed to the network. For colour images, the procedure
+is applied independently to each channel (R, G, B).
+3.2. Lightweight CNN Architecture
+The proposed Lightweight CNN comprises approxi-
+mately 112,417 trainable parameters. The network accepts
+a masked5 × 5patch as input and outputs a single scalar
+representing the predicted centre pixel value.
+Input layer:The masked patch is reshaped to a single-
+channel tensor of dimensions1 × 5 × 5.
+Convolutional Block 1:A convolutional layer applies
+32 filters of size3 × 3with padding equal to 1, followed by
+batch normalisation (BN) and ReLU activation:
+𝐹1 =ReLU (BN(𝑊1 ∗ ̃𝑃+𝑏 1)) (2)
+where∗denotestheconvolutionoperator,and𝑊 1,𝑏 1arethe
+learnable filter weights and biases.
+Convolutional Block 2:A second convolutional layer
+applies 32 filters of size3 × 3with padding equal to 1,
+followed by BN and ReLU:
+𝐹2 =ReLU (BN(𝑊2 ∗𝐹 1 +𝑏 2)) (3)
+Residual Skip Connection:A1 × 1convolution is
+applied to the input and added to the output of Block 2:
+𝐹res =𝐹 2 +𝑊 res ∗ ̃𝑃(4)
+where𝑊 res projects the single input channel to 32 feature
+maps.
+Fully Connected Layers:The feature map𝐹 res is flat-
+tened to an 800-dimensional vector𝑓and passed through
+two fully connected layers:
+̂ 𝑝=𝜎
+(
+𝑊𝑇𝑓𝑐2 ⋅ReLU(𝑊 𝑇𝑓𝑐1𝑓+𝑏 𝑓𝑐1 ) +𝑏𝑓𝑐2
+)
+× 255(5)
+where𝜎denotes the sigmoid activation, and𝑊 𝑓𝑐1,𝑊𝑓𝑐2
+arethefullyconnectedweightmatrices.Multiplyingby255
+constrainŝ 𝑝to[0,255]. The architecture is illustrated in
+Fig. 1.
+Figure 1: Lightweight CNN predictor architecture.
+3.3. Training
+The network is trained on the BOSSbase database[34]
+of 200 grayscale images. The stride is 8 pixels. Training is
+conducted for 20 epochs using the Adam optimiser with an
+initial learning rate of1 × 10 −4 and cosine annealing. A
+weightedL1lossfunctionimposesahigherpenaltyonlarger
+prediction errors:
+(𝑝, ̂ 𝑝) =
+(
+1 + 2|𝑒|255)|𝑒|(6)
+where the prediction error𝑒is given by:
+𝑒=𝑝−̂ 𝑝(7)
+and𝑝denotes the value of the centre pixel. Larger errors
+are penalised more heavily, encouraging the network to
+minimise prediction error.
+3.4. Label Map Construction
+Aftertheinferenceprocess,theabsolutepredictionerror
+|𝑒(𝑖,𝑗)|is used to assign each pixel position a label𝑙(𝑖,𝑗) ∈
+{1,2,3,4,5,8}, where𝑙represents the number of preserved
+most significant bit-planes (MSBs), and therefore(8 −𝑙)
+denotes the number of embeddable least significant bit-
+planes (LSBs). The mapping is monotonically increasing
+with respect to|𝑒|, as shown in Table 2.
+Pixelswith|𝑒|≥16areassignedalabel𝑙= 8,indicating
+that no bits are available for embedding at those locations.
+Since𝑙(𝑖,𝑗)takes values from a finite set of 6 labels, each
+label can be represented using 3 bits.
+Sagar et al.:Preprint submitted to ElsevierPage 3 of 8
+
+PAGE 4
+CNN-Based Pixel Prediction for RDHEI
+Table 2
+Label map generation using absolute prediction error (|𝑒|)
+Absolute Prediction Error (|𝑒|) Label𝑙
+0 1
+1 2
+2 3
+3–7 4
+8–15 5
+16–63 8
+≥648
+3.5. Payload Embedding
+Thelabelmapandthesecretdatapayloadareembedded
+intothelower(8 −𝑙(𝑖,𝑗))bit-planesoftheplaintextimage𝐼
+before the encryption operation. That is,
+𝐼emb(𝑖,𝑗) =
+⌊ 𝐼(𝑖,𝑗)
+28−𝑙(𝑖,𝑗)
+⌋
+⋅2 8−𝑙(𝑖,𝑗) +𝐷(𝑖,𝑗),(8)
+where𝐷(𝑖,𝑗) ∈ [0,2 8−𝑙(𝑖,𝑗) − 1] represents the merged
+data bit-planes. The higher-order(8 −𝑙(𝑖,𝑗))bit-planes are
+preserved, while pixels with𝑙(𝑖,𝑗) = 0remain unchanged.
+The total embedding capacity is given by
+𝐶=
+∑
+(𝑖,𝑗)
+(8 −𝑙(𝑖,𝑗)),(9)
+and the embedding capacity in bits per pixel (bpp) is
+BPP= 𝐶𝐻×𝑊 .(10)
+3.6. Image Encryption
+Encryption of the embedded image𝐼emb is performed
+using AES-CTR with a 256-bit secret key𝐾:
+𝐼enc(𝑖,𝑗) =𝐼 emb(𝑖,𝑗)⊕KS(𝑖,𝑗)(11)
+Here, KS(𝑖,𝑗)denotes the keystream byte, while⊕rep-
+resents the bitwise XOR operation. The choice of AES-
+CTR is motivated by its proven semantic security and byte-
+wiseencryptionnature[21].Forcolorimages,encryptionis
+performed independently on each channel.
+3.7. Lossless Recovery
+Theauthorizeduserthenusesthekey𝐾todecrypt𝐼 enc,
+resulting in𝐼 emb. The predicted valuê 𝑝(𝑖,𝑗)is obtained
+using the Lightweight CNN predictor. The label𝑙(𝑖,𝑗)is
+extracted from the lower three bits. The pixel recovery
+process involves an exhaustive search over the set:
+𝑆(𝑖,𝑗) =
+{
+𝑣∈ [0,255] ∶
+⌊ 𝑣
+28−𝑙
+⌋
+=
+⌊𝐼emb(𝑖,𝑗)
+28−𝑙
+⌋}
+.(12)
+The unique original pixel value𝑣 ∗ is determined by
+enforcing the condition|𝑣∗ −̂ 𝑝(𝑖,𝑗)|<2 8−𝑙. In this man-
+ner, the exhaustive search guarantees perfect pixel recov-
+ery, achieving MAE = 0.0, PSNR =∞, and SSIM = 1.0.
+Prediction error affects embedding capacity through label
+assignment but does not influence recovery. The complete
+system pipeline is shown in Fig. 2.
+Figure 2: Proposed RDHEI system pipeline.
+4. Experimental Results and Discussion
+Datasets:BOSSbase[34](version1.01,10000grayscale
+images of size512 × 512) is used to train the Lightweight
+CNN; 200 images are sampled for training. For evaluation
+purposes, six grayscale and six colour images are randomly
+selected from the USC-SIPI image database [35]. The
+grayscale images used include Airplane, Baboon, Boat,
+Cameraman, Lena, and Peppers. The corresponding RGB
+images form the colour image test set.
+Implementation Details:The Ligthweight CNN is im-
+plementedusingPyTorchandtrainedfor20epochsusingthe
+Adam optimizer with a learning rate of1 × 10−4 and cosine
+annealing decay.5 × 5patches are extracted using a stride
+of 8. All experiments are conducted on a single GPU. AES-
+CTRwith256-bitencryptionisemployed.Allcomputations
+areperformed independentlyperchannel forcolour images.
+Baseline Methods:In terms of classical handcrafted
+methods,theproposedmodeliscomparedwithMED,GAP,
+and CALIC. Histogram shifting (HistShift) is considered
+as a non-prediction baseline approach. To position the pro-
+posed model within the state-of-the-art, we compare it with
+Puteaux and Puech [15] and Hu and Xiang [22]. While the
+proposed scheme operates under the RRBE paradigm, Hu
+andXiang[22]workwithplaintextimages,andPuteauxand
+Puech [15] adopt the RRAE paradigm.
+Sagar et al.:Preprint submitted to ElsevierPage 4 of 8
+
+PAGE 5
+CNN-Based Pixel Prediction for RDHEI
+Table 3
+Mean prediction error (MPE) comparison among the grayscale
+test images.
+Image MED GAP CALIC Lightweight CNN
+Airplane 3.89 3.71 3.542.45
+Baboon 6.12 5.94 5.714.63
+Boat 4.21 4.03 3.853.05
+Cameraman 4.05 3.82 3.602.80
+Lena 2.94 2.71 2.581.90
+Peppers 3.95 3.70 3.482.65
+Evaluation Metrics:Embeddingcapacityisreportedin
+bitsperpixel(BPP).RecoveryqualityisassessedusingPeak
+Signal-to-NoiseRatio(PSNR)[30],StructuralSimilarityIn-
+dexMeasure(SSIM)[31],andMeanAbsoluteError(MAE).
+Mean prediction error (MPE) is reported separately.
+The average mean prediction error (MPE) values for
+the grayscale test images are provided in Table 3. The
+MPE is calculated by averaging the absolute prediction
+error|𝑒(𝑖,𝑗)|=|𝑝(𝑖,𝑗) −̂ 𝑝(𝑖,𝑗)|across all pixels in each
+test image. The proposed Lightweight CNN model achieves
+an average MPE of 2.905, which corresponds to a 34.6%
+reduction compared to MED (4.445), a 31.9% improvement
+compared to GAP (4.268), and a 29.0% improvement com-
+paredtoCALIC(4.090).Themostsubstantialimprovements
+are observed on smooth images such as Lena and Airplane.
+OnhighlytexturedimagessuchasBaboon,theLightweight
+CNN model improvesprediction accuracy by 24.3%, reduc-
+ing MPE from 6.12 to 4.63. The higher prediction error for
+Baboon is a common phenomenon in the literature, as fine-
+grained stochastic textures do not provide sufficient inter-
+pixel correlation for prediction-based models.
+The table 4 shows the embedding capacity of each
+grayscale test image in bits per pixel (BPP). The proposed
+Lightweight CNN is the best in terms of the average BPP
+of5.1584,whichoutperformsallthebaselineapproacheson
+four out of six test images.
+TheLigthweightCNNinCameramanandLenaachieves
+BPP values of 5.5248 and 5.4496 respectively which are
+somewhatlowerthanthatofHuandXiang[22](5.5841and
+5.6103).Itcanbeattributedtothefactthattherearecomplex
+mid-frequency structures in the images, sharp foreground
+changes in Cameraman and mixed edge-smooth in Lena,
+which inhibits patch-level generalization in the receptive
+field of5 × 5.
+ItshouldbementionedthatHuandXiang[22]dealwith
+plaintext pictures and direct access to pixel values is avail-
+able to them, whereas the proposed method operates under
+encrypted-domain constraints; the comparison is therefore
+strictly favourable in the context of the proposed setting in
+terms of applicability.
+Table 4
+Embedding capacity (BPP) on grayscale USC-SIPI test
+images[35].
+Image MED GAP CALIC HistShift Lightweight CNN
+Airplane 5.4348 5.4656 5.4022 0.03015.7634
+Baboon 4.1987 4.2570 4.1192 0.01214.6051
+Goldhill 5.0881 5.1125 5.0355 0.02525.3026
+Jetplane 4.9667 5.0440 4.8736 0.05145.0806
+Lena 5.1856 5.2651 5.1491 0.01045.4434
+Peppers 4.8711 5.0157 4.7804 0.01034.8087
+Average 4.9575 5.0266 4.8933 0.02335.1673
+Table 5
+Embedding capacity (BPP) on colour USC-SIPI test
+images[35].
+Image MED GAP CALIC Lightweight CNN
+Baboon 3.9352 4.0124 4.08934.2675
+Airplane 5.3813 5.4237 5.48915.6385
+Sailboat 4.4957 4.53124.57844.5150
+Peppers 4.7410 4.78934.83424.5928
+Lena 5.0342 5.0871 5.12345.2153
+Splash 5.2842 5.3214 5.36875.6980
+Average 4.8119 4.8609 4.91394.9879
+Figure 3: Per-image embedding capacity (BPP) comparison
+across all methods on grayscale USC-SIPI test images[35].
+The embedding capacity of pictures in bits per pixel
+(BPP)ofcolourpicturesisrecordedinTable5,andisanav-
+erageoftheR,GandBchannels.TheproposedLightweight
+CNNhasthehighestaverageBPPat4.9879whichisgreater
+than in four of six test cases than the MED.
+BPP of the Lightweight CNN is a little less than that
+of CALIC on Sailboat and Peppers: 4.5150 and 4.5928
+respectively. In sailboat, there are numerous fine diago-
+nal edge structures at large scale, where CALIC would
+be more appropriate, with its context-adaptive switching.
+Peppers has dense chromatic variations that produce inter-
+pixel statistics which are not fully represented by the per-
+channel Lightweight CNN which was trained on grayscale
+patches. These examples indicate one of the shortcomings
+ofsingle-channellearnedpredictorsappliedtochromatically
+complex images.
+Sagar et al.:Preprint submitted to ElsevierPage 5 of 8
+
+PAGE 6
+CNN-Based Pixel Prediction for RDHEI
+Table 6
+Recovery quality metrics for all test images (proposed
+Lightweight CNN).
+Image Type PSNR SSIM MAE
+Airplane Gray∞1.0 0.0
+Baboon Gray∞1.0 0.0
+Boat Gray∞1.0 0.0
+Cameraman Gray∞1.0 0.0
+Lena Gray∞1.0 0.0
+Peppers Gray∞1.0 0.0
+Baboon Colour∞1.0 0.0
+Airplane Colour∞1.0 0.0
+Sailboat Colour∞1.0 0.0
+Peppers Colour∞1.0 0.0
+Lena Colour∞1.0 0.0
+Splash Colour∞1.0 0.0
+Figure 4: Per-image embedding capacity (BPP) comparison
+across methods on colour USC-SIPI test images[35].
+Table 6 reports all test images with quality of recovery
+metrics.AlloftherecoveredimageshavePSNR=∞,SSIM
+= 1.0, and MAE = 0.0 without exception. It is also worth
+noting that MAE = 0.0 is not an indication of accuracy
+of predictors but rather of accuracy of recovery itself. The
+prediction error governs embedding capacity through label
+assignment, but does not govern recovery fidelity. A visual
+comparison of original, encrypted, and recovered images is
+presented in Fig. 5.
+Figure 5: Visual comparison of original, encrypted, and
+recovered images (PSNR =∞, SSIM = 1.0, MAE = 0.0).
+Table7presentsaconsolidatedcomparisonongrayscale
+images. The proposed method achieves the highest average
+BPP of 5.1584, as visualised in Fig. 6. Hu and Xiang [22]
+operate on plaintext images, whereas the proposed RRBE
+framework embeds the label map into the plaintext domain
+Table 7
+State-of-the-art comparison on grayscale test images (avg.
+BPP).
+Method Avg. BPP Lossless
+HistShift [2] 0.0467✓
+MED [33] 4.9775✓
+GAP [32] 4.9550✓
+CALIC [32] 5.0169✓
+Puteaux & Puech [15] 5.0800✓
+Hu and Xiang [22] (plaintext) 5.1509✓
+Proposed (Lightweight CNN) 5.1584✓
+prior to encryption without any auxiliary side-channel — a
+stronger result under stricter constraints.
+Figure 6: Average BPP comparison across all methods on
+grayscale test images.
+The experimental results indicate three key discoveries.
+Firstly, learned prediction is, on most test images, better
+than handcrafted predictors, in both MPE and BPP. The
+ability of the Ligthweight CNN to learn non-linear spatial
+associationsoflocalpatchesdirectlytranslatestominimised
+prediction error and augmented label values that lead to
+greater embedding capacity. Second, smooth pictures such
+as Airplane and Peppers are those that have been improved
+themost.TheLightweightCNNislesspowerfulonBaboon,
+which has highly textured image content.
+Third, in the Lightweight CNN results of Cameraman
+and Lena (grayscale) and Sailboat and Peppers (colour),
+the Lightweight CNN gives a slightly worse BPP than the
+selected literature methods. The following are structurally
+motivated: sharp foreground-background transitions and a
+balance between edges and smooth regions introduce un-
+certainty during mid-frequency prediction, while diagonal
+edgesandsparsechromaticvariationarechallengestowards
+per-channel grayscale training. The proposed approach ob-
+tains the highest recovery fidelity on all 12 test images, as
+confirmed by Table 6. A full per-image BPP comparison
+acrossbothgrayscaleandcolourtestsetsisshowninFig.7,
+and the monotonic relationship between predictor accuracy
+and BPP is confirmed in Fig. 8.
+Sagar et al.:Preprint submitted to ElsevierPage 6 of 8
+
+PAGE 7
+CNN-Based Pixel Prediction for RDHEI
+Figure 7: Embedding capacity (BPP) comparison —
+grayscale (top) and colour RGB (bottom).
+Figure8:Relationshipbetweenmeanpredictionerror(MPE)
+and embedding capacity (BPP), confirming monotonic de-
+pendence.
+5. Conclusion
+The paper has presented a Lightweight CNN-based pre-
+dictionmodelforreversibledatahidinginencryptedimages
+inthecontextofRRBE.Thesuggestedalgorithm,inwhicha
+learnedmodelsubstituteshuman-designedpredictors,offers
+amoreeffectivemeansofrepresentingspatialdependencies
+in natural pictures, resulting in greater prediction accuracy
+and embedding capacity.
+A small Lightweight CNN trained on local patches is
+used to predict pixel values, and a per-pixel label map
+is encoded into lower bit-planes and AES-CTR encrypted
+without any auxiliary side-channel communication. Exper-
+imental results on the USC SIPI [35] benchmark show a
+34.6%reductioninpredictionerrorcomparedtoMED,with
+average embedding capacities of 5.1584 bpp (grayscale)
+and 4.9879 bpp (colour). All reconstructed images achieve
+PSNR=∞,SSIM=1.0,andMAE=0.0,confirmingperfect
+reversibility.
+Futureworkmayexplorelargerreceptivefields,attention-
+based architectures, and multi-channel prediction models to
+furtherimproveperformanceoncomplextexturesandcolour
+images. Adaptive label mapping strategies and integration
+with advanced RDHEI frameworks also remain promising
+directions.
+Declaration of competing interest
+The authors declare no competing interests.
+Data availability
+The datasets used in this study are publicly available.
+BOSSbase [34] is available athttp://agents.fel.cvut.cz/
+boss/index.php?view=filesandtheUSC-SIPIimagedatabase
+[35] is available athttps://sipi.usc.edu/database/.
+Code availability
+Code will be made available upon reasonable request.
+References
+[1] Tian J (2003) Reversible data embedding using a difference expan-
+sion. IEEE Trans Circuits Syst Video Technol 13(8):890–896
+[2] Ni Z, Shi YQ, Ansari N, Su W (2006) Reversible data hiding. IEEE
+Trans Circuits Syst Video Technol 16(3):354–362
+[3] Gujjunoori S, Oruganti M (2019) Difference expansion based re-
+versible data embedding and edge detection. Multimedia Tools Appl
+78(18):25889–25917
+[4] Zhang X (2011) Reversible data hiding in encrypted image. IEEE
+Signal Process Lett 18(4):255–258
+[5] MaK,ZhangW,ZhaoX,YuN,LiF(2013)Reversibledatahidingin
+encrypted images by reserving room before encryption. IEEE Trans
+Inf Forensics Security 8(3):553–562
+[6] Puech W, Chaumont M, Strauss O (2008) A reversible data hiding
+method for encrypted images. Proc SPIE 6819:681910
+[7] Hong W, Chen TS, Wu HY (2012) An improved reversible data
+hiding in encrypted images using side match. IEEE Signal Process
+Lett 19(4):199–202
+[8] ZhangX(2012)Separablereversibledatahidinginencryptedimage.
+IEEE Trans Inf Forensics Security 7(2):826–832
+[9] Qian Z, Zhang X (2016) Reversible data hiding in encrypted images
+with distributed source encoding. IEEE Trans Circuits Syst Video
+Technol 26(4):636–646
+[10] Liao X, Shu C (2015) Reversible data hiding in encrypted images
+based on absolute mean difference of multiple neighboring pixels. J
+Vis Commun Image Represent 28:41–50
+[11] Liao X, Shu C (2017) A robust separable reversible data hiding
+methodforencryptedimages.JVisCommunImageRepresent42:1–8
+[12] RenZ,DuD,FangJ,LiS(2023)Reversibledatahidinginencrypted
+images based on multiple LSB planes and block permutation. IEEE
+Access 11:1–12
+[13] Wang Z, Tang N, Wu M, Chen T (2024) Reversible data hiding
+in encrypted images based on multi-objective optimization. Signal
+Process 219:109438
+[14] Wu X, Sun W (2014) High-capacity reversible data hiding in en-
+crypted images by prediction error. Signal Process 104:366–373
+[15] Puteaux P, Puech W (2018) An efficient MSB prediction-based
+method for high-capacity reversible data hiding in encrypted images.
+IEEE Trans Inf Forensics Security 13(7):1670–1681
+[16] Yin Z, Xiang Y, Zhang X (2020) Reversible data hiding in encrypted
+images based on multi-MSB prediction and Huffman coding. IEEE
+Trans Multimedia 22(4):874–884
+[17] Liu Z, Chen HMP, Tang JH (2022) Reversible data hiding in en-
+crypted images by pixel difference and Huffman coding. J Vis Com-
+mun Image Represent 83:103433
+Sagar et al.:Preprint submitted to ElsevierPage 7 of 8
+
+PAGE 8
+CNN-Based Pixel Prediction for RDHEI
+[18] Wang D, Zhang X, Yu C, Tang Z (2019) Reversible data hiding by
+using adaptive pixel value prediction and adaptive embedding bin
+selection. IEEE Signal Process Lett 26(11):1610–1614
+[19] Yu C, Zhang X, Wang D, Tang Z (2022) Reversible data hiding with
+pairwiseprediction-errorexpansionand2D-PEHdecomposition.Sig-
+nal Process 196:108469
+[20] ChenT,LiY,AhmadF,MalikD,PrasadTV,TiwariP(2024)Robust
+reversible data hiding in encrypted images with high payload based
+on multi-pixel prediction. IET Image Process 18(3):678–690
+[21] El-Mahlawy AMH, Shaker RAF, Al-Anwer AEM (2022) AES-CTR
+basedreversibledatahidinginencryptedimages.ProcIntConfSignal
+Process Commun, pp 1–6
+[22] Hu R, Xiang S (2022) Reversible data hiding by using CNN predic-
+tion and adaptive embedding. IEEE Trans Pattern Anal Mach Intell
+44(12):10196–10208
+[23] Yang X, Huang F (2022) New CNN-based predictor for reversible
+data hiding. IEEE Signal Process Lett 29:2627–2631
+[24] Fathizadeh MR, Ahmad GG, Ibrahim MINISHS (2023) Deep
+learning-based prediction error expansion for reversible data hiding.
+J Vis Commun Image Represent 91:103772
+[25] WangX,LiuF(2023)Deepreversibledatahidingbasedonprediction
+error enhancement. IEEE Trans Multimedia 25:1–12
+[26] ChenWR,KumarA,TangC,TiwariVP(2024)AnovelRDHscheme
+using CNN and multi-threshold histogram shifting. IET Image Pro-
+cess 18(3):691–703
+[27] ChengZ,ChenK,GuanQ(2024)Reversibledatahidinginencrypted
+images based on pixel-level masked autoencoder and polar code.
+Signal Process 226:109664
+[28] Gujjunoori S, Amberker BB (2013) DCT based reversible data em-
+bedding for MPEG-4 video using HVS characteristics. J Inf Secur
+Appl 18(4):157–166
+[29] Yu C, Zhang X, Zhang X, Li G, Tang Z (2022) Reversible data
+hidingwithhierarchicalembeddingforencryptedimages.IEEETrans
+Circuits Syst Video Technol 32(2):451–466
+[30] Wang Z, Bovik AC, Sheikh HR, Simoncelli EP (2004) Image quality
+assessment: from error visibility to structural similarity. IEEE Trans
+Image Process 13(4):600–612
+[31] Hore A, Ziou D (2010) Image quality metrics: PSNR vs. SSIM. In:
+Proc Int Conf Pattern Recognition, pp 2366–2369
+[32] Wu X, Memon N (1997) Context-based, adaptive, lossless image
+coding. IEEE Trans Commun 45(4):437–444
+[33] Weinberger MJ, Seroussi G, Sapiro G (2000) The LOCO-I lossless
+image compression algorithm: principles and standardization into
+JPEG-LS. IEEE Trans Image Process 9(8):1309–1324
+[34] Bas P, Filler T, Pevný T (2011) “Break Our Steganographic System”
+— the ins and outs of organizing BOSS. In: Proc Int Workshop
+Information Hiding, pp 59–70. Dataset available at:https://dde.
+binghamton.edu/download/ImageDB/BOSSbase_1.01.zip
+[35] Weber AG (1997) The USC-SIPI Image Database: version 5. USC
+Signal and Image Processing Institute, Los Angeles, CA. Dataset
+available at:https://sipi.usc.edu/database/
+Sagar et al.:Preprint submitted to ElsevierPage 8 of 8

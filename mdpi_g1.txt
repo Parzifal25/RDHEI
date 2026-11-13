@@ -1,0 +1,792 @@
+ 
+ 
+ 
+ 
+Appl. Sci. 2023, 13, 9829. https://doi.org/10.3390/app13179829 www.mdpi.com/journal/applsci 
+Article 
+Analysis of Vibration Characteristics of Cross-Type Hydraulic 
+Pipeline Based on Finite Element Method 
+Zhe Liu 1,*, Huiping Li 2, Baichun Li 1, Jiaxin Chen 1 and Yong Liu 1 
+1 School of Aeronautics, Civil Aviation University of China, Tianjin 300300, China 
+2 School of Transportation Science and Engineering, Civil Aviation University of China,  
+Tianjin 300300, China 
+* Correspondence: zliu_11@163.com 
+Abstract: Branched hydraulic lines are prone to leak age and break under complex working condi-
+tions. The coupling vibration problem caused by the ﬂuid pressure beat and external mechanical 
+excitation of the pump at the junction of the bran ch of the cross-type hydraulic pipeline is very 
+common. So a method combining ﬁnite element simulation and ﬂuid-structure interaction vibration 
+experiments is proposed for research. First, the possibility of the ﬁnite element method in solving 
+the pipeline vibration problem is veri ﬁed, and then the modal analysis and harmonious response 
+analysis of the cross-type pipe are carried out to discuss the in ﬂuence of ﬂuid pressure and solid 
+elastic modulus on pipeline vibration. The results show that as the ﬂuid pressure and pipeline elastic 
+modulus change, diﬀerent modes of diﬀerent orders will be aﬀected. Under external excitation, only 
+a portion of the order is sensitive to external excitation. 
+Keywords: branch pipeline; ﬂuid-structure interaction; vibration analysis; ﬁnite element simulation 
+ 
+1. Introduction 
+The vibration problem of pipeline systems has a broad engineering application back-
+ground, and its research results can be directly applied to various ﬁelds such as ocean 
+engineering, bioengineering, chemical machin ery, aerospace, and the nuclear industry. 
+Whatʹs more, cross-type branch pipelines are widely used in hydraulic systems and pipe-
+lines [1]. However, during the transportation of gases and liquids, intermittent suction or 
+discharge movements of ﬂuids in pipelines may cause ﬂow and pressure pulsations in the 
+pipeline system, leading to severe pipeline vibration in discontinuous areas, especially at 
+branch points. At the interface between the branch pipeline and the main pipeline, the 
+pressure ﬂow pulsation of hydraulic oil and the ﬂuid–structure interaction phenomenon 
+caused by the external vibration of the pipeline are relatively concentrated. Abnormal or 
+excessive vibration can lead to fatigue failure, leakage, and other safety issues in pipeline 
+systems. 
+Therefore, the problems surrounding the branch pipeline have aroused the research 
+interest of many scholars. In recent years,  KARAGIOZIS et al. [2 ] of the United States 
+analyzed the nonlinear stability of incompressible ﬂow in cylindrical thin shells, combin-
+ing the linear model and the Donnell shallow shell nonlinear equation in the model, and 
+discussed its impact on pipeline stability by changing the length diameter ratio and thick-
+ness diameter ratio. In 2008, TIJSSELING A S [3] studied the plumbing composed of 
+straight pipes and elbows. The theoretical mode l is based on the idea of Tentarelli, and 
+the models of two pipe segments are establishe d. The straight pipe is solved in the fre-
+quency domain, and the solution of the elbow is not divided into units. The elbow model 
+is directly used for the overall solution, and the inﬂuence of the bending radius and angle 
+of the elbow on the ﬂuid–solid coupling vibration characteristics is analyzed. Chao 
+Jiaming [4] conducted airﬂow pulsation and pipeline vibration tests on the primary intake 
+Citation: Liu, Z.; Li, H.; Li, B.; Chen, 
+J.; Liu, Y. Analysis of Vibration  
+Characteristics of Cross-Type  
+Hydraulic Pipeline Based on Finite 
+Element Method. Appl. Sci. 2023, 13, 
+9829. https://doi.org/10.3390/ 
+app13179829 
+Academic Editor: Raﬀaele Zinno 
+Received: 3 August 2023 
+Revised: 25 August 2023 
+Accepted: 26 August 2023 
+Published: 30 August 2023 
+ 
+Copyright: © 2023 by the authors. 
+Licensee MDPI, Basel, Swi tzerland. 
+This article is an open access article 
+distributed under the terms and 
+conditions of the Creative Commons 
+Attribution (CC BY) license 
+(https://creativecommons.org/license
+s/by/4.0/). 
+
+Appl. Sci. 2023, 13, 9829 2 of 16 
+ 
+pipeline of a certain hydrogen compressor under 60% ﬂow regulation and variable oper-
+ating conditions. Based on the actual pipeline size and direction on site, an airﬂow pulsa-
+tion analysis model and a pipeline modal analysis model were established to conduct air-
+ﬂow pulsation analysis and pipeline modal analysis, respectively. And targeted pipeline 
+vibration reduction measures were proposed to reduce the vibration value of the ﬁrst-
+stage intake pipeline of the compressor to an acceptable range. Xia Zhao Wang [5] studied 
+a local resonance-type periodic pipeline and showed a simulation model of the periodic 
+pipeline system. He analyzed the in ﬂuence of parameters such as  local oscillator width, 
+outer diameter, and material density on the vibration reduction eﬀect of the periodic pipe-
+line and veri ﬁed it through experiments. The results show that the width and material 
+density of the local oscillator have a signiﬁcant impact on the vibration reduction eﬀect of 
+the pipeline system. The outer diameter of the local oscillator has little eﬀect on the vibra-
+tion level drop of the pipeline system. Zhang Yu [6] proposed a semi-analytical model for 
+the vibration characteristics of multi-clamp-supported liquid- ﬁlled pipelines and a 
+method for optimizing clamp layout. In order to study the e ﬀects of parameters such as 
+liquid ﬁlling state and ﬂow rate on the optimization results of clamp layout, a general 
+clamp layout optimization model was established with the maximum ﬁrst-order natural 
+frequency as the optimization objective without introducing an external excitation fre-
+quency. The particle swarm optimization algorithm was used to solve the optimization 
+model. The article [7] is devoted to the analys is of the reasons for the high level of vibra-
+tion of piping, in particular during resonance with the disturbing frequency of main line 
+pumps. The causes of vibration in the piping of the main line pumps and the inﬂuence of 
+frequency regulation on the le vel of vibration of the main line pump are analyzed. B 
+Khudayarov [8] developed a computational algorithm for solving problems of vibrations 
+in composite pipelines conveying pulsating liquid. The stability and amplitude-time char-
+acteristics of vibration in composite pipelines with pulsating ﬂuid ﬂowing in them are 
+studied for a wide range of changes in the parameters of deformable systems and ﬂuid 
+ﬂow. E Liu [9] focuses on the problem of abnormal vibrations within the JYG compressor 
+station pipeline and uses a 3D calculation model of the launcher pipeline of west-east gas 
+pipeline III to perform simulation analysis using Fluent to ﬁnd the cause of the abnormal 
+vibrations. Our results show that the ﬂuid pressure ﬂuctuation in the pipeline is the main 
+factor in the abnormal vibration of the launcher pipeline in the JYG compressor station. In 
+ZD Xu’s [10] paper, a novel multidimensional vibration isolation and mitigation device 
+(MVIMD) is proposed and optimized to mitigate the multidimensional vibration of pipe-
+lines. First, the dynamic characteristics and responses of pipelines with and without the 
+devices are compared based on the modi ﬁed equivalent standard solid model. Then the 
+MVIMD is attached to a pipeline to verify its vibration mitigation eﬀect in horizontal and 
+vertical directions. Finally, the genetic algorithm (GA) is adopted to optimize the param-
+eters of MVIMD. The numerical analysis results show that the novel MVIMD with param-
+eters optimized by the genetic algorithm has better eﬀects for controlling both horizontal 
+and vertical vibration responses of pipelines. Z Liang [11] ﬁnds that the unique modal 
+frequencies of each order are applied to the elbow to obtain di ﬀerent exclusive mode 
+shapes. The evolution of the ﬂow pattern is related to the increase in wave height, and the 
+wave amplitude often depends on the gas-liquid super ﬁcial velocity. The superﬁcial liq-
+uid velocity is more sensitive to the inﬂuence of ﬂow pattern formation and vibration than 
+that of gas. The above nonlinear ﬂuid–structure interaction vibration analysis model for 
+curved pipelines, although considering nonlinear factors, does not comprehensively con-
+sider the ﬂuid–structure interaction e ﬀect of the junction between the actual pipeline 
+branch and the main pipeline, while the actual situation will cause structural and ﬂuid 
+vibration due to the ﬂuid–structure interaction eﬀect of the junction. 
+In order to study the complex coupling si tuation caused by various factors at the 
+junction of the branch and solve the problem of di ﬃcult analysis of its vibration mecha-
+nism, many scholars ha ve made preliminary a ttempts to address the mechanism and 
+Appl. Sci. 2023, 13, 9829 3 of 16 
+ 
+modeling issues of the branch pipeline. TIJSSELING AS [12] considered FSI (Fluid–Struc-
+ture Interaction) and cavitation phenomena and conducted experimental research on T-
+shaped pipelines. ZIADA S [1 3] conducted an experimental study on the coupling re-
+sponse of T-shaped pipes in the upstream region of the pipeline due to the acoustic reso-
+nance mechanism. Tentarelli and Brown [14] perceived pipe systems with three-port junc-
+tions as having a global transmission matrix. Their research has solved the round-oﬀ prob-
+lems. The above research results on the branch pipeline have carried out targeted explo-
+ration of the pipeline ﬂuid–structure interaction vibration model, and the coupling condi-
+tions considered are more complex. Cao Yinhang [15] provided the general steps for cal-
+culating pipeline dynamics problems using the transfer matrix method and the process of 
+establishing the point transfer matrix fo r any pipeline branch component absorption 
+transfer matrix method, achieving the solution of branch pipeline system dynamics prob-
+lems, and proving its correctness through comparison with experimental results. After-
+wards, based on the selected branch pipeline design basic model, the uniform design prin-
+ciple is used to select calculation samples, and the transfer matrix method is applied to 
+calculate the sample model. Finally, the second-order polynomial response surface func-
+tion is used to approximate the regression model, and a genetic algorithm is applied to 
+optimize the branch pipeline design. By abso rbing the transfer matrix method, uniform 
+design principle, and mathematical modelin g optimization method, the calculation cost 
+and resources are be tter saved. It has certain guiding signi ﬁcance for the design process 
+of branch pipelines. A two-dimensional ﬁnite element numerical model was developed 
+by L Ming-Ming [16] to predict local scour around a vibration submarine pipeline under 
+free surface wave conditions. Both suspended-load and bed-load sediment transporta-
+tions are considered in the scour model. The Arbitrary Lagrangian-Eulerian (ALE) method 
+was used to track the moving boundaries induced by the vibration pipeline, the free wave 
+surface, and the evolution of the seabed due to  local scour. Satisfactory results were ob-
+tained after validations were carried out. The numerical model is then used to investigate 
+local scour around a vibration pipeline under free surface wave conditions. In recent 
+years, relevant scholars have made a lot of new research progress in pipeline ﬂuid–struc-
+ture interaction vibration, such as Cai Biao hua [17], Hu Bing [18], Zhong Yongheng [19], 
+Sang Yong [20], Quan Lingxiao [21], Guo Meng [22], etc. However, there are few studies 
+on the ﬂuid–structure interaction and vibration mechanism around the junction between 
+the branch pipe and the main pipe. Therefore, how to analyze the coupling phenomenon 
+caused by the ﬂuid pressure pulsation of the pump and external mechanical excitation at 
+the branch junction remains an important issue in pipeline dynamics analysis. 
+Based on the above analysis, the ﬂuid–structure interaction vibration model of cross-
+type branch pipe is established by using the ﬁnite element method. Considering the exci-
+tation caused by ﬂuid pressure ﬂuctuations and external excitation, the fluid–structure 
+interaction dynamics problem of the branch pipe is solved. In the article, the excitation 
+caused by pressure pulsation is simulated through changes in ﬂuid pressure inside the 
+pipe, and external excitation is simulated through the addition of simple harmonic force 
+in harmonic response analysis. And the impact of pipeline materials and ﬂuid pressure 
+on its vibration characteristics is analyzed. The accuracy of the ﬁnite element method in 
+solving the fluid–structure interaction vibration problem of pipelines is veri ﬁed by com-
+paring the ﬁnite element calculation results with the vibration experiment results. 
+2. Fluid–Structure Interaction Vibration Analysis of Single Pipeline 
+2.1. Theoretical Model of Pipeline Vibration 
+Figure 1 shows the geometric modeling of a single pipeline in the hydraulic system. 
+Due to the fact that the inner diameter of the actual pipeline is much smaller than its 
+length, the calculation process assumes the pipeline model as a beam model and solves it 
+Appl. Sci. 2023, 13, 9829 4 of 16 
+ 
+with ﬁxed support at both ends. Based on the fluid motion control equation and the pipe-
+line motion control equation, the motion coupling of the two media is realized by the con-
+tact compatibility condition of the ﬂuid and solid structures on the boundary [23,24]: 
+Fluid motion control equation: 
+The ﬂow in the pipe can be regarded as incompressible ﬂow, and the ﬂuid continuity 
+equation and momentum equation are: 
+()ρ
+χ
+∂
+=∂
+i
+i
+u
+0    (1) 
+() ( )ρμ μ δ ρχχ χ χ χ χ χ
+  ∂∂∂∂∂ ∂ ∂  ∂∂ ∂ ∂ ∂ ∂ ∂   ''jikij i jii i j i k j uuuP2uu = - + + - + - 3 ijuu   (2) 
+where ρ  is the density of the ﬂuid; 𝑢௜,𝑢௝ are the average velocity component for each 
+time; 𝜇 is the dynamic viscosity of the ﬂuid; 𝛿௜௝ is ”Kronecker delta” symbol (when i = j, 
+𝛿௜௝  = 0; k is the turbulent kinetic energy; and 𝑢௜ᇱ𝑢௝ᇱ is Reynolds stress component. 
+There is a vortex ﬂow in the water ﬂow inside the pipe, and the streamline is highly 
+curved. RNG k-ε is chosen here as the turbulence model: 
+() () ()
+() ε
+εε
+ρρ ρ εαμ ρ εχχ χ
+ρε εεαμ ρχχ χ
+∂∂ ∂ ∂∂= ∂∂∂ ∂ ∂ 
+∂ ∂∂ −∂∂ ∂ 
+i
+k eff k
+jj j
+* 2
+i 1
+eff 2
+jj j
+kk u k++ G + + t
+u C=+ k
+t
+GCkk
+   (3) 
+where k is turbulent kinetic energy; 𝜇௘௙௙ is corrected turbulent viscosity; 𝜀 is the turbu-
+lent dissipation rate; 𝛼௞ ,𝛼ఌ  are turbulent kinetic energy k and dissipation rate ε corre-
+sponding Prandtl number, respectively, and its values are all 1.39; t is the time; 𝐺௞ is the 
+production term of turbulent kinetic energy k caused by the average velocity gradient, 
+ 𝐺௞  = 𝜇௧ ൬
+డ௨೔
+డ௨ೕ
++
+డ௨ೕ
+డ௨೔
+൰
+డ௨೔
+డ௨ೕ
+,  𝜇௧ = ρ𝐶ఓ
+௞మ
+ఌ , 𝐶ఓ  =  0.0845; 𝐶ଵఌ∗  is the correction factor; and 𝐶ଶఌ 
+is an empirical constant, 𝐶ଶఢ = 1.68. 
+Pipeline motion control equation: 
+For a pipeline system with n degrees of freedom, the ﬁnite element equation under 
+the state of unit motion is 
+δδδer ee ee esssM+ C+ K= F     (4) 
+where 𝑀௦௘  is quality matrix for pipeline units; 𝐶௦௘  is damping matrix for pipeline ele-
+ments; 𝐾௦௘  is the sti ﬀness matrix of the pipeline element; 𝛿௘ is the displacement vector of 
+the pipeline unit; and  𝐹௘ is the external load vector of the unit. 
+Considering the ﬂuid action on the pipeline, the overall structural dynamics equation 
+is 
+δδδ =sss o dM+ C+ K+ f + F 0     (5) 
+where 𝑀௦ is the overall quality matrix for the pipeline; 𝐶௦ is the overall damping matrix; 
+𝐾௦ is global sti ﬀness matrix; 𝛿 is the displacement vector; 𝑓௢ is the vector of ﬂuid pipe-
+line interaction at the ﬂuid–solid interface; and 𝐹ௗ is the external excitation vector other 
+than 𝑓௢. 
+Fluid structure coupling equation of pipeline: 
+The grid elements of the ﬂuid model and solid model can be diﬀerent, but they need 
+to satisfy the conservation of variables such as force on the ﬂuid–solid coupling surface 
+Appl. Sci. 2023, 13, 9829 5 of 16 
+ 
+(τ), displacement (d), heat ﬂow rate (q), and temperature (T), satisfying the following four 
+equations: 
+𝑑௙ = 𝑑௦  (6) 
+n𝜏௙ = n 𝜏௦ (7) 
+𝑞௙ = 𝑞௦ (8) 
+𝑇௙ =  𝑇௦  (9) 
+In the equation, 𝑑௙ and 𝑑௦ are the displacements of the ﬂuid and solid on the ﬂuid–
+solid coupling surface; 𝜏௙,𝜏௦ are the shear stress of the ﬂuid and solid on the ﬂuid–solid 
+coupling surface; 𝑞௙, 𝑞௦ is the heat ﬂux of the ﬂuid and solid on the ﬂuid–solid coupling 
+surface; and 𝑇௙,𝑇௦ is the temperature of the ﬂuid and solid on the ﬂuid–solid coupling 
+surface. 
+When temperature changes are not considered, both the displacement balance equa-
+tion and the stress balance equation should be satis ﬁed; that is, by satisfying the conser-
+vation of these two variables, the transfer of analytical parameters between the ﬂuid and 
+the solid can be achieved. In Figure 1, U, V, W are coordinate axis. h is the thickness of the 
+pipe wall, and a is the average radius of the pipeline. r is the direction vector of the pipe-
+line cross-section, so θ  is the angle between the r vector and the vertical direction.
+ 
+Figure 1. Single-pipe geometric modeling. 
+2.2. Single Pipeline Fluid–Structure Interaction Finite Element Model 
+Use the ﬁnite element software Ansys Workbench to establish a simulation model for 
+modal analysis and solve it for the natural frequencies of each order of a single pipeline. 
+The single pipe calculation pipeline is calculated by using titanium alloy pipeline. The 
+pipeline size and material properties of the pipeline and ﬂuid are shown in Table 1. The 
+boundary conditions for simulation calculations are as follows: se tting the inlet of the 
+cross-type branch pipe as the velocity inlet, the ﬂow rate is 1 m/s. Set the outlet as a pres-
+sure outlet and the pressure to 1 Mpa. Set the ﬂuid–solid interface as the wall surface. Both 
+ends of the pipe adopt ﬁxed constraints. 
+1:1 modeling is carried out according to the actual pipeline shown in Figure 2a, and 
+ﬂuid is added inside the pipeline. The block pipe clamp is 66.77 mm long, 30.07 mm wide, 
+and 23.9 mm high. The single-pipe geometric modeling is shown in Figure 2b. 
+
+Appl. Sci. 2023, 13, 9829 6 of 16 
+ 
+ 
+ 
+(a) (b) 
+Figure 2. Actual pipeline and its geometric modeling. (a) Actual hydraulic pipeline; (b) Single pipe 
+geometric modeling. 
+Table 1. Pipeline and hydraulic oil material parameters. 
+Pipeline Fluid 
+Tube outer diameter (mm) 9.56 Density ( kg mଷ⁄ ) 850 
+Wall thickness (mm) 0.51 Bulk modulus (GPa) 1.666 
+Total length (mm) 583.17   
+Elastic modulus (GPa) 108   
+Density (kg mଷ⁄ ) 4510   
+Poisson’s ratio 0.33   
+In terms of grid generation, the pipeline is divided into grids by sweeping. The grid 
+cells are hexahedron cells with a size of 3 mm. The number of unit layers in the thickness 
+direction of the pipeline is one layer. The ﬂuid in the pipe is automatically meshed, and a 
+boundary layer is inserted at the ﬂuid–solid interface. The thickness of the ﬁrst boundary 
+layer is 0.0002 m. 
+Since the standard k-ε equation is suitable for initial iteration and parameter research, 
+it is selected in this model. The pressure-velocity coupling mode of ﬂuid is saved as a 
+SIMPLE algorithm. The turbulence of a ﬂuid is deﬁned by adding turbulent kinetic energy 
+to the diameter of water particles with a diameter of 0.055 m. The pipe clamp and screw 
+are divided into tetrahedral grids, and the direct contact area between the screw and the 
+pipe clamp is set as binding contact. Verify the grid convergence of the model. At the direct 
+contact area between the screw and the pipe clamp, the grid was encrypted with a size of 
+0.5 mm. The local pipeline grid and the pipe clamp grid are shown in Figure 3. The num-
+ber of units in the pipeline section is 9526, and the number of nodes is 18,228. The number 
+of units in the pipe clamp section is 392,533, and the number of nodes is 82,109. Perform 
+modal analysis on the above ﬁnite element model. 
+ 
+ 
+(a) ( b) 
+
+Appl. Sci. 2023, 13, 9829 7 of 16 
+ 
+Figure 3. Schematic diagram of local pipeline grid and pipe clamp grid. (a) Single pipeline grid local; 
+(b) Pipe clamp grid. 
+2.3. Experimental Veriﬁcation 
+Using a vibration table as the excitation equipment for the analyzed pipeline, com-
+plete the vibration experiment. The vibratio n table used in this study has a maximum 
+excitation force of 10 KN, a maximum displacement of 51 mm, and a frequency range of 
+5–3000 Hz. The testing equipment used in the experiment is an IEPE piezoelectric accel-
+eration sensor, model PCB356 A116, with a measurable frequency range of 0.5–5000 Hz 
+and a range of ±50 g. The data acquisition instrument is a DH5922 N dynamic signal tester, 
+which uses a USB3.0 cable to connect with a computer for data transmission. The experi-
+mental operation process is as follows: 
+(1) Fill the interior of the pipeline with hydraulic oil and block both ends with screw 
+plugs. The hydraulic pipeline used in the vibration experiment is ﬁxed to the ﬁxture with 
+block clamps, and the installation diagram is shown in Figure 4. The material parameters 
+of the pipeline and oil are shown in Table 1. 
+ 
+Figure 4. Schematic diagram of pipe clamp and single pipe ﬁxing. 
+(2) In the software section of the vibration test control system, create a new engineer-
+ing ﬁle and select the sine sweep frequency method. Set the engineering units with dis-
+placement in mm, velocity in m/s, and acceleration in g. 
+(3) The sensor type of the input channel is set as an acceleration sensor and is a charge 
+sensor. The sensitivity is an inherent value of the sensor: 43.81 pc/G. 
+(4) The se tting of the sine target spectrum. The target spectrum of the sine sweep 
+experiment adopts 5–19.92944 Hz as the positioning shift range, with a displacement peak 
+to peak of 1.25 mm, and 19.9294–2000 Hz as the ﬁxed acceleration range, with an acceler-
+ation value of 1 g. 
+(5) Schedule se ttings. The schedule is used to ar range experiments to be automati-
+cally executed according to a predetermined sequence of events, with a frequency limit of 
+5 Hz for the lower limit and 2000 Hz for the upper limit. The starting frequency is 5 Hz, 
+and the starting direction is upward. Choose logarithmic sweep as the sweep mode, with 
+one sweep frequency. 
+(6) Signal acquisition system settings. Create a new project management ﬁle and set 
+the channel se ttings for the channels connected to the acquisition instrument. The sam-
+pling frequency is set to 20 KHz. Since the sensor used for signal collection is an accelera-
+tion sensor, the measurement quantity is chosen as acceleration, and the input method is 
+IEPE. 
+(7) After setting the relevant experimental parameters, return to the main operation 
+interface of the controller and click “Start” to proceed with the experiment. 
+This experiment mainly compares the natural frequencies of each order with the sim-
+ulation results. The vibration parameters obtained through ﬁnite element simulation are 
+in good agreement with the experimental results, and the speci ﬁc data is shown in Table 
+2. 
+
+Appl. Sci. 2023, 13, 9829 8 of 16 
+ 
+The problems caused by the di ﬀerence between the experimental conditions of the 
+conﬁrmatory experiment and the simulation cond itions are mainly due to the following 
+reasons: (1) The installation position of th e sensor: During the measurement of natural 
+frequency, the installation position of the sensor should avoid the position of the con-
+cerned modal node. For example, in this experiment, the vibration amplitude at the mid-
+span position of the pipeline is de ﬁnitely large, but the mid-span is a node with even 
+modal orders, so it should be avoided to install the sensor at this position. (2) On the other 
+hand, the modes of the structure belong to strong directional modes, and diﬀerent orders 
+of modes are often in di ﬀerent directions. The installation direction of the sensor in this 
+experiment has always been upward, which can easily cause errors. In the ﬁnite element 
+simulation calculation process, only the inherent modal parameters of the model are cal-
+culated, and the structure is not aﬀected by sensors, so there is a certain error between the 
+two. 
+Therefore, when conducting pipeline vibr ation experiments, the following opera-
+tions should be carried out to reduce possible errors: (1) the installation position of the 
+sensor should not be close to the modal no de position; (2) when measuring the natural 
+frequencies in diﬀerent directions, sensors should be arranged in diﬀerent directions. 
+Table 2. Comparison of the ﬁrst 15 natural frequencies of a single pipeline. 
+Order Experimental Frequency (Hz)  Ansys Simulation (Hz) Error 
+1 210.20 218.11 3.8% 
+2 309.29 322.59 4.3% 
+3 483.39 496.23 2.7% 
+4 577.39 592.66 2.6% 
+5 601.81 606.25 0.7% 
+6 714.11 721.65 1.1% 
+7 901.24 913.27 1.3% 
+8 955.81 931.62 2.5% 
+9 989.99 979.6 1% 
+10 1072.98 1055.7 1.6% 
+11 1149.9 1156.3 0.6% 
+12 1323.24 1379.1 4.2% 
+13 1525.88 1498.4 1.8% 
+14 1661.38 1682.1 1.2% 
+15 1984.86 1993.9 0.5% 
+Through the comparison between the above single pipeline experiment and the so-
+lution of the ﬁnite element method, it is found that the ﬁnite element method has a high 
+accuracy in solving the ﬂuid–structure interaction vibration problem of the hydraulic 
+pipeline. Based on this, the following ﬂuid–structure interaction vibration analysis of a 
+cross-type hydraulic pipeline is carried out using the ﬁnite element method. 
+3. Fluid–Structure Interaction Analysis of Cross-Type Hydraulic Pipeline 
+The coupling vibration of the branch pipeline is mainly caused by the ﬂuid pressure 
+pulsation excitation of the pump and external  mechanical excitation. This section simu-
+lates the excitation caused by pressure pulsation through changes in ﬂuid pressure inside 
+the pipe. In the process of studying the vibration characteristics of hydraulic pipelines, the 
+coupling eﬀect of ﬂuid on solid pipelines will obviously aﬀect the vibration characteristics 
+of the pipeline, while the coupling eﬀect of solid on ﬂuid has little impact on them. There-
+fore, this section only considers the ﬂuid–structure interaction eﬀect of ﬂuid on pipelines 
+in one direction. The ﬂuid–structure interaction analysis ﬁrst uses the computational ﬂuid 
+Appl. Sci. 2023, 13, 9829 9 of 16 
+ 
+dynamics theory to solve the ﬂuid model inside the pipeline, then transfers the ﬂuid force 
+to the solid pipeline wall and analyzes the changes in the steady-state parameters such as 
+the deformation and stress of the pipeline structure. The ﬁnite element model of the cross-
+type pipeline still adopts the straight pipe modeling method mentioned above, and after 
+geometric modeling, the SOLSH190 element in  the continuum shell element is used to 
+discretize the pipeline. This is mesh division  work. At the same time, the convergence of 
+the grid is veriﬁed, and there is a certain degree of reﬁnement of the grid at the connection 
+position between the pipeline and the joint. The material of the cross-type pipeline used 
+is stainless steel, and the ﬂuid is hydraulic oil. The material properties of the pipeline and 
+hydraulic oil are shown in Table 3. The pipeline support method is still ﬁxed at both ends. 
+Table 3. Cross-type pipeline material characteristics. 
+Pipeline Fluid 
+Tube outer diameter (mm) 50 Density ( kg mଷ⁄ ) 850 
+Wall thickness (mm) 5 Bulk modulus (GPa) 1.666 
+Elastic modulus (GPa) 206   
+Density (kg mଷ⁄ ) 7900   
+Poisson’s ratio 0.3   
+3.1. Inﬂuence of Fluid Pressure on Fluid–Structure Interaction Characteristics of  
+Cross-Type Pipeline 
+In order to consider the coupled vibration of the pipeline caused by ﬂuid pressure 
+pulsation, the ﬂuid pressure values are set as 0 MPa, 1 MPa, 5 MPa, 10 MPa, 15 MPa, and 
+21 MPa, and the inﬂuence of ﬂuid pressure on it is discussed by solving the ﬂuid–structure 
+interaction steady-state parameters under six working conditions. The treatment method 
+for the ﬂuid is the same as that for using the ﬁnite element method for the single pipeline, 
+with boundary conditions set. The inlet of the cross-type pipe is set as the velocity inlet, 
+and the ﬂow rate is 1 m/s. The outlet is set as the pressure outlet. The pressure values 
+correspond to the six working conditions, and the ﬂuid–solid interface is set as the wall. 
+As the ﬂuid pressure increases, the maximum response value increases and the maximum 
+stress decreases. 
+After the ﬂow ﬁeld calculation is completed, the ﬂuid pressure is introduced into the 
+solid inner wall of the cross-type pipeline for import calculation. After the calculation is 
+completed, the pressure load and displacement of the ﬂow ﬁeld on the pipeline solid can 
+be obtained, as shown in Figure 5, which is the deformation diagram and stress distribu-
+tion diagram of the cross-type pipeline under the corresponding working condition of 21 
+MPa pressure. 
+ 
+(a)  
+
+Appl. Sci. 2023, 13, 9829 10 of 16 
+ 
+ 
+(b) 
+Figure 5. Analysis results of 21 MPa cross-type pipeline ﬂuid–structure interaction. (a) steady-state 
+deformation of cross-type pipe; (b) steady state stress of cross-type pipe. 
+Plot the maximum response value and maximum stress of the pipeline under diﬀer-
+ent ﬂuid pressures as a curve, as shown in Figure 6. As the ﬂuid pressure increases, the 
+maximum deformation of the cross-type pipeline decreases in a small range, and the max-
+imum stress shows a decreasing trend. 
+ 
+ 
+(a) (b) 
+Figure 6. Changes in steady-state parameters of pipelines with pressure. ( a) response amplitude 
+curve; (b) maximum stress curve. 
+3.2. Inﬂuence of Pipeline Elastic Modulus on Fluid–Structure Interaction Characteristics of 
+Cross-Type Pipeline 
+Taking the cross-type hydraulic pipeline with the same boundary condition and dif-
+ferent pipeline elastic modulus as the research object, the ﬂuid–structure interaction anal-
+ysis was carried out to study the in ﬂuence of the pipeline elastic modulus on the steady-
+state characteristics of the branch pipeline. Taking into account the elastic moduli of all 
+metal materials, the range of elastic moduli is determined to be 70–230 GPa. Calculations 
+are conducted every 20 GPa to obtain the steady-state deformation and stress, and the 
+curve is plotted as shown in Figure 7. By analyzing the curve trend, it can be concluded 
+that as the elastic modulus of the pipeline  increases, the maximum response value de-
+creases, and the maximum stress shows a linear increase trend. 
+2330
+2335
+2340
+2345
+2350
+2355
+2360
+2365
+2370
+0 2 4 6 8 10 12 14 16 18 20 22
+Maximum stress(MPa)  
+Fluid pressure（MPa)
+0.188
+0.1885
+0.189
+0.1895
+0.19
+0.1905
+0.191
+0.1915
+0.192
+0.1925
+02468 1 0 1 2 1 4 1 6 1 8 2 0 2 2
+Maximum response value
+（mm）
+Fluid pressure（MPa)
+Appl. Sci. 2023, 13, 9829 11 of 16 
+ 
+  
+(a) (b) 
+Figure 7. The variation of steady-state parameters  of pipelines with elastic modulus. ( a) response 
+amplitude curve; (b) maximum stress curve. 
+4. Analysis of Vibration Characteristics of Cross-Type Hydraulic Pipeline 
+Based on the ﬂuid–structure interaction analysis of cross-type pipelines, the modal 
+analysis of cross-type pipelines considering ﬂuid–structure interaction is carried out. In 
+the actual working environment, when the pipeline is excited by external forces from the 
+ﬁxed wall panels and other structures, the vi bration modes of each order of the pipeline 
+are diﬀerent. Therefore, it is also necessary to consider the external force excitation of the 
+pipeline and conduct a harmonic response analysis. The article simulates external excita-
+tion by adding a simple harmonic force to harmonic response analysis. 
+4.1. Eﬀect of Fluid Pressure on the Vibration Characteristics of Cross-Type Pipelines 
+Set the ﬂuid pressure to 0 MPa, 1 MPa, 5 MPa, 10 MPa, 15 MPa, and 21 MPa, respec-
+tively, and perform modal analysis on the cross-type pipeline to obtain its modal fre-
+quency and vibration mode. The ﬁrst six natural frequency variation curves under diﬀer-
+ent pressures are shown in Figure 8. Taking the pressure inside the pipe as an example of 
+21 MPa, harmonic response analysis was conducted by adding a simple harmonic force 
+with an amplitude of 1 N in the X, Y, and Z directions at the connection positions of the 
+pipe joint, and the frequency range was set to basically cover the ﬁrst six modal natural 
+frequencies of the cross-type pi pe. For example, when the pressure inside the pipe is 21 
+Mpa, the frequency range to be considered for harmonic response analysis is the same as 
+the ﬁrst six natural frequencies in modal analysis, ranging from 0–1200 Hz. Figure 9 shows 
+the displacement response of a cross-type pipeline when a simple harmonic force is added 
+in the X, Y, and Z directions. 
+0.188
+0.1885
+0.189
+0.1895
+0.19
+0.1905
+0.191
+50 70 90 110 130 150 170 190 210 230 250
+Maximum response value
+（mm）
+Elastic modulus(GPa)
+0
+500
+1000
+1500
+2000
+2500
+3000
+50 70 90 110 130 150 170 190 210 230 250
+Maximum stress(MPa)
+Elastic modulus(GPa)
+Appl. Sci. 2023, 13, 9829 12 of 16 
+ 
+ 
+Figure 8. Natural frequency variation curve of pipeline under diﬀerent pressures. 
+ 
+Figure 9. A 21 MPa harmonic response analysis curve of cross-type pipe. 
+From the above curve analysis, it can be concluded that the ﬁrst six natural frequen-
+cies of the cross-type pipeline show an increasing trend with the increase in ﬂuid pressure 
+inside the pipeline. With the increase in ﬂuid pressure, the pipeline’s stiﬀness will go up. 
+So the self-excited vibration period of the vibration system decreases, and the natural fre-
+quency increases. Compared with the results of ﬂuid–structure interaction vibration char-
+acteristics of a single pipe in the literature [25], it is found that the natural frequency of a 
+cross-type pipe changes in the opposite dire ction to that of a single pipe when the ﬂuid 
+pressure in the pipe increases. The response  of the cross-type br anch pipeline under the 
+action of this harmonic force shows maximu m values at frequencies of 336 Hz, 582 Hz, 
+1136 Hz, and 1156 HZ. Comparing the response of the cross-type bran ch pipeline in the 
+0.00E+00
+1.00E-03
+2.00E-03
+3.00E-03
+4.00E-03
+5.00E-03
+6.00E-03
+7.00E-03
+8.00E-03
+9.00E-03
+1.00E-02
+0 500 1000
+Amplitude/mm
+Frequency/Hz
+X
+Y
+Z
+Appl. Sci. 2023, 13, 9829 13 of 16 
+ 
+X, Y, and Z directions, it is found that the displacement response of the cross-type pipeline 
+in the X direction was the largest, with a value of 
+-38.73 10×  mm. By comparing the 
+modal analysis, it is found that the natural frequencies of the cross-type branch pipe were 
+very close to the ﬁrst-order natural frequency of 335.53 Hz, the second-order natural fre-
+quency of 581.36 Hz, the fourth-order natural frequency of 1136.4 Hz, and the ﬁfth-order 
+natural frequency of 1158.7 Hz, respectively. This indicates that under external excitation, 
+the ﬁrst, second, fourth, and ﬁfth order modes of the cross-type pipe are more sensitive to 
+external excitation forces, and the response value is the highest in the ﬁrst order mode. 
+When conducting modal analysis on pipelines, we will ﬁnd that the amplitude of vibra-
+tion varies at diﬀerent orders of modes. Therefore, when subjected to external excitation, 
+although the magnitude of the excitation force is the same, sensitivity may vary due to the 
+diﬀerent amplitudes of the modes in which the structure is located. 
+4.2. The Eﬀect of Elastic Modulus on the Vibration Characteristics of Cross-Type Branch Pipeline 
+In this section, the elastic modulus of materials is taken as the research variable, and 
+the elastic modulus of all metal materials is  considered without loss of generality. The 
+range of elastic modulus is determined as 70–230 GPa, and every 20 GPa is a calculation 
+point. The modal shape and harmonic respon se results are solved, and the calculation 
+results are analyzed. Figure 10 depicts the variation of the ﬁrst six natural frequencies 
+under the elastic modulus parameters in the above range. Figure 11 shows the harmonic 
+response analysis of a cross-type branch pipeline with an elastic modulus of 70 GPa. 
+ 
+Figure 10. Natural frequency variation curve of pipeline under diﬀerent elastic modulus. 
+ 
+Figure 11. A 70 GPa harmonic response analysis curve of cross-type pipe. 
+100
+200
+300
+400
+500
+600
+700
+800
+900
+1000
+1100
+1200
+1300
+50 100 150 200 250
+Natural frequency/Hz
+Elastic modulus/GPa
+First order
+Second order
+Third order
+Fourth order
+Fifth order
+Sixth order
+0.00E+00
+2.00E-03
+4.00E-03
+6.00E-03
+8.00E-03
+1.00E-02
+1.20E-02
+1.40E-02
+1.60E-02
+1.80E-02
+2.00E-02
+0 200 400 600
+Amplitude/mm
+Frequency/Hz
+X
+Y
+Z
+Appl. Sci. 2023, 13, 9829 14 of 16 
+ 
+From the above analysis, it can be concluded that the ﬁrst six natural frequencies of 
+the cross-type branch pipeline increase wh en the elastic modulus increases, and the 
+higher-order modes are more signi ﬁcantly aﬀected by the elastic modulus. With the in-
+crease in solid elastic modulus, the pipeline’s sti ﬀness will go up. So the self-excited vi-
+bration period of the vibration system decreases, and the natural frequency increases. The 
+response of the cross-type branch pipeline with an elastic modulus of 70 GPa under the 
+action of this harmonic force shows maximu m values at frequencies of 198 Hz, 342 Hz, 
+and 678 Hz. Comparing the response of the cross-type branch pipeline in the X, Y, and Z 
+directions, it was found that the displacement response of the cross-type pipeline in the x 
+direction was the highest, with a displaceme nt response of 0.019 mm. By comparing the 
+modal analysis, it is found that the natural fr equencies of the branch tube are very close 
+to the ﬁrst-order natural frequency of 198.52 Hz, the second-order natural frequency of 
+342.17 Hz, and the ﬁfth-order natural frequency of 678.15, respectively. This indicates that 
+under external excitation, the ﬁrst, second, and ﬁfth order modes of the cross-type tube 
+with this elastic modulus are sensitive to external excitation forces, and the response value 
+is the highest in the ﬁrst order mode. When conducting modal analysis on pipelines, we 
+will ﬁnd that the amplitude of vibration varies at di ﬀerent orders of modes. Therefore, 
+when subjected to external excitation, althou gh the magnitude of the excitation force is 
+the same, sensitivity may vary due to the diﬀerent amplitudes of the modes in which the 
+structure is located. 
+In passage [26], branch pipelines have b een calculated with the transfer matrix 
+method. By comparing its calculation results with those of ﬁnite element calculation, it 
+was found that the transfer matrix method has a greater error in calculation. Therefore, it 
+can be proven that the ﬁnite element method is superior at solving vibration problems in 
+branch pipelines. 
+5. Conclusions 
+In light of the coupling vibration problem caused by the ﬂuid pressure beat and ex-
+ternal mechanical excitation of the pump at the junction of the branch of the cross-type 
+hydraulic pipeline, a method combining ﬁnite element simulation and ﬂuid-structure in-
+teraction vibration experiments is proposed for research. And the di ﬀerent pressures of 
+the ﬂuid in the pipeline and the elastic modulus of the pipeline are considered variables, 
+so complex systems can be calculated using this method. The biggest advantage of the 
+present method is that the in ﬂuence of internal ﬂuid beats and external excitation can be 
+comprehensively considered. It means that there is no need to replace methods and mod-
+els when solving the working conditions of internal ﬂuid coupling and external excitation 
+changes, in contrast to most existing methods. Thus, this method is simple, reduces meas-
+urement time and cost, and has practical engineering value. 
+Experimental measurements of a single pipeline in a simple laboratory apparatus are 
+presented. The results calculated by the pr esented method are in good agreement with 
+the experimental data, which veriﬁed the accuracy of the proposed method. 
+The ﬂuid–structure interaction analysis and vibration characteristics of a cross-type 
+hydraulic pipeline were carried out using the ﬁnite element method. As the ﬂuid pressure 
+increases, the maximum deformation of the cross-type pipeline decreases in a small range, 
+and the maximum stress shows a decreasing trend. But only lower-order modes are sig-
+niﬁcantly aﬀected by modal analysis. As the elastic modulus of the pipeline increases, the 
+maximum response value decreases, and the maximum stress shows a linear trend of in-
+crease. While the higher-order modes are signi ﬁcantly aﬀected in modal analysis. With 
+the increase in ﬂuid pressure and solid elastic modulus, the pipeline’s stiﬀness will go up. 
+So the self-excited vibration period of the vibration system decreases, and the natural fre-
+quency increases. 
+Under external excitation, the ﬁrst, second, and ﬁfth-order modes of the cross-type 
+tube are sensitive to external excitation forces. And the vibration direction is in the X di-
+Appl. Sci. 2023, 13, 9829 15 of 16 
+ 
+rection. The analysis results have a certain reference value for the vibration reduction de-
+sign of liquid pipelines in practical engineering. When designing and installing the hy-
+draulic pipeline system, adjust the sti ﬀness parameters of the components reasonably 
+based on the di ﬀerences in the load frequency band of the area where the pipeline is lo-
+cated to avoid resonance frequencies. In the operation and maintenance stages, if there is 
+a pipeline failure caused by vibration, it can be focused on the easily excited modes, so 
+that maintenance is more targeted. 
+In actual hydraulic pipelines, the ﬂuid ﬂow rate is often variable, so in future re-
+search, the changing ﬂuid ﬂow rate can be considered the research object. 
+Author Contributions: Conceptualization, Z.L. and H.L.; methodology, Z.L. and B.L.; software, J.C.; 
+validation, Z.L., H.L., and Y.L.; formal analysis, B.L.; investigation, H.L.; resources, H.L.; data cura-
+tion, Y.L.; writing—original draft preparation, Z.L.; writing—review and editing, H.L.; visualization, 
+J.C.; supervision, B.L.; project administration, Y.L.; funding acquisition, Z.L. All authors have read 
+and agreed to the published version of the manuscript. 
+Funding: This research was funded by the Fundamental Research Funds for Central Universities at 
+the Civil Aviation University of China, grant number “3122022062”. 
+Institutional Review Board Statement: Not applicable. 
+Informed Consent Statement: Not applicable. 
+Data Availability Statement: The data presented in this study are available from the corresponding. 
+Conﬂicts of Interest: The authors declare no conﬂict of interest. 
+References 
+1. Li, Y.; Song, Y.; Jiang, F.; Zhu, D.; Jiao, J.; Zhu, Y. Design and test of intake and exhaust pipeline system of CNC two-stage 
+pneumatic engine. Mech. Des. 2018, 35, 56–61. 
+2. Karagiozis, K.N.; Païdoussis, M.P.; Amabili, M. E ﬀect of geometry on the stability of cylindrical clamped shells subjected to 
+internal ﬂuid ﬂow. Computers and Structures 2007, 85, 645–659. 
+3. Tijsseling, A.S.; Lambert, M.F.; Simpson, A.R.; Stephens, M. L.; Vítkovský, J.P.; Bergant, A. Theory of Water Hammer. J. Sound 
+Vib. 2008, 718. 
+4. Chao, J.; Yu, X.; Wang, Z.; Jiang, Z; Zhang, G.; Shu, Y. Causes and Treatment Plan for Hydrogen Compressor Pipeline Vibra-
+tion. Oil Gas Storage Transp. 2023, 42, 952–960. 
+5. Xia, Z.; Ju, F.; Lu, Z.; Shi, D. Study on the vibration characteristics of local resonance type periodic pipeline systems. Noise Vib. 
+Control 2023, 43, 86–91. 
+6. Zhang, Y.; Sun, W.; Liu, X. Se mi analytical modeling of vibr ation characteristics of liquid ﬁlled pipelines and optimization of 
+clamp layout . J. Cent. South Univ. (Nat. Sci.Ed. ) 2022, 53, 4262–4270. 
+7. Tokarev, A.P.; Yanbarisova, A.A.; Khatmullina, R.S. The Depend ence of the Pump Piping Vibration from the Rotor Speed. In 
+IOP Conference Series: Earth and Environmental Science; IOP Publishing: Bristol, UK, 2021, Volume 666. 
+8. Khudayarov, B.; Turaev, F. Numerical simulation of  a viscoelastic pipeline vibration under pulsating ﬂuid ﬂow. Multidiscip. 
+Model. Mater. Struct. 2022, 18, 219–237. 
+9. Liu, E.; Lian, D.; Zheng, H.; Su, Z.; Chen, Q. Research on Ab normal Vibration and Vibration Reduction Measures of a Natural 
+Gas Compressor Station: A Case Study of the JYG Compressor Station. Energy Fuels 2022, 36, 897–909. 
+10. Xu, Z.; Yang, Y.; Miao, A.N. Dynamic Analysis and Parameter Optimization of Pipelines with Multidimensional Vibration Iso-
+lation and Mitigation Device. J. Pipeline Syst. Eng. Pract. 2021, 12, 4020058.1–4020058.12. 
+11. Liang, Z.; Guo, C.; Wang, C. The Connection between ﬂow pattern evolution and vibration in 90-degree pipeline: Bidirectional 
+ﬂuid-structure interaction. Energy Sci. Eng. 2021, 10, 308–323. 
+12. Tijsseling, A.S.; Vardy, A.E. Fluid-structure interaction and transient cavitation tests in a T-piece pipe. J. Fluids Struct. 2005, 20, 
+753–762. 
+13. Ziada, S.; Mclaren, K.W.; Li, Y. Flow-Acoustic Coupling in T-Junctions: E ﬀect of T-Junction Geometry . J. Press. Vessel. Technol. 
+2009, 131, 1–14. 
+14. Tentarelli, S.C.; Brown, F.T. Dynamic behavior of complex ﬂuid-ﬁlled systems----Part 2:  System analysis. J. Dyn. Syst. Meas. 
+Control 2001, 123, 78–84. 
+15. Cao, Y.; Liu, G.; Zhang, L. Dynamic Optimization Design of Branch Pipeline System Based on Genetic Algorithm. J. Vib. Shock. 
+2021, 40, 221–227. 
+16. Liu, M.-M.; Wang, H.-C.; Shao, F.-F.; Xin, J.; Tan, G.Q.; Fan, Y. Numerical investigation of local scour around a vibration pipeline 
+under free surface wave condition. Ocean. Eng. 2022, 245, 110556. 
+Appl. Sci. 2023, 13, 9829 16 of 16 
+ 
+17. Cai, B.; Fang, C.; Ma, S.; Yu, J. Numerical simulation of ﬂow vibration and noise of water injection pipeline under ﬂuid-structure 
+interaction. Ship Sci. Technol. 2020, 42, 118–122. 
+18. Hu, B.; Yu, D. Study on vibration transfer characteristics of ﬂuid-structure coupling pipeline. In Proceedings of the 13th National 
+Conference on Vibration Theory and Application, Xi-an, China, 9–12 November 2019; pp. 348–354. 
+19. Zhong, Y.; Zhong, Y.; Tian, Y.; Deng, J. Mathematical modeling of ﬂuid-structure interaction vibration analysis of elbows in 
+liquid-ﬁlled pipelines. Mach. Manuf. Autom. 2019, 48, 120–124. 
+20. Sang, Y.; Shao, L.; Wang, X. Fluid-structure inte raction vibration analysis  based on ANSYS high- ﬂow pipeline. Hydraul. Seal. 
+2018, 38, 1–5. 
+21. Quan, L.; Sun, B.; Zhao, J.; Li, D. Frequency response analysis of ﬂuid-structure interaction vibration of aviation bending hy-
+draulic pipeline. J. Northwestern Polytech. Univ. 2018, 36, 487–495. 
+22. Guo, M. Correction of friction term of 14-equation of ﬂuid-structure interaction vibration of high-speed and high-pressure hy-
+draulic pipeline. Master’s thesis, Yanshan University, Qinhuangdao, China, 2018. 
+23. Samanpour, H.; Ahmadi, N.; Jabbary, A. Eﬀects of applying brand-new designs on the performance of PEM fuel cell and water 
+ﬂooding phenomena. Iran. J. Chem. Chem. Eng. Res. Article 2022, 41, 618–635. 
+24. Quan, L.; Kong, X.; Yu, B.; Bai, H. Research status and development of ﬂuid-structure interaction vibration mechanism and 
+control of hydraulic pipeline. J. Mech. Eng. 2015, 51, 175–183. 
+25. Li, Z.; Wang, J.; Qiu, X. Fluid-structure interaction vibration characteristics of aero-engine space pipeline system. Journal o f 
+Aerospace Power 2016, 31, 2346–2352. 
+26. Liu, G.; Li, S.; Li, Y.; Chen, H. Vibration analysis of pipelines  with arbitrary branches by ab sorbing transfer matrix method. J. 
+Sound Vib. 2013, 332, 6519–6536. https://doi.org/10.1016/j.jsv.2013.06.019. 
+Disclaimer/Publisher’s Note: The statements, opinions and data contained in all publications are solely those of the individual au-
+thor(s) and contributor(s) and not of MDPI and/or the editor(s). MDPI and/or the edit or(s) disclaim responsibility for any inju ry to 
+people or property resulting from any ideas, methods, instructions or products referred to in the content. 

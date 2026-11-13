@@ -1,0 +1,38 @@
+[
+  {
+    "checkpoint": "v4_patch3.pth",
+    "sha256": "a9021862c753e11b0100fb11eba0d3b55800915654ed962fcdede8449b159d5d",
+    "patch": 3,
+    "shape": [
+      128,
+      128
+    ],
+    "dense_modified_pixels": 16040,
+    "dense_float_prediction_changes": 16384,
+    "dense_integer_prediction_changes": 16326,
+    "dense_max_abs_prediction_change": 208.71005249023438,
+    "isolated_candidates": 1764,
+    "isolated_input_patches_exact": true,
+    "isolated_float_predictions_exact": true,
+    "isolated_integer_predictions_exact": true,
+    "seconds": 1.9594735899590887
+  },
+  {
+    "checkpoint": "v1_full.pth",
+    "sha256": "51406640acaf6f3702481829d4562663b02336b8a6b96750a58eec6598815937",
+    "patch": 5,
+    "shape": [
+      128,
+      128
+    ],
+    "dense_modified_pixels": 16031,
+    "dense_float_prediction_changes": 16384,
+    "dense_integer_prediction_changes": 16330,
+    "dense_max_abs_prediction_change": 210.3343505859375,
+    "isolated_candidates": 1764,
+    "isolated_input_patches_exact": true,
+    "isolated_float_predictions_exact": true,
+    "isolated_integer_predictions_exact": true,
+    "seconds": 2.1620720520149916
+  }
+]

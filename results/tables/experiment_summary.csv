@@ -1,0 +1,6 @@
+experiment,kind,status,n_images,ckpt,grey_bpp_avg,rgb_bpp_avg,notes
+grayscale_baselines,grayscale,PASS,6,models/v4_patch3.pth,5.1897,,CNN BPP from baselines_comparison.py; PSNR=inf/SSIM=1/MAE=0 by construction for PEE methods
+rgb_baselines,rgb,PASS,6,models/v4_patch3.pth,,5.0113,RGB BPP = mean of R/G/B per-channel BPP; per-channel data saved
+ablation,variants,PASS,6,5 checkpoints,,5.0113,Ablation includes 5 variants; grayscale+colour BPP and MPE saved; reversibility verified for v4 separately
+runtime,runtime,PASS,1 image,5 variants,,,Predictor-only timings on Lena 512x512; warmup=5 repeats=10; CPU
+raw_pipeline,gray_rgb,PASS,6 gray + 6 rgb,models/v4_patch3.pth,5.1897,5.0113,Full pipeline run_rdhei / run_rdhei_color BPP, capacity, perfect, bit-acc, per-channel nonces

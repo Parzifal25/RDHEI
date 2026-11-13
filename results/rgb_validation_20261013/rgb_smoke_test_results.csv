@@ -1,0 +1,2 @@
+test,image,checkpoint,exact_rgb,all_channels_pass,pipeline_perfect,pipeline_bit_acc,verdict
+smoke_test,4.2.03.png,v4_patch3.pth,True,True,True,100.00%,PASS

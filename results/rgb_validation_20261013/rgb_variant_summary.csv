@@ -1,0 +1,6 @@
+variant,checkpoint,patch_size,residual,params,images_tested,images_passed,pass_rate,total_time_seconds
+v1_full,v1_full.pth,5,TRUE,112417,5,5,100%,138.1
+v2_no_residual,v2_no_residual.pth,5,FALSE,112353,5,5,100%,207.6
+v3_no_weighted_loss,v3_no_weighted_loss.pth,5,TRUE,112417,5,5,100%,188.6
+v4_patch3,v4_patch3.pth,3,TRUE,46881,5,5,100%,163.0
+v5_patch7,v5_patch7.pth,7,TRUE,210721,5,5,100%,298.3

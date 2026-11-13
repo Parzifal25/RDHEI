@@ -1,0 +1,5 @@
+host: x86_64
+os: Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.35
+python: 3.10.12
+torch: 2.14.0+cu130
+device: cpu

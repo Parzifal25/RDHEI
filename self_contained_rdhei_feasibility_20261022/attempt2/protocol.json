@@ -1,0 +1,20 @@
+{
+  "model": "models/v4_patch3.pth",
+  "candidate_grid": "rows,cols = range(2, dimension-2,3)",
+  "metadata": "4-bit code per original candidate tuple (n,min,max); choose shorter of raw nibble bytes and zlib9 bytes",
+  "bootstrap": "first H isolated candidate bytes hold 20-byte header plus labels; all H original bytes restored from prefix of ordinary candidate stream",
+  "cases": [
+    "Airplane.png",
+    "Baboon.png",
+    "Lena.png",
+    "constant128",
+    "random256"
+  ],
+  "payloads": [
+    "empty",
+    "37 bits",
+    "half net",
+    "full net"
+  ],
+  "receiver": "fresh Python subprocess; arguments ciphertext.npy,key,nonce,output paths only; preinstalled model/algorithm"
+}

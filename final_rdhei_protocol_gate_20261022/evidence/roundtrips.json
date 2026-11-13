@@ -1,0 +1,382 @@
+[
+  {
+    "image": "Airplane.png",
+    "case": "empty",
+    "payload_bits": 0,
+    "nonce": 202610220001,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.23388524900656193,
+    "embed_seconds": 0.22438462200807407,
+    "embed_process_seconds": 0.7501956640044227,
+    "receiver_seconds": 7.1614450389752164,
+    "receiver_process_seconds": 8.96833029598929,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Airplane_png_empty_cipher.png"
+    ],
+    "net_bits": 29762,
+    "within_pixel_backup_boundary": false,
+    "encrypted_payload_changed_bits": 14947
+  },
+  {
+    "image": "Airplane.png",
+    "case": "short",
+    "payload_bits": 37,
+    "nonce": 202610220002,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.2335820239968598,
+    "embed_seconds": 0.2793395529733971,
+    "embed_process_seconds": 0.8176671990077011,
+    "receiver_seconds": 6.158266143000219,
+    "receiver_process_seconds": 7.478582940006163,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Airplane_png_short_cipher.png"
+    ],
+    "net_bits": 29762,
+    "within_pixel_backup_boundary": false,
+    "encrypted_payload_changed_bits": 14919
+  },
+  {
+    "image": "Airplane.png",
+    "case": "partial",
+    "payload_bits": 14881,
+    "nonce": 202610220003,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.29913489101454616,
+    "embed_seconds": 0.30896551004843786,
+    "embed_process_seconds": 0.8680153950117528,
+    "receiver_seconds": 5.761201078013983,
+    "receiver_process_seconds": 6.991746022948064,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Airplane_png_partial_cipher.png"
+    ],
+    "net_bits": 29762,
+    "within_pixel_backup_boundary": false,
+    "encrypted_payload_changed_bits": 14894
+  },
+  {
+    "image": "Airplane.png",
+    "case": "full",
+    "payload_bits": 29762,
+    "nonce": 202610220004,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.20989856804953888,
+    "embed_seconds": 0.2267361789708957,
+    "embed_process_seconds": 0.7565754009992816,
+    "receiver_seconds": 6.402485043974593,
+    "receiver_process_seconds": 7.620269039995037,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Airplane_png_full_cipher.png"
+    ],
+    "net_bits": 29762,
+    "within_pixel_backup_boundary": false,
+    "encrypted_payload_changed_bits": 14924
+  },
+  {
+    "image": "Goldhill.png",
+    "case": "empty",
+    "payload_bits": 0,
+    "nonce": 202610220005,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.25862972595496103,
+    "embed_seconds": 0.2972841270384379,
+    "embed_process_seconds": 0.8387736030272208,
+    "receiver_seconds": 6.933125456038397,
+    "receiver_process_seconds": 8.117186590039637,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Goldhill_png_empty_cipher.png"
+    ],
+    "net_bits": 15091,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7568
+  },
+  {
+    "image": "Goldhill.png",
+    "case": "short",
+    "payload_bits": 37,
+    "nonce": 202610220006,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.23547543201129884,
+    "embed_seconds": 0.33775823103496805,
+    "embed_process_seconds": 0.9214527189615183,
+    "receiver_seconds": 6.466187373036519,
+    "receiver_process_seconds": 7.8323938959511,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Goldhill_png_short_cipher.png"
+    ],
+    "net_bits": 15091,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7515
+  },
+  {
+    "image": "Goldhill.png",
+    "case": "partial",
+    "payload_bits": 7545,
+    "nonce": 202610220007,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.2571768910274841,
+    "embed_seconds": 0.22643758699996397,
+    "embed_process_seconds": 0.8001532140187919,
+    "receiver_seconds": 6.84410670195939,
+    "receiver_process_seconds": 8.021755350986496,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Goldhill_png_partial_cipher.png"
+    ],
+    "net_bits": 15091,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7638
+  },
+  {
+    "image": "Goldhill.png",
+    "case": "full",
+    "payload_bits": 15091,
+    "nonce": 202610220008,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.3604622030397877,
+    "embed_seconds": 0.23643454699777067,
+    "embed_process_seconds": 0.8149379619862884,
+    "receiver_seconds": 6.1335605519707315,
+    "receiver_process_seconds": 7.196240877965465,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Goldhill_png_full_cipher.png"
+    ],
+    "net_bits": 15091,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7470
+  },
+  {
+    "image": "Jetplane.png",
+    "case": "empty",
+    "payload_bits": 0,
+    "nonce": 202610220009,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.8202931500272825,
+    "embed_seconds": 0.6012786569772288,
+    "embed_process_seconds": 1.3633119210135192,
+    "receiver_seconds": 9.097494800982531,
+    "receiver_process_seconds": 10.364823076000903,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Jetplane_png_empty_cipher.png"
+    ],
+    "net_bits": 11934,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 5924
+  },
+  {
+    "image": "Jetplane.png",
+    "case": "short",
+    "payload_bits": 37,
+    "nonce": 202610220010,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.6877679640310816,
+    "embed_seconds": 0.6027223929995671,
+    "embed_process_seconds": 1.2942412559641525,
+    "receiver_seconds": 8.256500823015813,
+    "receiver_process_seconds": 9.575455403944943,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Jetplane_png_short_cipher.png"
+    ],
+    "net_bits": 11934,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 6022
+  },
+  {
+    "image": "Jetplane.png",
+    "case": "partial",
+    "payload_bits": 5967,
+    "nonce": 202610220011,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.7198527320288122,
+    "embed_seconds": 0.5778732650214806,
+    "embed_process_seconds": 1.2923463159822859,
+    "receiver_seconds": 9.003135484002996,
+    "receiver_process_seconds": 10.350764960981905,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Jetplane_png_partial_cipher.png"
+    ],
+    "net_bits": 11934,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 6025
+  },
+  {
+    "image": "Jetplane.png",
+    "case": "full",
+    "payload_bits": 11934,
+    "nonce": 202610220012,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.7743584279669449,
+    "embed_seconds": 0.6165051439893432,
+    "embed_process_seconds": 1.289567713974975,
+    "receiver_seconds": 8.301031449984293,
+    "receiver_process_seconds": 9.498334958974738,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Jetplane_png_full_cipher.png"
+    ],
+    "net_bits": 11934,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 6055
+  },
+  {
+    "image": "Lena.png",
+    "case": "empty",
+    "payload_bits": 0,
+    "nonce": 202610220013,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.21788888302398846,
+    "embed_seconds": 0.2436167579726316,
+    "embed_process_seconds": 0.7308941099909134,
+    "receiver_seconds": 5.433809795009438,
+    "receiver_process_seconds": 6.707559255999513,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Lena_png_empty_cipher.png"
+    ],
+    "net_bits": 15570,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7719
+  },
+  {
+    "image": "Lena.png",
+    "case": "short",
+    "payload_bits": 37,
+    "nonce": 202610220014,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.19639387395000085,
+    "embed_seconds": 0.2803823820431717,
+    "embed_process_seconds": 0.8512506969855167,
+    "receiver_seconds": 5.145432909019291,
+    "receiver_process_seconds": 6.307289872027468,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Lena_png_short_cipher.png"
+    ],
+    "net_bits": 15570,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7755
+  },
+  {
+    "image": "Lena.png",
+    "case": "partial",
+    "payload_bits": 7785,
+    "nonce": 202610220015,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.21660222799982876,
+    "embed_seconds": 0.25079020799603313,
+    "embed_process_seconds": 0.743518975970801,
+    "receiver_seconds": 5.5800019149901345,
+    "receiver_process_seconds": 6.924091900989879,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Lena_png_partial_cipher.png"
+    ],
+    "net_bits": 15570,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7843
+  },
+  {
+    "image": "Lena.png",
+    "case": "full",
+    "payload_bits": 15570,
+    "nonce": 202610220016,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.31811315595405176,
+    "embed_seconds": 0.3591921560000628,
+    "embed_process_seconds": 0.9266753289848566,
+    "receiver_seconds": 5.50215182401007,
+    "receiver_process_seconds": 6.8706541559658945,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/Lena_png_full_cipher.png"
+    ],
+    "net_bits": 15570,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 7718
+  },
+  {
+    "image": "constant128",
+    "case": "empty",
+    "payload_bits": 0,
+    "nonce": 202610220017,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.023701368016190827,
+    "embed_seconds": 0.16327503899810836,
+    "embed_process_seconds": 0.7085688749793917,
+    "receiver_seconds": 4.434073862968944,
+    "receiver_process_seconds": 5.843797987967264,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/constant128_empty_cipher.png"
+    ],
+    "net_bits": 11313,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 5571
+  },
+  {
+    "image": "constant128",
+    "case": "short",
+    "payload_bits": 37,
+    "nonce": 202610220018,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.03239715500967577,
+    "embed_seconds": 0.14377192495157942,
+    "embed_process_seconds": 0.47286388801876456,
+    "receiver_seconds": 4.754069952003192,
+    "receiver_process_seconds": 5.985473180015106,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/constant128_short_cipher.png"
+    ],
+    "net_bits": 11313,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 5675
+  },
+  {
+    "image": "constant128",
+    "case": "partial",
+    "payload_bits": 5656,
+    "nonce": 202610220019,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.02694709599018097,
+    "embed_seconds": 0.10825174202909693,
+    "embed_process_seconds": 0.570124338963069,
+    "receiver_seconds": 4.125329521019012,
+    "receiver_process_seconds": 5.442507392959669,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/constant128_partial_cipher.png"
+    ],
+    "net_bits": 11313,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 5614
+  },
+  {
+    "image": "constant128",
+    "case": "full",
+    "payload_bits": 11313,
+    "nonce": 202610220020,
+    "image_exact": true,
+    "payload_exact": true,
+    "reserve_encrypt_seconds": 0.0292475430178456,
+    "embed_seconds": 0.09954314195783809,
+    "embed_process_seconds": 0.5124131389893591,
+    "receiver_seconds": 4.378348242025822,
+    "receiver_process_seconds": 5.6030741119757295,
+    "receiver_evidence_reads": [
+      "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/final_rdhei_protocol_gate_20261022/evidence/constant128_full_cipher.png"
+    ],
+    "net_bits": 11313,
+    "within_pixel_backup_boundary": true,
+    "encrypted_payload_changed_bits": 5586
+  }
+]

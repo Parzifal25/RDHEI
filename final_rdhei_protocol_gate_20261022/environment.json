@@ -1,0 +1,10 @@
+{
+  "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+  "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+  "packages": {
+    "torch": "2.14.0",
+    "numpy": "2.2.6",
+    "pycryptodome": "3.24.1",
+    "Pillow": "12.3.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "historical_files_checked": 1521,
+  "changed_or_missing": [],
+  "excluded": [
+    ".git internals",
+    "__pycache__",
+    "new dedicated investigation directory"
+  ]
+}

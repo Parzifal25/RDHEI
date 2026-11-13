@@ -1,0 +1,5 @@
+scope,method,capacity_bits,prepare_mean_ms,embed_encrypt_mean_ms,decrypt_extract_recover_mean_ms,total_mean_ms,total_std_ms,repeats
+gray Airplane 512x512,med,1431289,48.2,1322.3,3692.6,5063.1,203.7,3
+gray Airplane 512x512,cnn,1507378,1705.5,1280.3,4053.8,7039.6,276.5,3
+rgb 4.2.03 512x512x3 (3 ch),med,3094742,102.7,3039.5,5152.7,8295.0,419.2,3
+rgb 4.2.03 512x512x3 (3 ch),cnn,3319470,6798.3,3462.3,5992.0,16252.6,1978.9,3

@@ -1,0 +1,35 @@
+BASELINES COMPARISON — RDHEI (RRBE Bit-Plane Replacement)
+======================================================================================
+
+CNN checkpoint: models/v4_patch3.pth
+CNN patch size: 3x3
+CNN parameters: 46,881
+
+BPP per image:
+  Image                  MED         GAP       CALIC   HistShift         CNN
+  --------------------------------------------------------------------------------------
+  Airplane            5.4348      5.4656      5.4022      0.0301      5.7502
+  Baboon              4.1987      4.2570      4.1192      0.0121      4.5576
+  Goldhill            5.0881      5.1125      5.0355      0.0252      5.3204
+  Jetplane            4.9667      5.0440      4.8736      0.0514      5.1063
+  Lena                5.1856      5.2651      5.1491      0.0104      5.4593
+  Peppers             4.8711      5.0157      4.7804      0.0103      4.9444
+  --------------------------------------------------------------------------------------
+  AVERAGE             4.9575      5.0266      4.8933      0.0233      5.1897
+
+MAE per image:
+  Image                  MED         GAP       CALIC   HistShift         CNN
+  --------------------------------------------------------------------------------------
+  Airplane            4.1443      4.0189      4.1751      0.5000      2.0873
+  Baboon             12.7197     12.2100     13.7013      0.5000      8.6664
+  Goldhill            5.0227      4.8935      5.3000      0.5000      3.5318
+  Jetplane            5.2456      4.7960      5.7839      0.5000      4.4075
+  Lena                4.8546      4.3994      4.9566      0.5000      2.9102
+  Peppers             5.9173      5.1399      6.4467      0.5000      5.1658
+  --------------------------------------------------------------------------------------
+  AVERAGE             6.3174      5.9096      6.7272      0.5000      4.4615
+
+Notes:
+  PSNR(recovered)=inf, SSIM=1.0, MAE=0.0 for all PEE-based methods.
+  HistShift: embeds <0.05 bpp — not directly comparable to prediction-error methods.
+  CNN = proposed CNN-3x3 configuration.

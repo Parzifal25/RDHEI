@@ -1,0 +1,2 @@
+n_images,MED_bpp_mean,MED_bpp_std,MED_mae_mean,MED_capacity_total,GAP_bpp_mean,GAP_bpp_std,GAP_mae_mean,GAP_capacity_total,CALIC_bpp_mean,CALIC_bpp_std,CALIC_mae_mean,CALIC_capacity_total,MED_pipeline_bpp_mean,MED_pipeline_bpp_std,MED_pipeline_mae_mean,MED_pipeline_capacity_total,CNN3x3_bpp_mean,CNN3x3_bpp_std,CNN3x3_mae_mean,CNN3x3_capacity_total
+6,4.957495757,0.419574174,6.317387,12479793,5.026643832,0.412260466,5.909618,12653023,4.893331878,0.437507367,6.727244,12297581,4.977483167,0.419127662,6.002212,12520802,5.189708321,0.417271734,4.461503,12990232

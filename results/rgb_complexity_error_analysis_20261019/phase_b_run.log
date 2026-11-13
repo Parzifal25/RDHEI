@@ -1,0 +1,107 @@
+  Loaded model: /home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models/v4_patch3.pth
+  Patch size: 3x3  |  Residual: True  |  Params: 46,881
+[equivA] 4.2.05.png ch=0: bitwise=True max|diff|=0.000e+00
+[equivA] 4.2.03.png ch=1: bitwise=True max|diff|=0.000e+00
+[equivA] 4.2.07.png ch=1: bitwise=True max|diff|=0.000e+00
+[equivA] Airplane.png ch=None: bitwise=True max|diff|=0.000e+00
+[equivB] Airplane.png ch=None max: stego=True ext=True rec=True img_exact=True pay_exact=True
+[equivB] Airplane.png ch=None quarter: stego=True ext=True rec=True img_exact=True pay_exact=True
+[equivB] Lena.png ch=None max: stego=True ext=True rec=True img_exact=True pay_exact=True
+[equivB] Lena.png ch=None quarter: stego=True ext=True rec=True img_exact=True pay_exact=True
+[equivB] 4.2.03.png ch=0 max: stego=True ext=True rec=True img_exact=True pay_exact=True
+[equivB] 4.2.03.png ch=0 quarter: stego=True ext=True rec=True img_exact=True pay_exact=True
+[equivB] 4.2.07.png ch=2 max: stego=True ext=True rec=True img_exact=True pay_exact=True
+[equivB] 4.2.07.png ch=2 quarter: stego=True ext=True rec=True img_exact=True pay_exact=True
+[time] CNN-3x3 predict: orig 2329.2 ms, fast 3129.1 ms
+[time] Airplane.png: embed 1502->34 ms, rec 3778->1677 ms
+[time] 4.2.03.png: embed 3635->99 ms, rec 7488->3597 ms
+[fastval-gray] Airplane.png MED empty: True
+[fastval-gray] Airplane.png MED short: True
+[fastval-gray] Airplane.png MED quarter: True
+[fastval-gray] Airplane.png MED max: True
+[fastval-gray] Airplane.png CNN3x3 empty: True
+[fastval-gray] Airplane.png CNN3x3 short: True
+[fastval-gray] Airplane.png CNN3x3 quarter: True
+[fastval-gray] Airplane.png CNN3x3 max: True
+[fastval-gray] Baboon.png MED empty: True
+[fastval-gray] Baboon.png MED short: True
+[fastval-gray] Baboon.png MED quarter: True
+[fastval-gray] Baboon.png MED max: True
+[fastval-gray] Baboon.png CNN3x3 empty: True
+[fastval-gray] Baboon.png CNN3x3 short: True
+[fastval-gray] Baboon.png CNN3x3 quarter: True
+[fastval-gray] Baboon.png CNN3x3 max: True
+[fastval-gray] Goldhill.png MED empty: True
+[fastval-gray] Goldhill.png MED short: True
+[fastval-gray] Goldhill.png MED quarter: True
+[fastval-gray] Goldhill.png MED max: True
+[fastval-gray] Goldhill.png CNN3x3 empty: True
+[fastval-gray] Goldhill.png CNN3x3 short: True
+[fastval-gray] Goldhill.png CNN3x3 quarter: True
+[fastval-gray] Goldhill.png CNN3x3 max: True
+[fastval-gray] Jetplane.png MED empty: True
+[fastval-gray] Jetplane.png MED short: True
+[fastval-gray] Jetplane.png MED quarter: True
+[fastval-gray] Jetplane.png MED max: True
+[fastval-gray] Jetplane.png CNN3x3 empty: True
+[fastval-gray] Jetplane.png CNN3x3 short: True
+[fastval-gray] Jetplane.png CNN3x3 quarter: True
+[fastval-gray] Jetplane.png CNN3x3 max: True
+[fastval-gray] Lena.png MED empty: True
+[fastval-gray] Lena.png MED short: True
+[fastval-gray] Lena.png MED quarter: True
+[fastval-gray] Lena.png MED max: True
+[fastval-gray] Lena.png CNN3x3 empty: True
+[fastval-gray] Lena.png CNN3x3 short: True
+[fastval-gray] Lena.png CNN3x3 quarter: True
+[fastval-gray] Lena.png CNN3x3 max: True
+[fastval-gray] Peppers.png MED empty: True
+[fastval-gray] Peppers.png MED short: True
+[fastval-gray] Peppers.png MED quarter: True
+[fastval-gray] Peppers.png MED max: True
+[fastval-gray] Peppers.png CNN3x3 empty: True
+[fastval-gray] Peppers.png CNN3x3 short: True
+[fastval-gray] Peppers.png CNN3x3 quarter: True
+[fastval-gray] Peppers.png CNN3x3 max: True
+[fastval-rgb] 4.2.03.png MED empty: True
+[fastval-rgb] 4.2.03.png MED short: True
+[fastval-rgb] 4.2.03.png MED quarter: True
+[fastval-rgb] 4.2.03.png MED max: True
+[fastval-rgb] 4.2.03.png CNN3x3 empty: True
+[fastval-rgb] 4.2.03.png CNN3x3 short: True
+[fastval-rgb] 4.2.03.png CNN3x3 quarter: True
+[fastval-rgb] 4.2.03.png CNN3x3 max: True
+[fastval-rgb] 4.2.05.png MED empty: True
+[fastval-rgb] 4.2.05.png MED short: True
+[fastval-rgb] 4.2.05.png MED quarter: True
+[fastval-rgb] 4.2.05.png MED max: True
+[fastval-rgb] 4.2.05.png CNN3x3 empty: True
+[fastval-rgb] 4.2.05.png CNN3x3 short: True
+[fastval-rgb] 4.2.05.png CNN3x3 quarter: True
+[fastval-rgb] 4.2.05.png CNN3x3 max: True
+[fastval-rgb] 4.2.06.png MED empty: True
+[fastval-rgb] 4.2.06.png MED short: True
+[fastval-rgb] 4.2.06.png MED quarter: True
+[fastval-rgb] 4.2.06.png MED max: True
+[fastval-rgb] 4.2.06.png CNN3x3 empty: True
+[fastval-rgb] 4.2.06.png CNN3x3 short: True
+[fastval-rgb] 4.2.06.png CNN3x3 quarter: True
+[fastval-rgb] 4.2.06.png CNN3x3 max: True
+[fastval-rgb] 4.2.07.png MED empty: True
+[fastval-rgb] 4.2.07.png MED short: True
+[fastval-rgb] 4.2.07.png MED quarter: True
+[fastval-rgb] 4.2.07.png MED max: True
+[fastval-rgb] 4.2.07.png CNN3x3 empty: True
+[fastval-rgb] 4.2.07.png CNN3x3 short: True
+[fastval-rgb] 4.2.07.png CNN3x3 quarter: True
+[fastval-rgb] 4.2.07.png CNN3x3 max: True
+[fastval-rgb] lena.png MED empty: True
+[fastval-rgb] lena.png MED short: True
+[fastval-rgb] lena.png MED quarter: True
+[fastval-rgb] lena.png MED max: True
+[fastval-rgb] lena.png CNN3x3 empty: True
+[fastval-rgb] lena.png CNN3x3 short: True
+[fastval-rgb] lena.png CNN3x3 quarter: True
+[fastval-rgb] lena.png CNN3x3 max: True
+
+fast-path e2e: 88/88 PASS

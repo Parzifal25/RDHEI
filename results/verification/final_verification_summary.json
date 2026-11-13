@@ -1,0 +1,1208 @@
+{
+  "manifest": {
+    "started_utc": "2026-10-13T06:42:26.412657+00:00",
+    "project_root": "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1",
+    "gray_dir": "/home/parzifal/RDHEI_Project/data/kodak_gray",
+    "color_dir": "/home/parzifal/RDHEI_Project/data/kodak_color",
+    "models_dir": "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models",
+    "model_dir_alt_present": true,
+    "variants": [
+      "v1_full",
+      "v2_no_residual",
+      "v3_no_weighted_loss",
+      "v5_patch7",
+      "v4_patch3"
+    ],
+    "per_variant_timeout_s": 600,
+    "per_image_timeout_s": 300,
+    "method": "cnn",
+    "payload_config": "deterministic seed=42 per image; payload length = pipeline capacity for that image",
+    "exact_checks": [
+      "recovered == original image",
+      "extracted == embedded payload"
+    ],
+    "model_dir": "/home/parzifal/RDHEI_Project/RDHEI_FIXED_V1/models",
+    "constraints": [
+      "No model checkpoint written/overwritten/retrained.",
+      "Existing raw results / tables / figures / logs untouched.",
+      "Bounded execution per variant with per-variant log.",
+      "Any hang/failure diagnosed and documented; never silently PASS."
+    ],
+    "finished_utc": "2026-10-13T06:49:10.330788+00:00",
+    "exit_reason": "completed"
+  },
+  "summary": [
+    {
+      "variant": "v1_full",
+      "checkpoint": "v1_full.pth",
+      "overall_status": "PARTIAL",
+      "notes": "Full model (baseline)",
+      "architecture": {
+        "patch": 5,
+        "residual": true,
+        "nparams": 112417,
+        "expected": {
+          "patch": 5,
+          "residual": true
+        }
+      },
+      "gray_pass": 6,
+      "gray_total": 6,
+      "color_pass": 0,
+      "color_total": 6,
+      "variant_wall_time_s": 83.929,
+      "load_error": ""
+    },
+    {
+      "variant": "v2_no_residual",
+      "checkpoint": "v2_no_residual.pth",
+      "overall_status": "PARTIAL",
+      "notes": "No residual skip",
+      "architecture": {
+        "patch": 5,
+        "residual": false,
+        "nparams": 112353,
+        "expected": {
+          "patch": 5,
+          "residual": false
+        }
+      },
+      "gray_pass": 6,
+      "gray_total": 6,
+      "color_pass": 0,
+      "color_total": 6,
+      "variant_wall_time_s": 71.64,
+      "load_error": ""
+    },
+    {
+      "variant": "v3_no_weighted_loss",
+      "checkpoint": "v3_no_weighted_loss.pth",
+      "overall_status": "PARTIAL",
+      "notes": "Plain L1 loss",
+      "architecture": {
+        "patch": 5,
+        "residual": true,
+        "nparams": 112417,
+        "expected": {
+          "patch": 5,
+          "residual": true
+        }
+      },
+      "gray_pass": 6,
+      "gray_total": 6,
+      "color_pass": 0,
+      "color_total": 6,
+      "variant_wall_time_s": 75.103,
+      "load_error": ""
+    },
+    {
+      "variant": "v5_patch7",
+      "checkpoint": "v5_patch7.pth",
+      "overall_status": "PARTIAL",
+      "notes": "7x7 patches",
+      "architecture": {
+        "patch": 7,
+        "residual": true,
+        "nparams": 210721,
+        "expected": {
+          "patch": 7,
+          "residual": true
+        }
+      },
+      "gray_pass": 6,
+      "gray_total": 6,
+      "color_pass": 0,
+      "color_total": 6,
+      "variant_wall_time_s": 119.392,
+      "load_error": ""
+    },
+    {
+      "variant": "v4_patch3",
+      "checkpoint": "v4_patch3.pth",
+      "overall_status": "PARTIAL",
+      "notes": "3x3 patches",
+      "architecture": {
+        "patch": 3,
+        "residual": true,
+        "nparams": 46881,
+        "expected": {
+          "patch": 3,
+          "residual": true
+        }
+      },
+      "gray_pass": 6,
+      "gray_total": 6,
+      "color_pass": 0,
+      "color_total": 6,
+      "variant_wall_time_s": 53.824,
+      "load_error": ""
+    }
+  ],
+  "entries": [
+    {
+      "tag": "v1_full",
+      "checkpoint": "v1_full.pth",
+      "architecture": {
+        "patch": 5,
+        "residual": true,
+        "nparams": 112417,
+        "expected": {
+          "patch": 5,
+          "residual": true
+        }
+      },
+      "images": {
+        "gray": [
+          "Airplane.png",
+          "Baboon.png",
+          "Goldhill.png",
+          "Jetplane.png",
+          "Lena.png",
+          "Peppers.png"
+        ],
+        "color": [
+          "4.2.03.png",
+          "4.2.05.png",
+          "4.2.06.png",
+          "4.2.07.png",
+          "images.png",
+          "lena.png"
+        ]
+      },
+      "results": {
+        "gray": [
+          {
+            "image": "Airplane.png",
+            "kind": "gray",
+            "time_s": 13.872,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1502648,
+            "bpp": 5.732147216796875,
+            "status": "PASS"
+          },
+          {
+            "image": "Baboon.png",
+            "kind": "gray",
+            "time_s": 8.534,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1201841,
+            "bpp": 4.584659576416016,
+            "status": "PASS"
+          },
+          {
+            "image": "Goldhill.png",
+            "kind": "gray",
+            "time_s": 14.81,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 2197984,
+            "bpp": 5.299922839506173,
+            "status": "PASS"
+          },
+          {
+            "image": "Jetplane.png",
+            "kind": "gray",
+            "time_s": 31.742,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 5334998,
+            "bpp": 5.087850570678711,
+            "status": "PASS"
+          },
+          {
+            "image": "Lena.png",
+            "kind": "gray",
+            "time_s": 7.65,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1427516,
+            "bpp": 5.4455413818359375,
+            "status": "PASS"
+          },
+          {
+            "image": "Peppers.png",
+            "kind": "gray",
+            "time_s": 6.788,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1269150,
+            "bpp": 4.841423034667969,
+            "status": "PASS"
+          }
+        ],
+        "color": [
+          {
+            "image": "4.2.03.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.05.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.06.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.07.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "images.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "lena.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          }
+        ]
+      },
+      "overall_status": "PARTIAL",
+      "log_lines": [
+        "\n===== v1_full : v1_full.pth =====",
+        "Loaded: patch=5, residual=True, params=112,417, load_time=0.00s",
+        "Expected: patch=5, residual=True",
+        "Test images: gray=6, color=6",
+        "\n--- GRAY : 6 images ---",
+        "[1/6] Airplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=13.872s",
+        "[2/6] Baboon.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=8.534s",
+        "[3/6] Goldhill.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=14.81s",
+        "[4/6] Jetplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=31.742s",
+        "[5/6] Lena.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=7.65s",
+        "[6/6] Peppers.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=6.788s",
+        "",
+        "\n--- COLOR : 6 images ---",
+        "[1/6] 4.2.03.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[2/6] 4.2.05.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[3/6] 4.2.06.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[4/6] 4.2.07.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[5/6] images.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(225, 225))",
+        "[6/6] lena.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        ""
+      ],
+      "load_time_s": 0.0,
+      "variant_wall_time_s": 83.929,
+      "notes": "Full model (baseline)"
+    },
+    {
+      "tag": "v2_no_residual",
+      "checkpoint": "v2_no_residual.pth",
+      "architecture": {
+        "patch": 5,
+        "residual": false,
+        "nparams": 112353,
+        "expected": {
+          "patch": 5,
+          "residual": false
+        }
+      },
+      "images": {
+        "gray": [
+          "Airplane.png",
+          "Baboon.png",
+          "Goldhill.png",
+          "Jetplane.png",
+          "Lena.png",
+          "Peppers.png"
+        ],
+        "color": [
+          "4.2.03.png",
+          "4.2.05.png",
+          "4.2.06.png",
+          "4.2.07.png",
+          "images.png",
+          "lena.png"
+        ]
+      },
+      "results": {
+        "gray": [
+          {
+            "image": "Airplane.png",
+            "kind": "gray",
+            "time_s": 7.968,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1498581,
+            "bpp": 5.716632843017578,
+            "status": "PASS"
+          },
+          {
+            "image": "Baboon.png",
+            "kind": "gray",
+            "time_s": 5.95,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1201739,
+            "bpp": 4.584270477294922,
+            "status": "PASS"
+          },
+          {
+            "image": "Goldhill.png",
+            "kind": "gray",
+            "time_s": 11.349,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 2191121,
+            "bpp": 5.283374324845679,
+            "status": "PASS"
+          },
+          {
+            "image": "Jetplane.png",
+            "kind": "gray",
+            "time_s": 33.458,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 5326394,
+            "bpp": 5.079645156860352,
+            "status": "PASS"
+          },
+          {
+            "image": "Lena.png",
+            "kind": "gray",
+            "time_s": 6.8,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1426165,
+            "bpp": 5.440387725830078,
+            "status": "PASS"
+          },
+          {
+            "image": "Peppers.png",
+            "kind": "gray",
+            "time_s": 5.965,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1267711,
+            "bpp": 4.835933685302734,
+            "status": "PASS"
+          }
+        ],
+        "color": [
+          {
+            "image": "4.2.03.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.05.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.06.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.07.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "images.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "lena.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          }
+        ]
+      },
+      "overall_status": "PARTIAL",
+      "log_lines": [
+        "\n===== v2_no_residual : v2_no_residual.pth =====",
+        "Loaded: patch=5, residual=False, params=112,353, load_time=0.00s",
+        "Expected: patch=5, residual=False",
+        "Test images: gray=6, color=6",
+        "\n--- GRAY : 6 images ---",
+        "[1/6] Airplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=7.968s",
+        "[2/6] Baboon.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=5.95s",
+        "[3/6] Goldhill.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=11.349s",
+        "[4/6] Jetplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=33.458s",
+        "[5/6] Lena.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=6.8s",
+        "[6/6] Peppers.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=5.965s",
+        "",
+        "\n--- COLOR : 6 images ---",
+        "[1/6] 4.2.03.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[2/6] 4.2.05.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[3/6] 4.2.06.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[4/6] 4.2.07.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[5/6] images.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(225, 225))",
+        "[6/6] lena.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        ""
+      ],
+      "load_time_s": 0.0,
+      "variant_wall_time_s": 71.64,
+      "notes": "No residual skip"
+    },
+    {
+      "tag": "v3_no_weighted_loss",
+      "checkpoint": "v3_no_weighted_loss.pth",
+      "architecture": {
+        "patch": 5,
+        "residual": true,
+        "nparams": 112417,
+        "expected": {
+          "patch": 5,
+          "residual": true
+        }
+      },
+      "images": {
+        "gray": [
+          "Airplane.png",
+          "Baboon.png",
+          "Goldhill.png",
+          "Jetplane.png",
+          "Lena.png",
+          "Peppers.png"
+        ],
+        "color": [
+          "4.2.03.png",
+          "4.2.05.png",
+          "4.2.06.png",
+          "4.2.07.png",
+          "images.png",
+          "lena.png"
+        ]
+      },
+      "results": {
+        "gray": [
+          {
+            "image": "Airplane.png",
+            "kind": "gray",
+            "time_s": 8.611,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1511793,
+            "bpp": 5.767032623291016,
+            "status": "PASS"
+          },
+          {
+            "image": "Baboon.png",
+            "kind": "gray",
+            "time_s": 7.221,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1201428,
+            "bpp": 4.5830841064453125,
+            "status": "PASS"
+          },
+          {
+            "image": "Goldhill.png",
+            "kind": "gray",
+            "time_s": 10.646,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 2201024,
+            "bpp": 5.307253086419753,
+            "status": "PASS"
+          },
+          {
+            "image": "Jetplane.png",
+            "kind": "gray",
+            "time_s": 24.963,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 5332951,
+            "bpp": 5.085898399353027,
+            "status": "PASS"
+          },
+          {
+            "image": "Lena.png",
+            "kind": "gray",
+            "time_s": 11.68,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1428767,
+            "bpp": 5.450313568115234,
+            "status": "PASS"
+          },
+          {
+            "image": "Peppers.png",
+            "kind": "gray",
+            "time_s": 11.825,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1269393,
+            "bpp": 4.842350006103516,
+            "status": "PASS"
+          }
+        ],
+        "color": [
+          {
+            "image": "4.2.03.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.05.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.06.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.07.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "images.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "lena.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          }
+        ]
+      },
+      "overall_status": "PARTIAL",
+      "log_lines": [
+        "\n===== v3_no_weighted_loss : v3_no_weighted_loss.pth =====",
+        "Loaded: patch=5, residual=True, params=112,417, load_time=0.00s",
+        "Expected: patch=5, residual=True",
+        "Test images: gray=6, color=6",
+        "\n--- GRAY : 6 images ---",
+        "[1/6] Airplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=8.611s",
+        "[2/6] Baboon.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=7.221s",
+        "[3/6] Goldhill.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=10.646s",
+        "[4/6] Jetplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=24.963s",
+        "[5/6] Lena.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=11.68s",
+        "[6/6] Peppers.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=11.825s",
+        "",
+        "\n--- COLOR : 6 images ---",
+        "[1/6] 4.2.03.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[2/6] 4.2.05.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[3/6] 4.2.06.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[4/6] 4.2.07.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[5/6] images.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(225, 225))",
+        "[6/6] lena.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        ""
+      ],
+      "load_time_s": 0.0,
+      "variant_wall_time_s": 75.103,
+      "notes": "Plain L1 loss"
+    },
+    {
+      "tag": "v5_patch7",
+      "checkpoint": "v5_patch7.pth",
+      "architecture": {
+        "patch": 7,
+        "residual": true,
+        "nparams": 210721,
+        "expected": {
+          "patch": 7,
+          "residual": true
+        }
+      },
+      "images": {
+        "gray": [
+          "Airplane.png",
+          "Baboon.png",
+          "Goldhill.png",
+          "Jetplane.png",
+          "Lena.png",
+          "Peppers.png"
+        ],
+        "color": [
+          "4.2.03.png",
+          "4.2.05.png",
+          "4.2.06.png",
+          "4.2.07.png",
+          "images.png",
+          "lena.png"
+        ]
+      },
+      "results": {
+        "gray": [
+          {
+            "image": "Airplane.png",
+            "kind": "gray",
+            "time_s": 17.716,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1507418,
+            "bpp": 5.750343322753906,
+            "status": "PASS"
+          },
+          {
+            "image": "Baboon.png",
+            "kind": "gray",
+            "time_s": 13.247,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1198129,
+            "bpp": 4.570499420166016,
+            "status": "PASS"
+          },
+          {
+            "image": "Goldhill.png",
+            "kind": "gray",
+            "time_s": 18.77,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 2194303,
+            "bpp": 5.291046971450617,
+            "status": "PASS"
+          },
+          {
+            "image": "Jetplane.png",
+            "kind": "gray",
+            "time_s": 41.637,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 5302941,
+            "bpp": 5.057278633117676,
+            "status": "PASS"
+          },
+          {
+            "image": "Lena.png",
+            "kind": "gray",
+            "time_s": 16.758,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1422597,
+            "bpp": 5.426776885986328,
+            "status": "PASS"
+          },
+          {
+            "image": "Peppers.png",
+            "kind": "gray",
+            "time_s": 11.024,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1241439,
+            "bpp": 4.735713958740234,
+            "status": "PASS"
+          }
+        ],
+        "color": [
+          {
+            "image": "4.2.03.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.05.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.06.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.07.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "images.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "lena.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          }
+        ]
+      },
+      "overall_status": "PARTIAL",
+      "log_lines": [
+        "\n===== v5_patch7 : v5_patch7.pth =====",
+        "Loaded: patch=7, residual=True, params=210,721, load_time=0.00s",
+        "Expected: patch=7, residual=True",
+        "Test images: gray=6, color=6",
+        "\n--- GRAY : 6 images ---",
+        "[1/6] Airplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=17.716s",
+        "[2/6] Baboon.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=13.247s",
+        "[3/6] Goldhill.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=18.77s",
+        "[4/6] Jetplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=41.637s",
+        "[5/6] Lena.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=16.758s",
+        "[6/6] Peppers.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=11.024s",
+        "",
+        "\n--- COLOR : 6 images ---",
+        "[1/6] 4.2.03.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[2/6] 4.2.05.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[3/6] 4.2.06.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[4/6] 4.2.07.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[5/6] images.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(225, 225))",
+        "[6/6] lena.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        ""
+      ],
+      "load_time_s": 0.0,
+      "variant_wall_time_s": 119.392,
+      "notes": "7x7 patches"
+    },
+    {
+      "tag": "v4_patch3",
+      "checkpoint": "v4_patch3.pth",
+      "architecture": {
+        "patch": 3,
+        "residual": true,
+        "nparams": 46881,
+        "expected": {
+          "patch": 3,
+          "residual": true
+        }
+      },
+      "images": {
+        "gray": [
+          "Airplane.png",
+          "Baboon.png",
+          "Goldhill.png",
+          "Jetplane.png",
+          "Lena.png",
+          "Peppers.png"
+        ],
+        "color": [
+          "4.2.03.png",
+          "4.2.05.png",
+          "4.2.06.png",
+          "4.2.07.png",
+          "images.png",
+          "lena.png"
+        ]
+      },
+      "results": {
+        "gray": [
+          {
+            "image": "Airplane.png",
+            "kind": "gray",
+            "time_s": 7.176,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1507378,
+            "bpp": 5.750190734863281,
+            "status": "PASS"
+          },
+          {
+            "image": "Baboon.png",
+            "kind": "gray",
+            "time_s": 5.185,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1194751,
+            "bpp": 4.557613372802734,
+            "status": "PASS"
+          },
+          {
+            "image": "Goldhill.png",
+            "kind": "gray",
+            "time_s": 12.026,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 2206477,
+            "bpp": 5.320401716820988,
+            "status": "PASS"
+          },
+          {
+            "image": "Jetplane.png",
+            "kind": "gray",
+            "time_s": 18.438,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 5354348,
+            "bpp": 5.106304168701172,
+            "status": "PASS"
+          },
+          {
+            "image": "Lena.png",
+            "kind": "gray",
+            "time_s": 6.18,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1431128,
+            "bpp": 5.459320068359375,
+            "status": "PASS"
+          },
+          {
+            "image": "Peppers.png",
+            "kind": "gray",
+            "time_s": 4.652,
+            "perfect": true,
+            "bit_acc": 100.0,
+            "recovered_exact": true,
+            "payload_exact": true,
+            "capacity_bits": 1296150,
+            "bpp": 4.944419860839844,
+            "status": "PASS"
+          }
+        ],
+        "color": [
+          {
+            "image": "4.2.03.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.05.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.06.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "4.2.07.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "images.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          },
+          {
+            "image": "lena.png",
+            "kind": "color",
+            "status": "SKIPPED",
+            "reason": "dataset image is not a 3-channel RGB array",
+            "perfect": false,
+            "bit_acc": null,
+            "recovered_exact": false,
+            "payload_exact": false,
+            "time_s": 0.0
+          }
+        ]
+      },
+      "overall_status": "PARTIAL",
+      "log_lines": [
+        "\n===== v4_patch3 : v4_patch3.pth =====",
+        "Loaded: patch=3, residual=True, params=46,881, load_time=0.00s",
+        "Expected: patch=3, residual=True",
+        "Test images: gray=6, color=6",
+        "\n--- GRAY : 6 images ---",
+        "[1/6] Airplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=7.176s",
+        "[2/6] Baboon.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=5.185s",
+        "[3/6] Goldhill.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=12.026s",
+        "[4/6] Jetplane.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=18.438s",
+        "[5/6] Lena.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=6.18s",
+        "[6/6] Peppers.png ...",
+        "  -> status=PASS perfect=True bit_acc=100.0 exact=True payload_exact=True time=4.652s",
+        "",
+        "\n--- COLOR : 6 images ---",
+        "[1/6] 4.2.03.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[2/6] 4.2.05.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[3/6] 4.2.06.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[4/6] 4.2.07.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        "[5/6] images.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(225, 225))",
+        "[6/6] lena.png ...",
+        "  -> SKIPPED (not a 3-channel RGB array: shape=(512, 512))",
+        ""
+      ],
+      "load_time_s": 0.0,
+      "variant_wall_time_s": 53.824,
+      "notes": "3x3 patches"
+    }
+  ]
+}

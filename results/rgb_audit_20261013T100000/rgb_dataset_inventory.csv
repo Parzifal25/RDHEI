@@ -1,0 +1,7 @@
+path,orig_mode,shape,dtype,channels,has_color_variation,max_channel_abs_diff
+data/kodak_color/4.2.03.png,RGB,"(512, 512, 3)",uint8,3,True,251
+data/kodak_color/4.2.05.png,RGB,"(512, 512, 3)",uint8,3,True,226
+data/kodak_color/4.2.06.png,RGB,"(512, 512, 3)",uint8,3,True,224
+data/kodak_color/4.2.07.png,RGB,"(512, 512, 3)",uint8,3,True,227
+data/kodak_color/images.png,L,"(225, 225)",uint8,1,False,
+data/kodak_color/lena.png,RGB,"(512, 512, 3)",uint8,3,True,235

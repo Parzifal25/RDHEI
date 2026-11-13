@@ -1,0 +1,13 @@
+generated figures
+- results/gray/baselines_bpp_all.png
+- results/gray/baselines_bpp_pee_only.png
+- results/gray/baselines_mae_comparison.png
+- results/gray/baselines_bpp_per_image.png
+- results/gray/baselines_avg_bpp.png
+- results/gray/baselines_mae_vs_bpp.png
+- results/ablation/ablation_gray_bpp.png
+- results/ablation/ablation_gray_mpe.png
+- results/runtime/runtime_boxplot.png
+- results/raw/raw_gray_bpp_per_image.png
+- results/raw/raw_rgb_bpp_per_image.png
+- results/smoke_tests/smoke_gray_20261013T013532.png

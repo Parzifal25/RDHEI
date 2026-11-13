@@ -1,0 +1,6 @@
+variant,checkpoint,overall_status,notes,patch,residual,nparams,gray_pass,gray_total,color_pass,color_total,variant_wall_time_s,load_error
+v1_full,v1_full.pth,PARTIAL,Full model (baseline),5,True,112417,6,6,0,6,83.929,
+v2_no_residual,v2_no_residual.pth,PARTIAL,No residual skip,5,False,112353,6,6,0,6,71.64,
+v3_no_weighted_loss,v3_no_weighted_loss.pth,PARTIAL,Plain L1 loss,5,True,112417,6,6,0,6,75.103,
+v5_patch7,v5_patch7.pth,PARTIAL,7x7 patches,7,True,210721,6,6,0,6,119.392,
+v4_patch3,v4_patch3.pth,PARTIAL,3x3 patches,3,True,46881,6,6,0,6,53.824,

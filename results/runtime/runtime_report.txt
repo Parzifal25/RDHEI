@@ -1,0 +1,24 @@
+RDHEI Runtime Benchmarks
+========================
+
+Date: 2026-10-13T02:06:21.884837
+Device: cpu
+OS: Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.35
+Python: 3.10.12
+PyTorch: 2.14.0+cu130
+
+Benchmark image: Lena.png
+Image size: 512x512 = 262144 pixels
+Warmup runs: 5
+Repeat runs: 10
+Aggregation: mean / std / min / max / median over repeat wall-clock timings
+
+Method                          Mean(ms)     Std(ms)       FPS
+MED                                6.217       0.858    160.85
+GAP                               20.025       2.138     49.94
+CALIC                             14.628       3.625     68.36
+CNN-3x3 (v4_patch3)             1763.390     239.129      0.57
+CNN-5x5 (v1_full)               3952.094     439.328      0.25
+CNN-NoResidual (v2)             3555.968     339.155      0.28
+CNN-NoWeightedLoss (v3)         3996.745     354.728      0.25
+CNN-7x7 (v5_patch7)             7237.038     424.029      0.14

@@ -1,0 +1,13 @@
+file,dir,sha256,file_bytes,pil_mode,width,height,decoded_shape,channels,dtype,value_min,value_max,assumed_bit_depth,interchannel_max_diff,qualifies_genuine_rgb,expect_rgb,included_in_rgb_aggregate,included_in_gray_aggregate,exclusion_reason
+Airplane.png,/home/parzifal/RDHEI_Project/data/kodak_gray,7f8b1f59666ca174f7b29012e74ededac54a126b58c06d5a206704b706fe0610,140336,L,512,512,"(512, 512)",1,uint8,16,231,8,0,False,False,n/a (gray set),True,
+Baboon.png,/home/parzifal/RDHEI_Project/data/kodak_gray,011facaeced920692fb981e475d077784a6496be02ccf5fe8745e0d20c79e879,197021,L,512,512,"(512, 512)",1,uint8,16,214,8,0,False,False,n/a (gray set),True,
+Goldhill.png,/home/parzifal/RDHEI_Project/data/kodak_gray,bb30071d1326e30a0f981f0fa12ba22a907a62f38b9802cf05ec754b23b84cd1,243114,L,720,576,"(576, 720)",1,uint8,16,235,8,0,False,False,n/a (gray set),True,
+Jetplane.png,/home/parzifal/RDHEI_Project/data/kodak_gray,5387655110fe834b6421c7f56fc77bd80feb8c10902847309aea638281d8bbc3,609101,L,1024,1024,"(1024, 1024)",1,uint8,4,192,8,0,False,False,n/a (gray set),True,
+Lena.png,/home/parzifal/RDHEI_Project/data/kodak_gray,5ca92b8fbb3f446ad92dcdea58b0662e271be90f0630de276762af1e88c0b5fd,150987,L,512,512,"(512, 512)",1,uint8,25,245,8,0,False,False,n/a (gray set),True,
+Peppers.png,/home/parzifal/RDHEI_Project/data/kodak_gray,e554728dd6b60a0c5d7df075353546c5be48b77b2c0c0d4ae467086c4e3f1986,160627,L,512,512,"(512, 512)",1,uint8,0,227,8,0,False,False,n/a (gray set),True,
+4.2.03.png,/home/parzifal/RDHEI_Project/data/kodak_color,95968aa6b826295577d1f75289cc1e9cc2803dd6f83c7392af7343fb6f9a89cd,626314,RGB,512,512,"(512, 512, 3)",3,uint8,0,255,8,251,True,True,True,n/a (rgb set),
+4.2.05.png,/home/parzifal/RDHEI_Project/data/kodak_color,45680d4e72298b124b614bff889d5bf8d304d21f3ff345eb60bca95b050e633f,424185,RGB,512,512,"(512, 512, 3)",3,uint8,0,234,8,226,True,True,True,n/a (rgb set),
+4.2.06.png,/home/parzifal/RDHEI_Project/data/kodak_color,4d51b4ba7747828b5fefd50494aedbb8d72dcdd3160dc10bde77d808ed6216ad,546687,RGB,512,512,"(512, 512, 3)",3,uint8,0,249,8,224,True,True,True,n/a (rgb set),
+4.2.07.png,/home/parzifal/RDHEI_Project/data/kodak_color,a370df5e3d7bcd0c8f934927fbd758503f82426fa0a11ccf335d181e1472e510,506099,RGB,512,512,"(512, 512, 3)",3,uint8,0,237,8,227,True,True,True,n/a (rgb set),
+images.png,/home/parzifal/RDHEI_Project/data/kodak_color,a3e5fec1ec58382c3c90280f3dd86d2a13c9407d72f0d89aef48956518c40043,36063,L,225,225,"(225, 225)",1,uint8,0,223,8,0,False,True,False,n/a (rgb set),file decodes as single-channel grayscale
+lena.png,/home/parzifal/RDHEI_Project/data/kodak_color,7e497501a28bcf9a353ccadf6eb9216bf098ac32888fb542fb9bfe71d486761f,473831,RGB,512,512,"(512, 512, 3)",3,uint8,3,255,8,235,True,True,True,n/a (rgb set),

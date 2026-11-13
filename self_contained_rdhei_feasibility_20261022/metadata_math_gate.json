@@ -1,0 +1,85 @@
+{
+  "pairs": 65536,
+  "payload_words": 396032,
+  "failures": 0,
+  "label_classes": 15,
+  "codebook": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      64,
+      64
+    ],
+    [
+      1,
+      32,
+      32
+    ],
+    [
+      1,
+      65,
+      127
+    ],
+    [
+      2,
+      16,
+      16
+    ],
+    [
+      2,
+      33,
+      63
+    ],
+    [
+      3,
+      8,
+      8
+    ],
+    [
+      3,
+      17,
+      31
+    ],
+    [
+      4,
+      4,
+      4
+    ],
+    [
+      4,
+      9,
+      15
+    ],
+    [
+      5,
+      2,
+      2
+    ],
+    [
+      5,
+      5,
+      7
+    ],
+    [
+      6,
+      1,
+      1
+    ],
+    [
+      6,
+      3,
+      3
+    ],
+    [
+      7,
+      0,
+      0
+    ]
+  ],
+  "scope": "Unique original with serialized label class internally decoded; all payload words; n=0 pass-through; not a mapless-decoding result",
+  "framing_size": 20
+}

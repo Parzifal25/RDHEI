@@ -1,0 +1,13 @@
+variant,image,shape,original_payload_length,extracted_payload_length,shape_compatible,payload_array_equal,mismatch_bits,exact_rgb,pipeline_perfect,pipeline_bit_acc,passed,elapsed_seconds,error,per_channel_payload_eq
+v3_no_weighted_loss,4.2.03.png,512x512x3,3338681,3338681,True,True,0,True,True,100.0,True,20.6,,"[True, True, True]"
+v3_no_weighted_loss,4.2.05.png,512x512x3,4440946,4440946,True,True,0,True,True,100.0,True,26.42,,"[True, True, True]"
+v3_no_weighted_loss,4.2.06.png,512x512x3,3560172,3560172,True,True,0,True,True,100.0,True,20.26,,"[True, True, True]"
+v3_no_weighted_loss,4.2.07.png,512x512x3,3636732,3636732,True,True,0,True,True,100.0,True,19.68,,"[True, True, True]"
+v3_no_weighted_loss,lena.png,512x512x3,4109079,4109079,True,True,0,True,True,100.0,True,22.22,,"[True, True, True]"
+v4_patch3,4.2.03.png,512x512x3,3319470,3319470,True,True,0,True,True,100.0,True,13.32,,"[True, True, True]"
+v4_patch3,4.2.05.png,512x512x3,4436282,4436282,True,True,0,True,True,100.0,True,19.5,,"[True, True, True]"
+v4_patch3,4.2.06.png,512x512x3,3610119,3610119,True,True,0,True,True,100.0,True,13.66,,"[True, True, True]"
+v4_patch3,4.2.07.png,512x512x3,3722189,3722189,True,True,0,True,True,100.0,True,13.28,,"[True, True, True]"
+v4_patch3,lena.png,512x512x3,4115627,4115627,True,True,0,True,True,100.0,True,15.6,,"[True, True, True]"
+v5_patch7,4.2.03.png,512x512x3,3337124,3337124,True,True,0,True,True,100.0,True,29.65,,"[True, True, True]"
+v5_patch7,4.2.05.png,512x512x3,4426163,4426163,True,True,0,True,True,100.0,True,36.26,,"[True, True, True]"

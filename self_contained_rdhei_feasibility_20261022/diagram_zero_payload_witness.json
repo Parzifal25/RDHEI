@@ -1,0 +1,29 @@
+{
+  "original": 0,
+  "prediction": 0,
+  "allocation": 7,
+  "payload_bits": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "marked_before_label": 0,
+  "stored_3bit_allocation": 7,
+  "marked_after_label": 7,
+  "extracted_payload_bits": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1
+  ],
+  "preserved_lsb_before": 0,
+  "preserved_lsb_after": 1,
+  "reason": "LSB label write overwrites the sole surviving original bit and two allocated payload positions."
+}
