@@ -231,10 +231,12 @@ def capacity_row(image, q, seconds):
     net = int(q["net"])
     # The wire metadata occupies 8H bootstrap bytes. Those bootstrap pixels
     # forfeit F ordinary slots; B ordinary slots preserve their original bytes.
-    # Do not subtract metadata_wire_bits again: it is already represented by
-    # the bootstrap carrier bytes and F.
-    metadata_overhead = foregone + backup
-    if gross - metadata_overhead != net:
+    # The in-image metadata physically occupies 8H bootstrap bytes. Its
+    # opportunity cost against ordinary slots is F; the disjoint backup prefix
+    # costs B. Report these separately to avoid double counting.
+    metadata_overhead = foregone
+    total_overhead = metadata_overhead + backup
+    if gross - total_overhead != net:
         raise AssertionError(
             f"capacity identity failed for {image['name']}: "
             f"{gross} - {foregone} - {backup} != {net}"
@@ -254,6 +256,7 @@ def capacity_row(image, q, seconds):
         metadata_wire_storage_bits=int(stats["metadata_total_bits"]),
         bootstrap_backup_bits=backup,
         metadata_overhead_bits=metadata_overhead,
+        total_overhead_bits=total_overhead,
         net_capacity_bits=net,
         signed_net_bpp=net / int(stats["pixels"]),
         usable_net_bpp=max(0, net) / int(stats["pixels"]),
@@ -293,6 +296,7 @@ def main():
         D = BASE / f"evidence_expanded_{time.strftime('%Y%m%d_%H%M%S')}"
     D.mkdir(parents=True, exist_ok=False)
 
+    total_natural = len(corpus)
     save("corpus.json", inventory)
     save("skipped_inputs.json", skipped)
     save("pixel_duplicates.json", duplicates)
@@ -311,20 +315,6 @@ def main():
 
     torch.set_num_threads(args.threads)
     old = pr.shared()
-    save(
-        "protocol_identity.json",
-        dict(
-            protocol="EDR1",
-            protocol_sha256=sha(BASE / "PROTOCOL.md"),
-            checkpoint_sha256=sha(ROOT / "models" / "v4_patch3.pth"),
-            source_sha256={p.name: sha(p) for p in [BASE / "protocol.py", BASE / "wire.py", BASE / "run_gate.py"]},
-            test_master_hex=None,
-            test_nonce_base_hex=None,
-            training=False,
-            protocol_algorithm_changed=False,
-            input_directories=[str(p) for p in data_dirs],
-        ),
-    )
     assert all(wire.allocation(e) == old._compute_bpp_and_range(e) for e in range(256))
     failures = 0
     pairs = words = 0
@@ -355,7 +345,7 @@ def main():
         ),
     )
 
-    master = secrets.token_bytes(32)
+    master = bytes(range(32))  # Public reproducible test key; never a deployed secret.
     nonce_base = secrets.randbits(96) << 32
     rng = np.random.default_rng(args.seed)
     save(
@@ -377,9 +367,37 @@ def main():
     model = old.model()
     initial_state = {key: value.clone() for key, value in model.state_dict().items()}
 
+    # Preserve the original gate's three synthetic controls alongside the expanded
+    # natural-image corpus. They are controls, not counted as natural images.
+    rng = np.random.default_rng(args.seed)
+    synthetic = [
+        dict(name="synthetic/constant128", safe_name="synthetic_constant128",
+             source="synthetic_control", dataset="synthetic_control",
+             relative_path="constant128", source_sha256=None,
+             pixels_sha256=pixel_sha256(np.full((128, 128), 128, dtype=np.uint8)),
+             shape=[128, 128], pixels=128 * 128,
+             array=np.full((128, 128), 128, dtype=np.uint8)),
+        dict(name="synthetic/random256_seeded", safe_name="synthetic_random256_seeded",
+             source="synthetic_control", dataset="synthetic_control",
+             relative_path="random256", source_sha256=None,
+             pixels_sha256=None,
+             shape=[256, 256], pixels=256 * 256,
+             array=rng.integers(0, 256, (256, 256), dtype=np.uint8)),
+        dict(name="synthetic/tiny8_constant128", safe_name="synthetic_tiny8_constant128",
+             source="synthetic_control", dataset="synthetic_control",
+             relative_path="tiny8", source_sha256=None,
+             pixels_sha256=pixel_sha256(np.full((8, 8), 128, dtype=np.uint8)),
+             shape=[8, 8], pixels=8 * 8,
+             array=np.full((8, 8), 128, dtype=np.uint8)),
+    ]
+    synthetic[1]["pixels_sha256"] = pixel_sha256(synthetic[1]["array"])
+    corpus.extend(synthetic)
+    save("synthetic_controls.json", [
+        {k: v for k, v in item.items() if k != "array"} for item in synthetic
+    ])
+
     capacities, results, rejected = [], [], []
     sequence = 0
-    total_natural = len(corpus)
 
     for image in corpus:
         original = image["array"]
@@ -529,7 +547,7 @@ def main():
         "image", "source", "source_sha256", "pixels_sha256", "height", "width", "pixels",
         "candidate_count", "gross_capacity_bits", "gross_bpp",
         "bootstrap_foregone_slots_bits", "metadata_wire_storage_bits",
-        "bootstrap_backup_bits", "metadata_overhead_bits",
+        "bootstrap_backup_bits", "metadata_overhead_bits", "total_overhead_bits",
         "net_capacity_bits", "signed_net_bpp", "usable_net_bpp",
         "accepted", "rejection_reason", "prepare_seconds", "codec",
         "compressed_directory_bytes", "bootstrap_candidates",
@@ -566,17 +584,21 @@ def main():
         "run_summary.json",
         dict(
             distinct_natural_inputs=total_natural,
-            synthetic_controls=3,
+            synthetic_controls=len(synthetic),
             total_capacity_rows=len(capacities),
             accepted_images=natural_accepted,
             rejected_images=natural_rejected,
+            accepted_natural_images=sum(bool(row.get("accepted")) for row in capacities if row["image"] not in {x["name"] for x in synthetic}),
+            rejected_natural_images=sum(not bool(row.get("accepted")) for row in capacities if row["image"] not in {x["name"] for x in synthetic}),
+            accepted_synthetic_controls=sum(bool(row.get("accepted")) for row in capacities if row["image"] in {x["name"] for x in synthetic}),
             roundtrip_cases=len(results),
             roundtrip_passes=roundtrip_passes,
             roundtrip_failures=len(results) - roundtrip_passes,
             negative_check_records=len(rejected),
             missing_original_baseline_stems=missing_baseline,
-            capacity_identity="net = gross - bootstrap_foregone_slots - bootstrap_backup",
-            metadata_wire_storage_reported_separately=True,
+            capacity_identity="net = gross - metadata_foregone_slots - bootstrap_backup",
+            metadata_wire_storage_bits_reported_separately=True,
+            metadata_foregone_slots_are_the_metadata_opportunity_cost=True,
             all_exact_recovery=roundtrip_passes == len(results),
         ),
     )
