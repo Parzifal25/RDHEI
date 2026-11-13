@@ -50,6 +50,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=20261113, help="Seed for synthetic controls and payload bits.")
     parser.add_argument("--short-payload-bits", type=int, default=37)
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--keep-artifacts", action="store_true", help="Retain all reserved/cipher/recovered image and payload arrays for every case.")
     return parser.parse_args()
 
 
@@ -154,7 +155,6 @@ def load_corpus(data_dirs, allow_missing_baseline):
             pixels_sha256=digest,
             shape=list(array.shape),
             pixels=int(array.size),
-            array=array,
         )
         if digest in pixel_owner:
             duplicates.append(
@@ -174,10 +174,7 @@ def load_corpus(data_dirs, allow_missing_baseline):
     if not corpus:
         raise ValueError("no valid native 8-bit grayscale images remained after input validation")
 
-    inventory = [
-        {k: v for k, v in item.items() if k != "array"}
-        for item in corpus
-    ]
+    inventory = list(corpus)
     return corpus, skipped, duplicates, inventory, missing_baseline
 
 
@@ -348,7 +345,8 @@ def main():
 
     master = bytes(range(32))  # Public reproducible test key; never a deployed secret.
     nonce_base = secrets.randbits(96) << 32
-    rng = np.random.default_rng(args.seed)
+    control_rng = np.random.default_rng(args.seed)
+    payload_rng = np.random.default_rng(args.seed + 1)
     save(
         "protocol_identity.json",
         dict(
@@ -369,39 +367,47 @@ def main():
     initial_state = {key: value.clone() for key, value in model.state_dict().items()}
 
     # Preserve the original gate's three synthetic controls alongside the expanded
-    # natural-image corpus. They are controls, not counted as natural images.
-    rng = np.random.default_rng(args.seed)
+    # natural-image corpus. Only small metadata records are held for all images;
+    # pixel arrays are reconstructed one at a time during the run.
+    control_preview_rng = np.random.default_rng(args.seed)
+    random_control_preview = control_preview_rng.integers(0, 256, (256, 256), dtype=np.uint8)
     synthetic = [
         dict(name="synthetic/constant128", safe_name="synthetic_constant128",
              source="synthetic_control", dataset="synthetic_control",
              relative_path="constant128", source_sha256=None,
              pixels_sha256=pixel_sha256(np.full((128, 128), 128, dtype=np.uint8)),
-             shape=[128, 128], pixels=128 * 128,
-             array=np.full((128, 128), 128, dtype=np.uint8)),
+             shape=[128, 128], pixels=128 * 128),
         dict(name="synthetic/random256_seeded", safe_name="synthetic_random256_seeded",
              source="synthetic_control", dataset="synthetic_control",
              relative_path="random256", source_sha256=None,
-             pixels_sha256=None,
-             shape=[256, 256], pixels=256 * 256,
-             array=rng.integers(0, 256, (256, 256), dtype=np.uint8)),
+             pixels_sha256=pixel_sha256(random_control_preview),
+             shape=[256, 256], pixels=256 * 256),
         dict(name="synthetic/tiny8_constant128", safe_name="synthetic_tiny8_constant128",
              source="synthetic_control", dataset="synthetic_control",
              relative_path="tiny8", source_sha256=None,
              pixels_sha256=pixel_sha256(np.full((8, 8), 128, dtype=np.uint8)),
-             shape=[8, 8], pixels=8 * 8,
-             array=np.full((8, 8), 128, dtype=np.uint8)),
+             shape=[8, 8], pixels=8 * 8),
     ]
-    synthetic[1]["pixels_sha256"] = pixel_sha256(synthetic[1]["array"])
     corpus.extend(synthetic)
-    save("synthetic_controls.json", [
-        {k: v for k, v in item.items() if k != "array"} for item in synthetic
-    ])
+    save("synthetic_controls.json", synthetic)
 
     capacities, results, rejected = [], [], []
     sequence = 0
 
     for image in corpus:
-        original = image["array"]
+        if image["source"] == "synthetic_control":
+            if image["relative_path"] == "constant128":
+                original = np.full((128, 128), 128, dtype=np.uint8)
+            elif image["relative_path"] == "random256":
+                original = control_rng.integers(0, 256, (256, 256), dtype=np.uint8)
+            elif image["relative_path"] == "tiny8":
+                original = np.full((8, 8), 128, dtype=np.uint8)
+            else:
+                raise ValueError(f"unknown synthetic control: {image['relative_path']}")
+        else:
+            original = read_native_gray(Path(image["source"]))
+        if pixel_sha256(original) != image["pixels_sha256"]:
+            raise AssertionError(f"input pixels changed after inventory: {image['name']}")
         start = time.perf_counter()
         try:
             q = pr.prepare(original)
@@ -431,7 +437,7 @@ def main():
 
         y, x = q["ys"], q["xs"]
         changed = original.copy()
-        changed[y, x] = rng.integers(0, 256, len(y), dtype=np.uint8)
+        changed[y, x] = payload_rng.integers(0, 256, len(y), dtype=np.uint8)
         assert np.array_equal(old.predict(changed, y, x), q["floats"])
 
         short_len = min(args.short_payload_bits, q["net"])
@@ -447,7 +453,7 @@ def main():
             nonce = nonce_base + sequence
             if nonce >= 2**128:
                 raise OverflowError("test nonce sequence exceeded uint128")
-            payload = rng.integers(0, 2, payload_length, dtype=np.uint8)
+            payload = payload_rng.integers(0, 2, payload_length, dtype=np.uint8)
             stem = image["safe_name"] + "_" + case
             reserved_file = D / (stem + "_reserved.png")
             input_payload = D / (stem + "_input.npy")
@@ -521,6 +527,10 @@ def main():
             results.append(result)
             print("PASS", result, flush=True)
             save(stem + "_result.json", result)
+
+            if not args.keep_artifacts:
+                for artifact in (reserved_file, input_payload, cipher_file, recovered_file, extracted_file):
+                    artifact.unlink(missing_ok=True)
 
             if case == "short":
                 corrupt = final.copy()
