@@ -1,5 +1,14 @@
-# Local source datasets and archives; do not commit benchmark images
-/data/kodak_gray/
+# Keep the six baseline inputs trackable, but never commit the generated expanded corpus.
+/data/kodak_gray/*
+!/data/kodak_gray/
+!/data/kodak_gray/Airplane.png
+!/data/kodak_gray/Baboon.png
+!/data/kodak_gray/Goldhill.png
+!/data/kodak_gray/Jetplane.png
+!/data/kodak_gray/Lena.png
+!/data/kodak_gray/Peppers.png
+
+# Generated USC-SIPI corpus when prepared separately.
 /data/usc_sipi_gray/
 /data/usc_sipi_archives/
 
