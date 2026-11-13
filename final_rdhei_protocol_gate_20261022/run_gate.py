@@ -1,4 +1,4 @@
-"""Expanded EDR1 corpus gate: deterministic discovery, full capacity ledger, fresh-process round trips."""
+"""Natural-image EDR1 corpus gate: deterministic discovery, capacity ledger, fresh-process round trips."""
 import argparse
 import csv
 import hashlib
@@ -47,7 +47,7 @@ def parse_args():
         action="store_true",
         help="Run an additional corpus even when one or more of the original six baseline names are absent.",
     )
-    parser.add_argument("--seed", type=int, default=20261113, help="Seed for synthetic controls and payload bits.")
+    parser.add_argument("--seed", type=int, default=20261113, help="Seed for reproducible payload bits and test mutations.")
     parser.add_argument("--short-payload-bits", type=int, default=37)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--keep-artifacts", action="store_true", help="Retain all reserved/cipher/recovered image and payload arrays for every case.")
@@ -345,7 +345,6 @@ def main():
 
     master = bytes(range(32))  # Public reproducible test key; never a deployed secret.
     nonce_base = secrets.randbits(96) << 32
-    control_rng = np.random.default_rng(args.seed)
     payload_rng = np.random.default_rng(args.seed + 1)
     save(
         "protocol_identity.json",
@@ -366,46 +365,13 @@ def main():
     model = old.model()
     initial_state = {key: value.clone() for key, value in model.state_dict().items()}
 
-    # Preserve the original gate's three synthetic controls alongside the expanded
-    # natural-image corpus. Only small metadata records are held for all images;
-    # pixel arrays are reconstructed one at a time during the run.
-    control_preview_rng = np.random.default_rng(args.seed)
-    random_control_preview = control_preview_rng.integers(0, 256, (256, 256), dtype=np.uint8)
-    synthetic = [
-        dict(name="synthetic/constant128", safe_name="synthetic_constant128",
-             source="synthetic_control", dataset="synthetic_control",
-             relative_path="constant128", source_sha256=None,
-             pixels_sha256=pixel_sha256(np.full((128, 128), 128, dtype=np.uint8)),
-             shape=[128, 128], pixels=128 * 128),
-        dict(name="synthetic/random256_seeded", safe_name="synthetic_random256_seeded",
-             source="synthetic_control", dataset="synthetic_control",
-             relative_path="random256", source_sha256=None,
-             pixels_sha256=pixel_sha256(random_control_preview),
-             shape=[256, 256], pixels=256 * 256),
-        dict(name="synthetic/tiny8_constant128", safe_name="synthetic_tiny8_constant128",
-             source="synthetic_control", dataset="synthetic_control",
-             relative_path="tiny8", source_sha256=None,
-             pixels_sha256=pixel_sha256(np.full((8, 8), 128, dtype=np.uint8)),
-             shape=[8, 8], pixels=8 * 8),
-    ]
-    corpus.extend(synthetic)
-    save("synthetic_controls.json", synthetic)
-
+    # Natural-image evaluation only. Generated test fixtures are confined to
+    # unit/CI tests and never enter the paper-facing dataset or capacity tables.
     capacities, results, rejected = [], [], []
     sequence = 0
 
     for image in corpus:
-        if image["source"] == "synthetic_control":
-            if image["relative_path"] == "constant128":
-                original = np.full((128, 128), 128, dtype=np.uint8)
-            elif image["relative_path"] == "random256":
-                original = control_rng.integers(0, 256, (256, 256), dtype=np.uint8)
-            elif image["relative_path"] == "tiny8":
-                original = np.full((8, 8), 128, dtype=np.uint8)
-            else:
-                raise ValueError(f"unknown synthetic control: {image['relative_path']}")
-        else:
-            original = read_native_gray(Path(image["source"]))
+        original = read_native_gray(Path(image["source"]))
         if pixel_sha256(original) != image["pixels_sha256"]:
             raise AssertionError(f"input pixels changed after inventory: {image['name']}")
         start = time.perf_counter()
@@ -579,13 +545,8 @@ def main():
         for key, value in model.state_dict().items()
     )
     assert state_unchanged
-    synthetic_names = {item["name"] for item in synthetic}
-    natural_rows = [row for row in capacities if row["image"] not in synthetic_names]
-    synthetic_rows = [row for row in capacities if row["image"] in synthetic_names]
-    natural_accepted = sum(bool(row.get("accepted")) for row in natural_rows)
-    natural_rejected = sum(not bool(row.get("accepted")) for row in natural_rows)
-    synthetic_accepted = sum(bool(row.get("accepted")) for row in synthetic_rows)
-    synthetic_rejected = sum(not bool(row.get("accepted")) for row in synthetic_rows)
+    natural_accepted = sum(bool(row.get("accepted")) for row in capacities)
+    natural_rejected = sum(not bool(row.get("accepted")) for row in capacities)
     roundtrip_passes = sum(bool(row["image_exact"] and row["payload_exact"]) for row in results)
     save(
         "integrity.json",
@@ -600,14 +561,10 @@ def main():
         "run_summary.json",
         dict(
             distinct_natural_inputs=total_natural,
-            synthetic_controls=len(synthetic),
+            synthetic_controls_included=False,
             total_capacity_rows=len(capacities),
-            accepted_images=natural_accepted + synthetic_accepted,
-            rejected_images=natural_rejected + synthetic_rejected,
-            accepted_natural_images=natural_accepted,
-            rejected_natural_images=natural_rejected,
-            accepted_synthetic_controls=synthetic_accepted,
-            rejected_synthetic_controls=synthetic_rejected,
+            accepted_images=natural_accepted,
+            rejected_images=natural_rejected,
             roundtrip_cases=len(results),
             roundtrip_passes=roundtrip_passes,
             roundtrip_failures=len(results) - roundtrip_passes,
@@ -621,9 +578,8 @@ def main():
     )
 
     print(
-        f"COMPLETE: {total_natural} natural inputs + {len(synthetic)} synthetic controls; "
-        f"{natural_accepted} natural and {synthetic_accepted} synthetic accepted; "
-        f"{natural_rejected} natural and {synthetic_rejected} synthetic rejected; "
+        f"COMPLETE: {total_natural} natural grayscale inputs; "
+        f"{natural_accepted} accepted, {natural_rejected} rejected; "
         f"{roundtrip_passes}/{len(results)} exact round trips",
         flush=True,
     )
