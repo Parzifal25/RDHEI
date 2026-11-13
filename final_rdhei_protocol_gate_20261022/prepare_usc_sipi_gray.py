@@ -32,6 +32,14 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def download(url: str, destination: Path) -> str:
     request = urllib.request.Request(
         url,
@@ -109,16 +117,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", default="data/usc_sipi_gray")
     parser.add_argument("--archive-dir", default="data/usc_sipi_archives")
-    parser.add_argument("--force", action="store_true", help="Allow output directories that already exist; existing image files are never overwritten.")
     args = parser.parse_args()
 
     output_root = Path(args.output_dir).expanduser().resolve()
     archive_root = Path(args.archive_dir).expanduser().resolve()
-    if output_root.exists() and any(output_root.rglob("*.tif")) or output_root.exists() and any(output_root.rglob("*.tiff")):
-        if not args.force:
-            raise FileExistsError(
-                f"{output_root} already contains TIFF files; choose a clean output directory or pass --force"
-            )
+    if output_root.exists() and any(
+        path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+        for path in output_root.rglob("*")
+    ):
+        raise FileExistsError(
+            f"{output_root} already contains TIFF files; choose a clean output directory"
+        )
     output_root.mkdir(parents=True, exist_ok=True)
     archive_root.mkdir(parents=True, exist_ok=True)
 
@@ -126,7 +135,7 @@ def main():
     for volume, url in ARCHIVES.items():
         archive_path = archive_root / f"{volume}.tar.gz"
         if archive_path.exists():
-            archive_sha = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+            archive_sha = sha256_file(archive_path)
         else:
             print(f"Downloading {url}", flush=True)
             archive_sha = download(url, archive_path)
