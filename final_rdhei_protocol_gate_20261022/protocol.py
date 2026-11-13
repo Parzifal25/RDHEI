@@ -56,6 +56,7 @@ def reserve(original, master, nonce, prepared=None):
     if q['net'] <= 0:
         raise ValueError('nonpositive net capacity')
     k = wire.keys(master, nonce)
+    hider_subkeys = wire.hider_keys(k['hider'])
     h, y, x = q['h'], q['ys'], q['xs']
     backup = np.unpackbits(original[y[:h], x[:h]])
     stream = np.r_[backup, np.zeros(q['net'], dtype=np.uint8)]
@@ -63,21 +64,24 @@ def reserve(original, master, nonce, prepared=None):
     wire.writebits(reserved, q['positions'], stream)
     reserved[y[:h], x[:h]] = 0
     out = np.frombuffer(wire.crypt(reserved.tobytes(), k['image']), np.uint8).copy().reshape(original.shape)
-    directory = wire.crypt(q['meta'], k['directory'])
-    header = wire.HEADER.pack(b'EDR1', q['mode'], len(directory), 0)
+    directory = wire.crypt(q['meta'], hider_subkeys['directory'])
+    header = wire.HEADER.pack(wire.PROTOCOL_MAGIC, q['mode'], len(directory), 0)
     out[y[:h], x[:h]] = np.frombuffer(header+directory+bytes(32), np.uint8)
-    wire.seal(out, k['auth'])
-    return out, {d:k[d] for d in ('directory', 'payload', 'auth')}
+    wire.seal(out, hider_subkeys['auth'])
+    # This single derived data-hiding key is delivered to the independent hider.
+    # It cannot derive the image-encryption key.
+    return out, {'hider': k['hider']}
 
 
 def receive(encrypted_image, master, nonce):
     k = wire.keys(master, nonce)
-    q = wire.inspect(encrypted_image, k)
+    hider_subkeys = wire.hider_keys(k['hider'])
+    q = wire.inspect(encrypted_image, hider_subkeys)
     positions = q['positions']
     u = tuple(v[q['backup']:] for v in positions)
     encrypted_bits = wire.readbits(encrypted_image, u)
     plain_bits = np.unpackbits(np.frombuffer(wire.crypt(np.packbits(encrypted_bits).tobytes(),
-                                                     k['payload']), np.uint8))[:q['net']]
+                                                     hider_subkeys['payload']), np.uint8))[:q['net']]
     if np.any(plain_bits[q['plen']:]):
         raise ValueError('nonzero payload padding')
     payload = plain_bits[:q['plen']].copy()
