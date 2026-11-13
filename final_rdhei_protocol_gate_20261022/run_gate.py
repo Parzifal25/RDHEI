@@ -128,7 +128,7 @@ def load_corpus(data_dirs, allow_missing_baseline):
 
     corpus, skipped, duplicates = [], [], []
     pixel_owner = {}
-    available_stems = set()
+    baseline_stems = set()
 
     for directory, path in discovered:
         label = rel_label(path, directory)
@@ -141,7 +141,8 @@ def load_corpus(data_dirs, allow_missing_baseline):
             )
             continue
 
-        available_stems.add(path.stem.lower())
+        if directory.name.lower() == "kodak_gray":
+            baseline_stems.add(path.stem.lower())
         digest = pixel_sha256(array)
         record = dict(
             name=label,
@@ -164,11 +165,11 @@ def load_corpus(data_dirs, allow_missing_baseline):
         pixel_owner[digest] = label
         corpus.append(record)
 
-    missing_baseline = sorted(BASELINE_STEMS - available_stems)
+    missing_baseline = sorted(BASELINE_STEMS - baseline_stems)
     if missing_baseline and not allow_missing_baseline:
         raise ValueError(
             "original baseline image names are missing: " + ", ".join(missing_baseline)
-            + ". Add them under data/kodak_gray or pass --allow-missing-baseline only for a separate corpus run."
+            + ". Keep the six original files in a directory named data/kodak_gray; pass --allow-missing-baseline only for a separate expanded-corpus-only run."
         )
     if not corpus:
         raise ValueError("no valid native 8-bit grayscale images remained after input validation")
