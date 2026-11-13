@@ -100,3 +100,15 @@ python final_rdhei_protocol_gate_20261022/run_gate.py \
 ```
 
 This run must be reported separately from the combined baseline-plus-expanded experiment.
+
+
+## 5. Full-corpus run through GitHub Actions
+
+The repository workflow has two modes. Ordinary pushes execute the quick smoke test. The full natural-image run is an explicit, longer CPU job:
+
+1. Add the exact six original PNG files to `data/kodak_gray/` on the `research/capacity-aware-edr1` branch: `Airplane.png`, `Baboon.png`, `Goldhill.png`, `Jetplane.png`, `Lena.png`, and `Peppers.png`. The `.gitignore` permits only these six baseline files at the root; generated TIFF folders and archive downloads remain untracked.
+2. Open the repository's **Actions** tab and select **EDR1 expanded-gate harness**.
+3. Select **Run workflow** and set `run_full_corpus` to `true`.
+4. The job downloads and filters the official grayscale TIFF archives into volume subfolders under `data/kodak_gray/`, runs the full EDR1 gate, and uploads `edr1-full-natural-corpus-evidence` as a workflow artifact.
+
+The full job intentionally fails at the baseline check when any original image is missing. Do not substitute differently sourced images under the same filenames; the baseline must match the six files used in the original experiment.
