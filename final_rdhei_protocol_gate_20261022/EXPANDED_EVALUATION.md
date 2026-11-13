@@ -1,43 +1,22 @@
-# Expanded EDR1 grayscale evaluation
+# EDR2 natural-image evaluation
 
-This adds an evaluation harness and an input-preparation utility. **It does not modify** `protocol.py`, `wire.py`, the CNN checkpoint, the EDR1 grid, the label map, or the reservation/embed/receive algorithms.
+This evaluation is **natural-image only**. The paper-facing corpus contains the exact original six grayscale baselines plus the additional native USC-SIPI grayscale TIFFs. No generated or synthetic images are included in the capacity table or natural-image experiment. Small generated fixtures may be used by unit/CI tests only; they are not experimental observations and must never be quoted as benchmark results.
 
-## 1. Prepare the expanded grayscale corpus
+## Dataset preparation
 
-From the repository root, run:
+From the repository root, prepare the official USC-SIPI native grayscale subset:
 
-```bash
-python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py
-```
-
-The utility downloads the official USC-SIPI archive volumes (textures, rotated textures, aerials, miscellaneous, and sequences), reads TIFF members without extracting arbitrary archive paths, and retains only native single-frame 8-bit grayscale images. RGB inputs are not converted to grayscale. Original TIFF bytes are copied unchanged under `data/usc_sipi_gray/<volume>/`. Archive hashes and per-image hashes are written to `data/usc_sipi_gray/dataset_manifest.json`.
-
-The official database describes its images as 8-bit grayscale or 24-bit color and provides the original TIFF files. Some copyright status is uncertain, so keep the acquired corpus local and review the database's copyright notice before redistributing images.
-
-
-### Keep the added TIFFs inside `data/kodak_gray/`
-
-To follow the existing project layout and place all extra grayscale files under the same directory as the original six, run the preparer with an explicit output path:
-
-```bash
+~~~bash
 python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
-  --output-dir data/kodak_gray
-```
+  --output-dir data/kodak_gray \
+  --archive-dir data/usc_sipi_archives
+~~~
 
-The original six PNG files at the root of `data/kodak_gray/` are left untouched; the downloaded TIFFs are written into separate volume subfolders such as `data/kodak_gray/textures/` and `data/kodak_gray/aerials/`. Then run the EDR1 gate with only that directory:
+This retains only native, single-frame, 8-bit grayscale TIFF images (Pillow mode L, uint8, 2D). It does not convert RGB images to grayscale, resize, crop, or recompress source images. New TIFFs are placed in volume subdirectories under data/kodak_gray/; the six original PNGs stay at the root. Archive and per-file hashes are recorded in dataset_manifest.json. Review the USC-SIPI copyright notice before redistributing the dataset.
 
-```bash
-python final_rdhei_protocol_gate_20261022/run_gate.py \
-  --data-dir data/kodak_gray
-```
+Required baseline files:
 
-Use a clean expanded output location (or retain the TIFFs already there) because the preparer deliberately refuses to overwrite existing TIFF corpora.
-
-## 2. Preserve the original six-image baseline
-
-Keep the existing six source files in a directory named:
-
-```
+~~~text
 data/kodak_gray/
   Airplane.png
   Baboon.png
@@ -45,70 +24,53 @@ data/kodak_gray/
   Jetplane.png
   Lena.png
   Peppers.png
-```
+  textures/*.tiff
+  rotate/*.tiff
+  aerials/*.tiff
+  misc/*.tiff
+  sequences/*.tiff
+~~~
 
-The runner requires these six filename stems to exist in that directory. It does not accept a similarly named file from the USC-SIPI directory as a substitute for an original baseline image.
+Do not replace the original six baseline images with other files bearing the same names.
 
-## 3. Run the complete EDR1 test
+## Run EDR2 natural-image gate
 
-Install the runtime dependencies:
+Install dependencies:
 
-```bash
+~~~bash
 python -m pip install numpy pillow pycryptodome torch
-```
+~~~
 
-Then run:
+Run:
 
-```bash
+~~~bash
 python final_rdhei_protocol_gate_20261022/run_gate.py \
   --data-dir data/kodak_gray \
-  --data-dir data/usc_sipi_gray
-```
+  --output-dir /tmp/edr2-natural-corpus-evidence
+~~~
 
-The runner scans recursively, accepts only native 8-bit grayscale files, records unsupported files, and deduplicates identical decoded pixel arrays with the same dimensions. The original baseline directory is processed first when passed first, so baseline files remain the retained representatives of exact duplicates.
+The runner recursively discovers files, accepts only native 8-bit grayscale images, records unsupported inputs, and deduplicates identical decoded pixel arrays with identical dimensions. The original six are required and must remain present. Every retained natural image receives a complete capacity row. The exact net-capacity identity is:
 
-For each natural image, it records gross candidate slots, bootstrap-carrier opportunity cost, metadata bytes stored in the bootstrap, backup bits, net payload bits, net bpp, and acceptance/rejection. The accounting identity is:
+~~~text
+net payload bits = gross ordinary slots
+                 - bootstrap-carrier opportunity cost
+                 - bootstrap backup bits
+~~~
 
-```
-net payload bits
-  = gross candidate slots
-  - gross slots foregone in bootstrap carriers
-  - bootstrap backup bits
-```
+Physical in-band metadata storage (header + encrypted directory + tag) is also reported separately. It is not subtracted a second time because its opportunity cost is already represented by the ordinary slots lost at bootstrap carrier positions.
 
-The wire metadata storage (header + encrypted directory + authentication tag) is also reported separately. This avoids subtracting metadata bytes twice: the metadata is physically stored in the bootstrap carrier bytes, while its capacity opportunity cost is measured by the ordinary slots lost at those carriers.
+For every accepted natural image, the runner makes four independent packets: empty payload, a short payload (37 bits unless capacity is smaller), half-capacity, and full-capacity. The hider runs as a fresh process with one derived data-hiding key; the receiver runs as a fresh process with only the marked encrypted image, master key and nonce as semantic inputs. Both recovered image and extracted payload are compared exactly.
 
-Every accepted natural image is tested with four separately reserved packets: empty payload, a short payload (37 bits unless capacity is smaller), half-capacity payload, and full-capacity payload. The receiver is launched in a fresh process for each case and must exactly recover both the original image and the payload. The three synthetic controls from the original gate are also retained.
+The output directory contains:
+- capacity_summary.csv and capacities.json
+- roundtrip_summary.csv and roundtrips.json
+- corpus.json, input_manifest.json, skipped_inputs.json, pixel_duplicates.json
+- negative_checks_and_rejections.json, integrity.json, protocol_identity.json, run_summary.json
 
-Output is written to a new `evidence_expanded_YYYYMMDD_HHMMSS/` directory. Important files include:
+Intermediate reserved/cipher/recovered arrays are removed after each successful case to bound disk use. Pass --keep-artifacts only when full per-case image/payload files are needed for a debugging run. The test master key is a public reproducibility key, never a deployed secret; the nonce sequence is unique within each test run.
 
-- `capacity_summary.csv` and `capacities.json`
-- `roundtrip_summary.csv` and `roundtrips.json`
-- `input_manifest.json`, `corpus.json`, and `pixel_duplicates.json`
-- `negative_checks_and_rejections.json`, `integrity.json`, and `run_summary.json`
+## GitHub Actions
 
-Intermediate reserved/cipher/recovered arrays are removed after each successful case to keep disk usage bounded. Pass `--keep-artifacts` to retain those files for every case. The random test nonce range is freshly generated per run; the test master key is explicitly a public test key, never a deployed secret.
+The EDR2 natural-image gate workflow has a quick CI-only software test and an opt-in full natural-image job. The CI fixture is a generated test input to exercise protocol plumbing; it is explicitly not part of the paper dataset or the reported experimental results. The full natural-image job verifies that the exact six baseline PNGs are present, downloads the native grayscale USC-SIPI TIFF subset, runs the complete EDR2 gate, and uploads the evidence artifact.
 
-## 4. Expanded-only diagnostic run
-
-A corpus-only diagnostic without the original six is possible with:
-
-```bash
-python final_rdhei_protocol_gate_20261022/run_gate.py \
-  --data-dir data/usc_sipi_gray \
-  --allow-missing-baseline
-```
-
-This run must be reported separately from the combined baseline-plus-expanded experiment.
-
-
-## 5. Full-corpus run through GitHub Actions
-
-The repository workflow has two modes. Ordinary pushes execute the quick smoke test. The full natural-image run is an explicit, longer CPU job:
-
-1. Add the exact six original PNG files to `data/kodak_gray/` on the `research/capacity-aware-edr1` branch: `Airplane.png`, `Baboon.png`, `Goldhill.png`, `Jetplane.png`, `Lena.png`, and `Peppers.png`. The `.gitignore` permits only these six baseline files at the root; generated TIFF folders and archive downloads remain untracked.
-2. Open the repository's **Actions** tab and select **EDR1 expanded-gate harness**.
-3. Select **Run workflow** and set `run_full_corpus` to `true`.
-4. The job downloads and filters the official grayscale TIFF archives into volume subfolders under `data/kodak_gray/`, runs the full EDR1 gate, and uploads `edr1-full-natural-corpus-evidence` as a workflow artifact.
-
-The full job intentionally fails at the baseline check when any original image is missing. Do not substitute differently sourced images under the same filenames; the baseline must match the six files used in the original experiment.
+Do not use the CI-only fixture's capacity, bpp or round-trip values in the manuscript.
