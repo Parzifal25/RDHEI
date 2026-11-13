@@ -350,7 +350,7 @@ def main():
         "protocol_identity.json",
         dict(
             protocol="EDR2",
-            protocol_sha256=sha(BASE / "PROTOCOL.md"),
+            protocol_sha256=sha(BASE / "PROTOCOL_EDR2.md"),
             checkpoint_sha256=sha(ROOT / "models" / "v4_patch3.pth"),
             source_sha256={p.name: sha(p) for p in [BASE / "protocol.py", BASE / "wire.py", BASE / "run_gate.py"]},
             test_master_hex=master.hex(),
