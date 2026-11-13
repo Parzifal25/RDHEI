@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import sys
+import tarfile
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +13,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / "final_rdhei_protocol_gate_20
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import run_gate  # noqa: E402
+import prepare_usc_sipi_gray as prepare_sipi  # noqa: E402
 
 
 def write_gray(path: Path, value: int, shape=(12, 12)):
@@ -100,3 +103,42 @@ def test_capacity_ledger_separates_metadata_carrier_opportunity_cost_and_backup(
     assert row["total_overhead_bits"] == 80
     assert row["net_capacity_bits"] == 340
     assert row["signed_net_bpp"] == pytest.approx(3.4)
+
+
+def test_sipi_preparer_keeps_only_native_gray_and_confines_archive_paths(tmp_path):
+    def tiff_bytes(array, mode):
+        buffer = io.BytesIO()
+        Image.fromarray(array, mode=mode).save(buffer, format="TIFF")
+        return buffer.getvalue()
+
+    gray = tiff_bytes(np.arange(64, dtype=np.uint8).reshape(8, 8), "L")
+    rgb = tiff_bytes(np.zeros((8, 8, 3), dtype=np.uint8), "RGB")
+    archive_path = tmp_path / "sipi-fixture.tar.gz"
+
+    with tarfile.open(archive_path, "w:gz") as archive:
+        for member_name, payload in [
+            ("folder/native_gray.tiff", gray),
+            ("folder/color_rgb.tiff", rgb),
+            ("../../outside_destination.tiff", gray),
+        ]:
+            info = tarfile.TarInfo(member_name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+
+    output_root = tmp_path / "prepared"
+    accepted, skipped = prepare_sipi.extract_grayscale(
+        archive_path,
+        "fixture_volume",
+        output_root,
+        "https://example.invalid/fixture.tar.gz",
+        "archive-sha",
+    )
+
+    assert len(accepted) == 2
+    assert len(skipped) == 1
+    assert (output_root / "fixture_volume" / "native_gray.tiff").read_bytes() == gray
+    assert (output_root / "fixture_volume" / "outside_destination.tiff").read_bytes() == gray
+    assert not (tmp_path / "outside_destination.tiff").exists()
+    with Image.open(output_root / "fixture_volume" / "native_gray.tiff") as image:
+        assert image.mode == "L"
+        assert np.asarray(image).dtype == np.uint8
