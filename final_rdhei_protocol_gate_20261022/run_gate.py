@@ -1,4 +1,4 @@
-"""Natural-image EDR1 corpus gate: deterministic discovery, capacity ledger, fresh-process round trips."""
+"""Natural-image EDR2 corpus gate: deterministic discovery, capacity ledger, fresh-process round trips."""
 import argparse
 import csv
 import hashlib
@@ -29,7 +29,7 @@ IMAGE_EXTENSIONS = sorted(SUPPORTED_SUFFIXES)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the frozen EDR1 protocol on every distinct 8-bit grayscale image found."
+        description="Run the frozen EDR2 protocol on every distinct 8-bit grayscale image found."
     )
     parser.add_argument(
         "--data-dir",
@@ -349,7 +349,7 @@ def main():
     save(
         "protocol_identity.json",
         dict(
-            protocol="EDR1",
+            protocol="EDR2",
             protocol_sha256=sha(BASE / "PROTOCOL.md"),
             checkpoint_sha256=sha(ROOT / "models" / "v4_patch3.pth"),
             source_sha256={p.name: sha(p) for p in [BASE / "protocol.py", BASE / "wire.py", BASE / "run_gate.py"]},
@@ -357,6 +357,9 @@ def main():
             test_nonce_base_hex=f"{nonce_base:032x}",
             training=False,
             protocol_algorithm_changed=False,
+            protocol_version="EDR2",
+            receiver_semantic_inputs=["marked encrypted image", "master key", "nonce"],
+            data_hider_semantic_inputs=["encrypted reserved image", "payload", "one derived data-hiding key"],
             input_directories=[str(p) for p in data_dirs],
             seed=args.seed,
         ),
@@ -438,14 +441,14 @@ def main():
             embed_wall = run_process(
                 [
                     BASE / "wire.py", reserved_file, input_payload,
-                    capability["directory"].hex(), capability["payload"].hex(),
-                    capability["auth"].hex(), cipher_file, embed_audit,
+                    capability["hider"].hex(), cipher_file, embed_audit,
                 ],
                 D / (stem + "_embed.log"),
             )
 
             final = np.array(Image.open(cipher_file))
-            fq = wire.inspect(final, capability)
+            hider_subkeys = wire.hider_keys(capability["hider"])
+            fq = wire.inspect(final, hider_subkeys)
             allow = np.zeros_like(final)
             ordinary = tuple(v[fq["backup"]:] for v in fq["positions"])
             wire.writebits(allow, ordinary, np.ones(fq["net"], np.uint8))
@@ -472,6 +475,7 @@ def main():
             rx = json.loads(receive_audit.read_text(encoding="utf-8"))
             emb = json.loads(embed_audit.read_text(encoding="utf-8"))
             assert not emb["model_imported"] and not emb["image_key_received"]
+            assert emb["hider_key_received"]
             evidence_reads = [p for p in rx["read_paths"] if str(D) + os.sep in p]
             assert evidence_reads == [str(cipher_file)], evidence_reads
 
@@ -501,13 +505,14 @@ def main():
             if case == "short":
                 corrupt = final.copy()
                 corrupt[0, 0] ^= 1
-                badcap = {**capability, "auth": bytes(32)}
+                badcap = wire.hider_keys(capability["hider"])
+                badcap["auth"] = bytes(32)
                 rejected_checks = dict(
                     oversized=rejection(
-                        lambda: wire.embed(reserved, np.zeros(q["net"] + 1, np.uint8), capability)
+                        lambda: wire.embed(reserved, np.zeros(q["net"] + 1, np.uint8), hider_subkeys)
                     ),
                     nonbinary=rejection(
-                        lambda: wire.embed(reserved, np.array([2], dtype=np.uint8), capability)
+                        lambda: wire.embed(reserved, np.array([2], dtype=np.uint8), hider_subkeys)
                     ),
                     corrupted_ciphertext=rejection(lambda: pr.receive(corrupt, master, nonce)),
                     wrong_nonce=rejection(lambda: pr.receive(final, master, nonce + 10**9)),
