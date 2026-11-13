@@ -19,7 +19,9 @@ The matching decoder, protocol constants and frozen CNN checkpoint are preinstal
 
 All per-image framing and recovery metadata required by the receiver is carried inside the marked image: the header, encrypted label directory, authentication tag, bootstrap backup bits, and payload. Thus EDR2 is **receiver-side external-side-information-free** (apart from K, V, and the fixed installed software). It is not a claim that the marked image contains no auxiliary bits; those bits are embedded in-band and are part of the stego image itself.
 
-The independent hider receives one cryptographic data-hiding key Kh from the owner over an authenticated confidential key-delivery mechanism, together with the encrypted reserved image and user payload. Kh is keying material, not an image-dependent map or sidecar. The hider never receives K or the image-encryption key. This key handoff is between the owner and hider; it is **not** a receiver input. Removing even this hider credential would be a stronger, different requirement and would change the access-control/separability model.
+The independent hider receives one cryptographic data-hiding key Kh from the owner over an authenticated confidential key-delivery mechanism, together with the encrypted reserved image and user payload. Kh is keying material, not an image-dependent map or sidecar. The hider never receives K or the image-encryption key. This key handoff is between the owner and hider; it is **not** a receiver input.
+
+**Scope boundary:** EDR2 makes the receiver sidecar-free; it does not claim that absolutely no information is exchanged between every pair of parties. In particular, the present independent-hider implementation transfers Kh to the hider for each nonce-bound packet. This is an additional cryptographic key handoff, not an auxiliary image map. Standard separable RDHEI schemes commonly distinguish image-encryption and data-hiding keys. A stricter “encrypted image only from owner to hider” design is a separate requirement and is not claimed by this EDR2 version. Do not call EDR2 “no additional information transmission between owner and hider.”
 
 ## 2. Parties and inputs
 
