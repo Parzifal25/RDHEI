@@ -568,8 +568,13 @@ def main():
         for key, value in model.state_dict().items()
     )
     assert state_unchanged
-    natural_accepted = sum(bool(row.get("accepted")) for row in capacities)
-    natural_rejected = sum(not bool(row.get("accepted")) for row in capacities)
+    synthetic_names = {item["name"] for item in synthetic}
+    natural_rows = [row for row in capacities if row["image"] not in synthetic_names]
+    synthetic_rows = [row for row in capacities if row["image"] in synthetic_names]
+    natural_accepted = sum(bool(row.get("accepted")) for row in natural_rows)
+    natural_rejected = sum(not bool(row.get("accepted")) for row in natural_rows)
+    synthetic_accepted = sum(bool(row.get("accepted")) for row in synthetic_rows)
+    synthetic_rejected = sum(not bool(row.get("accepted")) for row in synthetic_rows)
     roundtrip_passes = sum(bool(row["image_exact"] and row["payload_exact"]) for row in results)
     save(
         "integrity.json",
@@ -586,11 +591,12 @@ def main():
             distinct_natural_inputs=total_natural,
             synthetic_controls=len(synthetic),
             total_capacity_rows=len(capacities),
-            accepted_images=natural_accepted,
-            rejected_images=natural_rejected,
-            accepted_natural_images=sum(bool(row.get("accepted")) for row in capacities if row["image"] not in {x["name"] for x in synthetic}),
-            rejected_natural_images=sum(not bool(row.get("accepted")) for row in capacities if row["image"] not in {x["name"] for x in synthetic}),
-            accepted_synthetic_controls=sum(bool(row.get("accepted")) for row in capacities if row["image"] in {x["name"] for x in synthetic}),
+            accepted_images=natural_accepted + synthetic_accepted,
+            rejected_images=natural_rejected + synthetic_rejected,
+            accepted_natural_images=natural_accepted,
+            rejected_natural_images=natural_rejected,
+            accepted_synthetic_controls=synthetic_accepted,
+            rejected_synthetic_controls=synthetic_rejected,
             roundtrip_cases=len(results),
             roundtrip_passes=roundtrip_passes,
             roundtrip_failures=len(results) - roundtrip_passes,
@@ -604,8 +610,10 @@ def main():
     )
 
     print(
-        f"COMPLETE: {total_natural} natural inputs, {natural_accepted} accepted, "
-        f"{natural_rejected} rejected, {roundtrip_passes}/{len(results)} exact round trips",
+        f"COMPLETE: {total_natural} natural inputs + {len(synthetic)} synthetic controls; "
+        f"{natural_accepted} natural and {synthetic_accepted} synthetic accepted; "
+        f"{natural_rejected} natural and {synthetic_rejected} synthetic rejected; "
+        f"{roundtrip_passes}/{len(results)} exact round trips",
         flush=True,
     )
     assert state_unchanged
