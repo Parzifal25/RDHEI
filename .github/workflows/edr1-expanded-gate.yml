@@ -79,7 +79,7 @@ jobs:
 
 
   full-natural-image-corpus:
-    if: \${{ inputs.run_full_corpus == true }}
+    if: ${{ inputs.run_full_corpus == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -90,8 +90,8 @@ jobs:
         run: |
           set -euo pipefail
           for name in Airplane Baboon Goldhill Jetplane Lena Peppers; do
-            test -s "data/kodak_gray/\${name}.png" || {
-              echo "Missing exact original baseline: data/kodak_gray/\${name}.png"
+            test -s "data/kodak_gray/${name}.png" || {
+              echo "Missing exact original baseline: data/kodak_gray/${name}.png"
               exit 1
             }
           done
