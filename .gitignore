@@ -1,3 +1,7 @@
-# Local USC-SIPI corpus and source archives (downloaded by prepare_usc_sipi_gray.py)
+# Local source datasets and archives; do not commit benchmark images
+/data/kodak_gray/
 /data/usc_sipi_gray/
 /data/usc_sipi_archives/
+
+# Generated EDR1 expanded-gate evidence
+/final_rdhei_protocol_gate_20261022/evidence_expanded_*/
