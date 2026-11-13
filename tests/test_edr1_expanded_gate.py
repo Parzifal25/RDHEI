@@ -42,7 +42,7 @@ def test_load_corpus_keeps_six_originals_and_discovers_grayscale(tmp_path):
     assert len(skipped) == 1
     assert missing == []
     assert all("array" not in item for item in corpus)
-    assert any(item["relative_path"] == "extra_texture.tiff" for item in corpus)
+    assert any(item["relative_path"] == "textures/extra_texture.tiff" for item in corpus)
 
 
 def test_load_corpus_requires_baseline_in_kodak_directory(tmp_path):
