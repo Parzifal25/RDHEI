@@ -1,6 +1,6 @@
 # EDR2 natural-image evaluation
 
-This evaluation is **natural-image only**. The paper-facing corpus contains the exact original six grayscale baselines plus the additional native USC-SIPI grayscale TIFFs. No generated or synthetic images are included in the capacity table or natural-image experiment. Small generated fixtures may be used inside isolated unit tests for file-format and input-validation assertions only; they are never passed to the EDR2 experiment runner and are never experimental observations.
+This evaluation is **real-image only**. It contains two separately identifiable sets: (1) the six original grayscale smoke-test baselines, when available; and (2) the largest supported, catalogue-curated native USC-SIPI grayscale subset. No generated or synthetic images are included in the capacity table. USC-SIPI strata (unrotated textures/mosaics, rotated texture series, aerial imagery, miscellaneous photographs, and sequence frames) are tagged separately. Rotations, histogram-equalized versions, texture variants, and adjacent sequence frames are correlated observations and must not be presented as independent natural-scene photographs. Report subgroup results alongside per-image results; do not let the largest correlated subgroup dominate a single pooled mean.
 
 ## Dataset preparation
 
@@ -45,7 +45,8 @@ Run:
 
 ~~~bash
 python final_rdhei_protocol_gate_20261022/run_gate.py \
-  --data-dir data/kodak_gray \
+  --data-dir data/usc_sipi_gray \
+  --allow-missing-baseline \
   --output-dir /tmp/edr2-natural-corpus-evidence
 ~~~
 
@@ -64,13 +65,13 @@ For every accepted natural image, the runner makes four independent packets: emp
 The output directory contains:
 - capacity_summary.csv and capacities.json
 - roundtrip_summary.csv and roundtrips.json
-- corpus.json, input_manifest.json, skipped_inputs.json, pixel_duplicates.json
+- corpus.json, input_manifest.json (including USC-SIPI subgroup counts), skipped_inputs.json, pixel_duplicates.json
 - negative_checks_and_rejections.json, integrity.json, protocol_identity.json, run_summary.json
 
 Intermediate reserved/cipher/recovered arrays are removed after each successful case to bound disk use. Pass --keep-artifacts only when full per-case image/payload files are needed for a debugging run. The test master key is a public reproducibility key, never a deployed secret; the nonce sequence is unique within each test run.
 
 ## GitHub Actions
 
-The EDR2 workflow runs compilation and isolated unit tests by default. Its unit tests create small temporary fixtures to verify grayscale-mode filtering, duplicate detection, archive-path confinement, the receiver input signature, and key-domain separation. These temporary test objects are not passed to the full EDR2 experiment runner. The opt-in full natural-image job verifies that the exact six baseline PNGs are present, downloads the native grayscale USC-SIPI TIFF subset, runs the complete EDR2 gate, and uploads the evidence artifact.
+The EDR2 workflow runs compilation and isolated unit tests by default. Its unit tests create small temporary fixtures to verify TIFF-signature discovery, native grayscale filtering, archive-path confinement, catalogue exclusions, hash verification, the receiver input signature, and key-domain separation. These temporary fixtures are never passed to the full EDR2 experiment runner. The opt-in full-corpus job downloads the official USC-SIPI archives, builds a file-hash-pinned allowlist, runs the complete EDR2 gate on the USC-SIPI corpus, and uploads the evidence and source manifests. The original six smoke-test PNGs are included only when all six are supplied under data/kodak_gray/.
 
 No synthetic-image capacity, bpp, PSNR, SSIM, MAE, or round-trip result may appear in the manuscript. Historical EDR1 synthetic-control rows are legacy software-feasibility checks and are excluded from all EDR2 research results.
