@@ -49,8 +49,12 @@ def test_all_four_step_two_lattices_are_maximal_and_context_safe():
 def test_step_two_lattice_handles_small_and_invalid_shapes():
     y, x = wire.grid((4, 4))
     assert len(y) == len(x) == 1
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="grayscale"):
         wire.grid((8, 8, 3))
+    with pytest.raises(ValueError, match="even image dimensions"):
+        wire.grid((511, 512))
+    with pytest.raises(ValueError, match="even image dimensions"):
+        wire.grid((512, 511))
 
 
 def test_wire_allocation_matches_independent_closed_table():
