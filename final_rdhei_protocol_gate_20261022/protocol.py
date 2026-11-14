@@ -1,4 +1,4 @@
-"""Owner reservation and receiver; preserves and reuses the historical B predictor."""
+"""Active EDR2 owner reservation and receiver; receiver semantic inputs are image, K, V."""
 import os
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 import sys
@@ -13,11 +13,12 @@ ROOT = BASE.parent
 
 
 def shared():
-    sys.path.insert(0, str(ROOT/'self_contained_rdhei_feasibility_20261022'))
-    import prototype
-    if not np.array_equal(prototype.BOOK, wire.BOOK):
-        raise ValueError('shared codebook mismatch')
-    return prototype
+    # EDR2 uses its own frozen predictor module; never import the historical
+    # SCF1/EDR1 end-to-end prototype into the active packet implementation.
+    import predictor
+    if not np.array_equal(predictor.BOOK, wire.BOOK):
+        raise ValueError('shared EDR2 codebook mismatch')
+    return predictor
 
 
 def prepare(original):
