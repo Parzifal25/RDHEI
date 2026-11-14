@@ -113,8 +113,13 @@ def extract_grayscale(archive_path: Path, volume: str, output_root: Path, archiv
                 skipped.append({"member": member.name, "reason": f"{type(exc).__name__}: {exc}"})
                 continue
 
+            # USC-SIPI archive member paths are not trusted as output paths.
+            # Keep only the final filename and place it directly under this fixed
+            # volume directory. Thus even a member such as ../../image.tiff is
+            # retained safely as <output_root>/<volume>/image.tiff.
+            archive_basename = PurePosixPath(member.name).name
             try:
-                destination = normalized_output_path(volume, member.name, output_root)
+                destination = normalized_output_path(volume, archive_basename, output_root)
             except ValueError as exc:
                 skipped.append({"member": member.name, "reason": str(exc)})
                 continue
