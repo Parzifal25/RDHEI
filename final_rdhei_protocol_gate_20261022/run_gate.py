@@ -147,6 +147,10 @@ def read_native_gray(path):
         array = np.asarray(image)
     if array.dtype != np.uint8 or array.ndim != 2:
         raise ValueError(f"expected 2D uint8 grayscale, got dtype={array.dtype}, shape={array.shape}")
+    if array.shape[0] % 2 or array.shape[1] % 2:
+        raise ValueError(
+            f"current four-phase maximum-density EDR2 protocol requires even dimensions, got {array.shape}"
+        )
     return np.ascontiguousarray(array)
 
 
