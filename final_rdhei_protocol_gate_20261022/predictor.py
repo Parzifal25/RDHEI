@@ -50,6 +50,7 @@ def model():
         _MODEL = loaded
         _MODEL_IDENTITY = {
             "checkpoint": str(CHECKPOINT),
+            "checkpoint_sha256": __import__("hashlib").sha256(CHECKPOINT.read_bytes()).hexdigest(),
             "patch_size": patch_size,
             "residual": residual,
             "parameters": params,
@@ -64,14 +65,14 @@ def model_identity():
     return dict(_MODEL_IDENTITY)
 
 
-def coords(shape, step: int = SAFE_ZONE_STEP, radius: int = 2):
-    """Row-major centers on the EDR2 safe lattice, with the fixed two-pixel border."""
+def coords(shape, step: int = SAFE_ZONE_STEP, radius: int = PREDICTOR_RADIUS):
+    """Row-major centers on the maximal step-2 lattice with a one-pixel 3x3 border."""
     if len(shape) != 2:
         raise ValueError("EDR2 predictor supports 2D grayscale images only")
     if step != SAFE_ZONE_STEP:
         raise ValueError("EDR2 protocol safe-zone step is fixed at 2")
-    if radius < PREDICTOR_RADIUS + 1:
-        raise ValueError("candidate border must include the predictor radius plus one")
+    if radius != PREDICTOR_RADIUS:
+        raise ValueError("EDR2 candidate border is fixed to the 3x3 predictor radius")
     if shape[0] <= 2 * radius or shape[1] <= 2 * radius:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
     y, x = np.meshgrid(
