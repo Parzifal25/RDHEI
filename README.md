@@ -2,7 +2,7 @@
 
 ## Current research implementation: EDR2
 
-The active research branch is research/capacity-aware-edr1. Its current protocol implementation is **EDR2**, a grayscale RRBE/RDHEI design with receiver-side external-side-information-free recovery.
+The active publication-hardening branch is research/edr2-publication-hardening (based on research/capacity-aware-edr1). Its current protocol implementation is **EDR2**, a grayscale RRBE/RDHEI design with receiver-side external-side-information-free recovery.
 
 ### Receiver contract
 
@@ -20,7 +20,7 @@ The independent data hider receives one nonce-specific derived data-hiding capab
 
 | File | Role |
 |---|---|
-| final_rdhei_protocol_gate_20261022/predictor.py | Frozen 3x3 CNN prediction, step-2 safe-zone lattice, error-class labels and compressed directory |
+| final_rdhei_protocol_gate_20261022/predictor.py | Frozen 3x3 CNN prediction, maximal step-2 safe-zone lattice, error-class labels and compressed directory |
 | final_rdhei_protocol_gate_20261022/wire.py | EDR2 encrypted header, directory, payload, HMAC and encrypted-domain hider |
 | final_rdhei_protocol_gate_20261022/protocol.py | Owner reservation, encryption, receiver payload extraction and exact image reconstruction |
 | final_rdhei_protocol_gate_20261022/PROTOCOL_EDR2.md | Canonical current EDR2 protocol specification |
@@ -31,13 +31,13 @@ The independent data hider receives one nonce-specific derived data-hiding capab
 
 ### Natural-image evaluation
 
-The EDR2 research evaluation excludes synthetic images. It requires the exact original six grayscale test PNGs at the root of data/kodak_gray/ and can additionally evaluate the native grayscale USC-SIPI subset. Unsupported RGB/16-bit inputs are skipped and recorded; they are not silently converted to grayscale. Exact pixel duplicates are deduplicated by dimensions and decoded pixel content.
+The EDR2 paper-facing evaluation excludes synthetic images and unreviewed files. It accepts the six fixed grayscale baseline PNGs at the root of data/kodak_gray/. Additional native 8-bit grayscale USC-SIPI files are considered only when their relative paths, source-file SHA-256 hashes, natural-image classification and curation notes appear in a manually reviewed natural_image_allowlist.json. Unsupported RGB/16-bit inputs are recorded; they are never silently converted. Exact pixel duplicates are deduplicated by dimensions and decoded pixel content. The run ledger records excluded synthetic and unreviewed files with reasons.
 
 Prepare the added USC-SIPI grayscale corpus:
 
 ~~~bash
 python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
-  --output-dir data/kodak_gray \
+  --output-dir data/usc_sipi_gray \
   --archive-dir data/usc_sipi_archives
 ~~~
 
@@ -49,20 +49,24 @@ python final_rdhei_protocol_gate_20261022/run_gate.py \
   --output-dir /tmp/edr2-natural-corpus-evidence
 ~~~
 
-For every accepted natural image, the runner records gross ordinary slots, bootstrap opportunity cost, physical metadata storage, backup bits, signed net payload bits, net bpp, and acceptance. It then runs empty, short, half-capacity, and full-capacity packets through a fresh hider and a fresh receiver process, comparing both the recovered image and extracted payload exactly. Rejected natural images remain in the capacity table with their rejection reason.
+For expanded USC-SIPI data, prepare a curator-reviewed file-level allowlist after inspecting the inventory. Each entry must contain a relative path, exact file SHA-256, classification "natural", and a short curation note; no archive is automatically approved as a natural-image evaluation set.
+
+For every accepted natural image, the runner records gross ordinary slots, bootstrap opportunity cost, physical metadata storage, backup bits, signed net payload bits, net bpp, and acceptance. It tests payload lengths 0, 1, short, half-capacity, capacity−1 and full capacity in fresh hider/receiver processes. Both recovered pixels and extracted payload bits must match exactly. Rejected natural images remain in the capacity table with their rejection reason.
 
 The full corpus job is opt-in via GitHub Actions workflow dispatch. The exact original six baseline files must be available on this branch. The default CI path runs compile and unit tests only.
 
-### Training status
+### Training status and frozen-checkpoint provenance
 
-The legacy trainer had two issues: it passed the device string as the model's patch-size positional argument, and it split overlapping patches after extraction, allowing nearly identical patches from the same image into training and validation. src/train.py now uses explicit model keywords, splits source images first, then lazily extracts training/validation patches. It supports a 3x3 model and writes a reproducibility manifest with source file hashes and split membership.
+**No retraining is part of this EDR2 revision.** The existing residual CNN-3×3 checkpoint remains frozen; its SHA-256 is recorded at run time in the protocol identity and model identity files. The author confirms that the existing models were trained using 10,000 BOSSBase grayscale images. The current project does not contain the original per-checkpoint image manifest, training logs or complete split record, so the corpus and schedule are author-attested rather than independently reconstructed from the binary checkpoint.
 
-This repair does not prove the provenance of the existing models/v4_patch3.pth checkpoint. Do not claim exact training corpus, training schedule, or validation metrics for that checkpoint without its original training manifest. Retraining is a separate controlled experiment and must use an explicit, documented dataset.
+A historical rejected-manuscript draft describes 200 sampled images, while the later project record and author confirmation describe 10,000 images. The revised paper must use one accurate account consistently and remove the stale 200-image statement if it does not describe the actual training run. Do not invent missing training logs, split membership or validation scores. The EDR2 work evaluates the supplied weights; it does not make a new training claim.
+
+The repaired src/train.py is retained only as a future reproducibility utility. Its existence is not evidence that the historical checkpoint was created by that script.
 
 ### Version boundary and research claims
 
 - PROTOCOL_EDR2.md is the active protocol specification.
 - PROTOCOL_EDR1.md and FINAL_RDHEI_PROTOCOL_GATE.md are historical EDR1 records. Their metrics—including synthetic-control results—must not be mixed with EDR2.
 - The old src/rdhei_core.py receiver requires external maps and a payload length; it is retained as a legacy baseline and is not evidence for EDR2's receiver contract.
-- CNN prediction and compressed in-band label maps are established RDHEI components. The step-2 synchronization-safe lattice, encrypted staged header/bootstrap, and exact receiver-only reconstruction are candidate contributions that require a full natural-image evaluation and a careful prior-art comparison before novelty or superiority can be claimed.
+- CNN prediction and compressed in-band label maps are established RDHEI components. The maximum-density step-2 synchronization-safe lattice for the fixed 3×3 context, strict in-band header/directory/bootstrap accounting, and exact receiver-only reconstruction are candidate contributions. Their novelty and superiority remain conditional on full natural-image evaluation and direct comparison with current partition-based and block-based RDHEI methods.
 - Do not update the manuscript with EDR2 numerical results until the full natural-image workflow has completed and its evidence has been independently reviewed.
