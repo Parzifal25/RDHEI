@@ -247,6 +247,11 @@ def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_head
     nonce = 0x102030405060708090A0B0C0D0E0F001
     prepared = protocol.prepare(original)
     assert prepared["net"] > 0
+    assert prepared["phase"] in range(wire.SAFE_ZONE_PHASES)
+    assert prepared["net"] == max(prepared["phase_net_bits"])
+    assert prepared["stats"]["phase_selection_gain_bits"] == (
+        prepared["net"] - prepared["phase_net_bits"][0]
+    )
 
     reserved, owner_capability = protocol.reserve(
         original, master, nonce, prepared=prepared
@@ -254,6 +259,7 @@ def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_head
     hider_capability = wire.hider_keys(owner_capability["hider"])
 
     bootstrap = wire.inspect(reserved, hider_capability, header_stage="bootstrap")
+    assert bootstrap["phase"] == prepared["phase"]
     header_ciphertext = reserved[
         bootstrap["y"][:wire.HEADER_BYTES], bootstrap["x"][:wire.HEADER_BYTES]
     ].tobytes()
@@ -266,6 +272,7 @@ def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_head
     payload = rng.integers(0, 2, 37, dtype=np.uint8)
     marked = wire.embed(reserved, payload, hider_capability)
     final_packet = wire.inspect(marked, hider_capability, header_stage="final")
+    assert final_packet["phase"] == prepared["phase"]
     assert final_packet["plen"] == len(payload)
     final_header_ciphertext = marked[
         final_packet["y"][:wire.HEADER_BYTES],
