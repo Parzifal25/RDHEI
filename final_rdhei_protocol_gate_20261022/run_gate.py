@@ -274,6 +274,42 @@ def sha(path):
     return file_sha256(path)
 
 
+def reference_allocation(error):
+    """Independent closed-table reference for the deployed 15-class allocation."""
+    if not 0 <= int(error) <= 255:
+        raise ValueError("absolute prediction error must lie in [0,255]")
+    e = int(error)
+    if e == 0:
+        return 7, 0, 0
+    if e == 1:
+        return 6, 1, 1
+    if e == 2:
+        return 5, 2, 2
+    if e == 3:
+        return 6, 3, 3
+    if e == 4:
+        return 4, 4, 4
+    if 5 <= e <= 7:
+        return 5, 5, 7
+    if e == 8:
+        return 3, 8, 8
+    if 9 <= e <= 15:
+        return 4, 9, 15
+    if e == 16:
+        return 2, 16, 16
+    if 17 <= e <= 31:
+        return 3, 17, 31
+    if e == 32:
+        return 1, 32, 32
+    if 33 <= e <= 63:
+        return 2, 33, 63
+    if e == 64:
+        return 0, 64, 64
+    if 65 <= e <= 127:
+        return 1, 65, 127
+    return 0, 0, 0
+
+
 def rejection(fn):
     try:
         fn()
@@ -397,8 +433,11 @@ def main():
     import torch
 
     torch.set_num_threads(args.threads)
-    old = pr.shared()
-    assert all(wire.allocation(e) == old._compute_bpp_and_range(e) for e in range(256))
+    frozen_predictor = pr.shared()
+    assert all(
+        wire.allocation(e) == reference_allocation(e)
+        for e in range(256)
+    )
     failures = 0
     pairs = words = 0
     for prediction in range(256):
@@ -452,7 +491,7 @@ def main():
         ),
     )
 
-    model = old.model()
+    model = frozen_predictor.model()
     initial_state = {key: value.clone() for key, value in model.state_dict().items()}
 
     # Natural-image evaluation only. Generated test fixtures are confined to
@@ -494,7 +533,9 @@ def main():
         y, x = q["ys"], q["xs"]
         changed = original.copy()
         changed[y, x] = payload_rng.integers(0, 256, len(y), dtype=np.uint8)
-        assert np.array_equal(old.predict(changed, y, x), q["predictions"])
+        assert np.array_equal(
+            frozen_predictor.predict(changed, y, x), q["predictions"]
+        )
 
         short_len = min(args.short_payload_bits, q["net"])
         payload_cases = [
