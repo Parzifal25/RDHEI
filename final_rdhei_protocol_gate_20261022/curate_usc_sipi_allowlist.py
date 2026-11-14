@@ -173,7 +173,10 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
                     "observations of one source sequence."
                 )
             else:
-                parts = texture_stem.split(".")
+                # USC-SIPI sequence members such as "6.2.16" have no file
+                # extension; Path.stem would incorrectly strip the frame number.
+                sequence_member = member_basename
+                parts = sequence_member.split(".")
                 sequence_id = ".".join(parts[:2]) if len(parts) >= 2 else texture_stem
                 frame = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else -1
                 correlation_cluster = f"sequence_{sequence_id}"
