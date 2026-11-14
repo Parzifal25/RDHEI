@@ -93,6 +93,34 @@ def summarise(frame: pd.DataFrame, key_cols: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+
+def summarize_clusters(data: pd.DataFrame, group_col: bool) -> pd.DataFrame:
+    rows = []
+    groupby_cols = ["correlation_cluster", "corpus_group"] if group_col else ["correlation_cluster"]
+    for key, frame in data.groupby(groupby_cols, dropna=False, sort=True):
+        if not isinstance(key, tuple):
+            key = (key,)
+        if group_col:
+            cluster, group = key
+        else:
+            cluster, group = key[0], "ALL_CLUSTERS"
+        row = {
+            "corpus_group": group,
+            "correlation_cluster": cluster,
+            "images_in_cluster": int(len(frame)),
+            "source_groups": "|".join(sorted(frame["corpus_group"].dropna().astype(str).unique())),
+            "adaptive_mean_net_bpp": float(frame["adaptive_net_bpp"].mean()),
+            "phase0_mean_net_bpp": float(frame["phase0_net_bpp"].mean()),
+            "adaptive_gain_vs_phase0_bpp": float(frame["adaptive_gain_vs_phase0_bpp"].mean()),
+            "adaptive_positive_fraction": float((frame["adaptive_net_bits"] > 0).mean()),
+        }
+        for phase in range(4):
+            row[f"phase{phase}_mean_net_bpp"] = float(frame[f"phase{phase}_net_bpp"].mean())
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+
 def make_plots(frame: pd.DataFrame, group_summary: pd.DataFrame, cluster_ci: pd.DataFrame, out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     plt.figure(figsize=(9, 5))
@@ -253,31 +281,6 @@ def main() -> None:
     group_summary.to_csv(out / "group_phase_summary.csv", index=False)
     classification_summary = summarise(base, ["classification"])
     classification_summary.to_csv(out / "classification_phase_summary.csv", index=False)
-
-    def summarize_clusters(data: pd.DataFrame, group_col: bool) -> pd.DataFrame:
-        rows = []
-        groupby_cols = ["correlation_cluster", "corpus_group"] if group_col else ["correlation_cluster"]
-        for key, frame in data.groupby(groupby_cols, dropna=False, sort=True):
-            if not isinstance(key, tuple):
-                key = (key,)
-            if group_col:
-                cluster, group = key
-            else:
-                cluster, group = key[0], "ALL_CLUSTERS"
-            row = {
-                "corpus_group": group,
-                "correlation_cluster": cluster,
-                "images_in_cluster": int(len(frame)),
-                "source_groups": "|".join(sorted(frame["corpus_group"].dropna().astype(str).unique())),
-                "adaptive_mean_net_bpp": float(frame["adaptive_net_bpp"].mean()),
-                "phase0_mean_net_bpp": float(frame["phase0_net_bpp"].mean()),
-                "adaptive_gain_vs_phase0_bpp": float(frame["adaptive_gain_vs_phase0_bpp"].mean()),
-                "adaptive_positive_fraction": float((frame["adaptive_net_bits"] > 0).mean()),
-            }
-            for phase in range(4):
-                row[f"phase{phase}_mean_net_bpp"] = float(frame[f"phase{phase}_net_bpp"].mean())
-            rows.append(row)
-        return pd.DataFrame(rows)
 
     # Overall dependence analysis clusters sequence 6.2 frames 1-16 and 17-32
     # together under the same source-sequence identifier. Group-specific tables
