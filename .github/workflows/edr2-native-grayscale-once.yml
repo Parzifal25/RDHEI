@@ -1,0 +1,153 @@
+name: EDR2 native USC-SIPI grayscale evaluation and fixed-phase ablation
+
+on:
+  push:
+    branches:
+      - research/edr2-publication-hardening
+    paths:
+      - "EDR2_RUN_NATIVE_GRAY_EVALUATION_ONCE.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-grayscale-evaluation-and-ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out publication-hardening branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install CPU runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome pandas matplotlib tabulate
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile evaluation, curation, protocol and reporting scripts
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/run_gate.py \
+            final_rdhei_protocol_gate_20261022/predictor.py \
+            final_rdhei_protocol_gate_20261022/protocol.py \
+            final_rdhei_protocol_gate_20261022/wire.py \
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            final_rdhei_protocol_gate_20261022/analyze_edr2_evidence.py \
+            final_rdhei_protocol_gate_20261022/build_edr2_paper_report.py
+
+      - name: Download and inventory official USC-SIPI archives without conversion
+        run: |
+          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            --output-dir data/usc_sipi_gray \
+            --archive-dir data/usc_sipi_archives
+
+      - name: Build catalogue-reviewed, hash-pinned native grayscale allowlist
+        run: |
+          python final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            --manifest data/usc_sipi_gray/dataset_manifest.json \
+            --output data/usc_sipi_gray/natural_image_allowlist.json
+
+      - name: Run complete adaptive EDR2 evaluation over the curated native grayscale corpus
+        run: |
+          set -euo pipefail
+          python final_rdhei_protocol_gate_20261022/run_gate.py \
+            --data-dir data/usc_sipi_gray \
+            --allow-missing-baseline \
+            --output-dir /tmp/edr2-full-native-gray-evidence
+
+      - name: Run four matched fixed-phase evaluations
+        run: |
+          set -euo pipefail
+          for phase in 0 1 2 3; do
+            echo "Running fixed EDR2 lattice phase ${phase}"
+            python final_rdhei_protocol_gate_20261022/run_gate.py \
+              --data-dir data/usc_sipi_gray \
+              --allow-missing-baseline \
+              --fixed-phase "${phase}" \
+              --output-dir "/tmp/edr2-fixed-phase-${phase}"
+          done
+
+      - name: Verify phase matching and generate correlation-aware ablation analysis
+        run: |
+          python final_rdhei_protocol_gate_20261022/analyze_edr2_evidence.py \
+            --adaptive-dir /tmp/edr2-full-native-gray-evidence \
+            --fixed-phase-root /tmp \
+            --output-dir /tmp/edr2-native-gray-phase-analysis
+
+      - name: Build paper-facing evidence report
+        run: |
+          mkdir -p /tmp/edr2-native-gray-paper-report
+          python final_rdhei_protocol_gate_20261022/build_edr2_paper_report.py \
+            --adaptive-dir /tmp/edr2-full-native-gray-evidence \
+            --analysis-dir /tmp/edr2-native-gray-phase-analysis \
+            --literature-file EDR2_LITERATURE_COMPARISON.md \
+            --output /tmp/edr2-native-gray-paper-report/EDR2_NATIVE_GRAY_FINAL_EXPERIMENTAL_REPORT.md
+          cp EDR2_LITERATURE_COMPARISON.md /tmp/edr2-native-gray-paper-report/
+          cp EDR2_RESEARCH_POSITIONING.md /tmp/edr2-native-gray-paper-report/
+
+      - name: Package original native grayscale TIFFs and curation manifests
+        if: always()
+        run: |
+          if [ -d data/usc_sipi_gray ]; then
+            tar -czf /tmp/usc-sipi-native-grayscale-source.tar.gz -C data/usc_sipi_gray .
+          fi
+
+      - name: Upload adaptive EDR2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-full-native-grayscale-evidence
+          path: /tmp/edr2-full-native-gray-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload four-phase ablation analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-native-gray-fixed-phase-ablation
+          path: /tmp/edr2-native-gray-phase-analysis/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload fixed-phase run ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-native-gray-fixed-phase-run-evidence
+          path: |
+            /tmp/edr2-fixed-phase-0/
+            /tmp/edr2-fixed-phase-1/
+            /tmp/edr2-fixed-phase-2/
+            /tmp/edr2-fixed-phase-3/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload paper-facing report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-native-gray-paper-report
+          path: /tmp/edr2-native-gray-paper-report/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload USC-SIPI source TIFF archive and manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usc-sipi-native-grayscale-source-and-manifests
+          path: |
+            /tmp/usc-sipi-native-grayscale-source.tar.gz
+            data/usc_sipi_gray/dataset_manifest.json
+            data/usc_sipi_gray/natural_image_allowlist.json
+          if-no-files-found: warn
+          retention-days: 30
