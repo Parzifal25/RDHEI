@@ -11,12 +11,13 @@ on:
       - "tests/test_mapping.py"
       - "tests/test_edr2_receiver_only.py"
       - "tests/test_edr2_publication_hardening.py"
+      - "tests/test_usc_sipi_curation.py"
       - "src/cnn_model.py"
       - "src/rdhei_core.py"
   workflow_dispatch:
     inputs:
       run_full_corpus:
-        description: "Run the complete EDR2 evaluation using the six original grayscale baselines and native USC-SIPI grayscale images."
+        description: "Download, curate, and run the full supported USC-SIPI grayscale evaluation corpus."
         required: true
         type: boolean
         default: false
@@ -44,7 +45,7 @@ jobs:
           python -m pip install numpy pillow pycryptodome pytest
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Compile EDR2 scripts
+      - name: Compile EDR2 and USC-SIPI preparation scripts
         run: |
           python -m py_compile \
             final_rdhei_protocol_gate_20261022/run_gate.py \
@@ -52,32 +53,24 @@ jobs:
             final_rdhei_protocol_gate_20261022/protocol.py \
             final_rdhei_protocol_gate_20261022/wire.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
             src/train.py
 
-      - name: Test mapping, receiver contract, EDR2 protocol and natural-corpus guards
+      - name: Test mapping, receiver contract, EDR2 protocol and corpus curation
         run: |
           python -m pytest -q \
             tests/test_mapping.py \
             tests/test_edr2_receiver_only.py \
-            tests/test_edr2_publication_hardening.py
+            tests/test_edr2_publication_hardening.py \
+            tests/test_usc_sipi_curation.py
 
   full-natural-image-corpus:
-    if: ${{ inputs.run_full_corpus == true }}
+    if: \${{ inputs.run_full_corpus == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
-      - name: Check out research branch and original baselines
+      - name: Check out research branch
         uses: actions/checkout@v4
-
-      - name: Verify the six exact original baseline inputs
-        run: |
-          set -euo pipefail
-          for name in Airplane Baboon Goldhill Jetplane Lena Peppers; do
-            test -s "data/kodak_gray/${name}.png" || {
-              echo "Missing exact original baseline: data/kodak_gray/${name}.png"
-              exit 1
-            }
-          done
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -91,32 +84,48 @@ jobs:
           python -m pip install numpy pillow pycryptodome
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Compile EDR2 scripts
+      - name: Compile EDR2 and corpus preparation scripts
         run: |
           python -m py_compile \
             final_rdhei_protocol_gate_20261022/run_gate.py \
             final_rdhei_protocol_gate_20261022/protocol.py \
             final_rdhei_protocol_gate_20261022/wire.py \
-            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py
 
-      - name: Require curator-reviewed allowlist for expanded USC-SIPI data
+      - name: Download and inventory official USC-SIPI native grayscale TIFFs
         run: |
-          if [ -d data/usc_sipi_gray ] && find data/usc_sipi_gray -type f -name '*.tiff' -print -quit | grep -q .; then
-            test -s data/usc_sipi_gray/natural_image_allowlist.json || {
-              echo "USC-SIPI inventory is present but no manually reviewed natural_image_allowlist.json was committed."
-              echo "Prepare and curate the archive locally, then commit the exact allowlist before running the expanded corpus gate."
-              exit 1
-            }
-          fi
+          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            --output-dir data/usc_sipi_gray \
+            --archive-dir data/usc_sipi_archives
+
+      - name: Build hash-pinned, catalogue-reviewed USC-SIPI allowlist
+        run: |
+          python final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            --manifest data/usc_sipi_gray/dataset_manifest.json \
+            --output data/usc_sipi_gray/natural_image_allowlist.json
 
       - name: Run complete EDR2 natural-image capacity and exact-recovery evaluation
         run: |
           set -euo pipefail
-          extra_data_args=()
-          if [ -d data/usc_sipi_gray ] && find data/usc_sipi_gray -type f -iname '*.tiff' -print -quit | grep -q .; then
-            extra_data_args+=(--data-dir data/usc_sipi_gray)
+          BASELINE_READY=1
+          for image_name in Airplane Baboon Goldhill Jetplane Lena Peppers; do
+            if [ ! -s "data/kodak_gray/$image_name.png" ]; then
+              BASELINE_READY=0
+              break
+            fi
+          done
+          if [ "$BASELINE_READY" -eq 1 ]; then
+            python final_rdhei_protocol_gate_20261022/run_gate.py \
+              --data-dir data/kodak_gray \
+              --data-dir data/usc_sipi_gray \
+              --output-dir /tmp/edr2-full-natural-corpus-evidence
+          else
+            python final_rdhei_protocol_gate_20261022/run_gate.py \
+              --data-dir data/usc_sipi_gray \
+              --allow-missing-baseline \
+              --output-dir /tmp/edr2-full-natural-corpus-evidence
           fi
-          python final_rdhei_protocol_gate_20261022/run_gate.py --data-dir data/kodak_gray "${extra_data_args[@]}" --output-dir /tmp/edr2-full-natural-corpus-evidence
 
       - name: Upload full natural-image EDR2 evidence
         if: always()
@@ -124,5 +133,16 @@ jobs:
         with:
           name: edr2-full-natural-corpus-evidence
           path: /tmp/edr2-full-natural-corpus-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload USC-SIPI source and curation manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usc-sipi-corpus-manifests
+          path: |
+            data/usc_sipi_gray/dataset_manifest.json
+            data/usc_sipi_gray/natural_image_allowlist.json
           if-no-files-found: warn
           retention-days: 30
