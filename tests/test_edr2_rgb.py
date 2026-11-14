@@ -186,3 +186,30 @@ def test_rgb_adaptive_search_evaluates_all_24_ordered_phase_assignments(monkeypa
     assert all(len(row["phases"]) == 3 for row in prepared["assignment_scores"])
     assert all(len(set(tuple(row["phases"]) + (row["calibration_phase"],))) == 4
                for row in prepared["assignment_scores"])
+
+
+def test_rgb_real_frozen_checkpoint_roundtrip_on_controlled_colour_image():
+    # Uses the actual frozen 3x3 CNN checkpoint, not the mocked predictor used
+    # by the fast protocol-isolation tests above.
+    original = constant_rgb(128, 128)
+    prepared = rgb_protocol.prepare(original, blend_num=1, blend_den=4)
+    assert prepared["net"] > 0
+    assert len(prepared["prediction_metrics"]) == 3
+    assert all(
+        np.isfinite(metric["spatial_mae"])
+        and np.isfinite(metric["cross_channel_mae"])
+        and np.isfinite(metric["fused_mae"])
+        for metric in prepared["prediction_metrics"]
+    )
+
+    master = bytes(range(32))
+    nonce = 0x1234567890ABCDEF1122334455667788
+    reserved, capability = rgb_protocol.reserve(
+        original, master, nonce, prepared=prepared
+    )
+    payload = np.random.default_rng(90210).integers(0, 2, 137, dtype=np.uint8)
+    marked = rgb_protocol.embed(reserved, payload, capability["hider"])
+    recovered, extracted = rgb_protocol.receive(marked, master, nonce)
+
+    np.testing.assert_array_equal(recovered, original)
+    np.testing.assert_array_equal(extracted, payload)
