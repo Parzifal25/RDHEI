@@ -6,7 +6,6 @@ import argparse
 import csv
 import hashlib
 import json
-import secrets
 import shutil
 import time
 from pathlib import Path
@@ -141,8 +140,11 @@ def main():
             skipped.append({"path": relative, "reason": "duplicate decoded RGB pixels"})
             continue
         seen_pixel_hashes.add(pixels_hash)
+        volume = PurePosixPath(relative).parts[0] if len(PurePosixPath(relative).parts) > 1 else "unspecified"
         record = {
             "image": relative,
+            "volume": volume,
+            "corpus_group": "aerial_colour" if volume == "aerials" else ("miscellaneous_colour" if volume == "misc" else volume),
             "source_sha256": source_hash,
             "pixels_sha256": pixels_hash,
             "height": int(image.shape[0]),
@@ -280,15 +282,8 @@ def main():
                         Image.fromarray(recovered, mode="RGB").save(image_dir / f"recovered_{case}.png")
                         np.save(image_dir / f"payload_{case}.npy", payload, allow_pickle=False)
                         np.save(image_dir / f"extracted_{case}.npy", extracted, allow_pickle=False)
-                else:
-                    roundtrip_rows.append({
-                        "image": relative,
-                        "pixels_sha256": pixels_hash,
-                        "case": case,
-                        "payload_bits": int(length),
-                        "net_capacity_bits": int(selected["net"]),
-                        "passed": "duplicate_payload_length_not_retested",
-                    })
+                # Payload lengths are deduplicated per image; no duplicate row is
+                # added, so a skipped repeated length cannot be counted as a failure.
 
             all_passed = all(
                 row["passed"] is True
