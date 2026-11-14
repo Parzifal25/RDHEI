@@ -21,8 +21,11 @@ import rgb_protocol
 SUPPORTED = {".png", ".bmp", ".tif", ".tiff", ".jpg", ".jpeg"}
 BLENDS = ((0, 4), (1, 4), (2, 4), (3, 4))
 FIXED_ASSIGNMENT = (0, 1, 2)
-PAYLOAD_CASES = (("empty", 0), ("short_37", 37), ("nonbyte_137", 137),
-                 ("near_capacity", -1), ("full_capacity", -2))
+PAYLOAD_CASES = (
+    ("empty", 0), ("one_bit", 1), ("seven_bits", 7), ("byte_aligned", 8),
+    ("nine_bits", 9), ("short_37", 37), ("nonbyte_137", 137),
+    ("near_capacity", -1), ("full_capacity", -2),
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -234,10 +237,12 @@ def main():
 
             lengths = []
             for case, requested in PAYLOAD_CASES:
-                length = (
-                    requested if requested >= 0
-                    else max(0, selected["net"] + requested + 1)
-                )
+                if requested >= 0:
+                    length = requested
+                elif requested == -1:
+                    length = max(0, int(selected["net"]) - 1)
+                else:
+                    length = int(selected["net"])
                 length = min(int(length), int(selected["net"]))
                 if length not in lengths:
                     lengths.append(length)
