@@ -25,6 +25,40 @@ D = None
 SUPPORTED_SUFFIXES = {".png", ".pgm", ".bmp", ".tif", ".tiff"}
 BASELINE_STEMS = {"airplane", "baboon", "goldhill", "jetplane", "lena", "peppers"}
 BASELINE_FILES = {f"{stem}.png" for stem in BASELINE_STEMS}
+# Exact decoded pixels and original PNG file bytes from the project's preserved
+# baseline-run manifest. A same-named replacement image is not accepted as a baseline.
+BASELINE_EXPECTED_HASHES = {
+    "airplane.png": {
+        "file_sha256": "7f8b1f59666ca174f7b29012e74ededac54a126b58c06d5a206704b706fe0610",
+        "pixels_sha256": "5da692fdfdddeb62f11e835d0391c73c349348ed3284cb8b719d0cebf3577a71",
+        "shape": [512, 512],
+    },
+    "baboon.png": {
+        "file_sha256": "011facaeced920692fb981e475d077784a6496be02ccf5fe8745e0d20c79e879",
+        "pixels_sha256": "ec56f895304cff5c0153efc97f9cfa8207b4b949cf57168f",
+        "shape": [512, 512],
+    },
+    "goldhill.png": {
+        "file_sha256": "bb30071d1326e30a0f981f0fa12ba22a907a62f38b9802cf05ec754b23b84cd1",
+        "pixels_sha256": "956059e859ba1af1b0bf21c6eacae9e7a0956c949b400b6a1579c44b5b4bca49",
+        "shape": [576, 720],
+    },
+    "jetplane.png": {
+        "file_sha256": "5387655110fe834b6421c7f56fc77bd80feb8c10902847309aea638281d8bbc3",
+        "pixels_sha256": "71e53d7e42ee3908f1bd3a2a59e235e533a816e1e03dbab2b67a2c0ab6c1ab75",
+        "shape": [1024, 1024],
+    },
+    "lena.png": {
+        "file_sha256": "5ca92b8fbb3f446ad92dcdea58b0662e271be90f0630de276762af1e88c0b5fd",
+        "pixels_sha256": "eb6cd30ede15f638d0fccba36977d7c6a6ae3f31b8bd8f78dffdfcb47437acc7",
+        "shape": [512, 512],
+    },
+    "peppers.png": {
+        "file_sha256": "e554728dd6b60a0c5d7df075353546c5be48b77b2c0c0d4ae467086c4e3f1986",
+        "pixels_sha256": "a90f9cdb5111a7bc4c8063e53e3e65ef634639fa27929abaf329f726540a697f",
+        "shape": [512, 512],
+    },
+}
 SYNTHETIC_STEMS = {"constant128", "random256", "tiny8"}
 NATURAL_ALLOWLIST_NAME = "natural_image_allowlist.json"
 IMAGE_EXTENSIONS = sorted(SUPPORTED_SUFFIXES)
@@ -174,6 +208,28 @@ def pixel_sha256(array):
     return digest.hexdigest()
 
 
+def validate_original_baseline(path, array):
+    """Fail closed unless a project baseline matches its preserved file and pixel hashes."""
+    name = path.name.lower()
+    expected = BASELINE_EXPECTED_HASHES.get(name)
+    if expected is None:
+        raise ValueError(f"unrecognized fixed baseline filename: {path.name}")
+    actual_file = file_sha256(path)
+    actual_pixels = pixel_sha256(array)
+    actual_shape = list(array.shape)
+    if (
+        actual_file != expected["file_sha256"]
+        or actual_pixels != expected["pixels_sha256"]
+        or actual_shape != expected["shape"]
+    ):
+        raise ValueError(
+            f"baseline {path.name} does not match the exact original project image: "
+            f"file_sha256={actual_file}, pixels_sha256={actual_pixels}, shape={actual_shape}; "
+            f"expected file_sha256={expected['file_sha256']}, "
+            f"pixels_sha256={expected['pixels_sha256']}, shape={expected['shape']}"
+        )
+
+
 def rel_label(path, root):
     try:
         return path.resolve().relative_to(root.resolve()).as_posix()
@@ -251,6 +307,7 @@ def load_corpus(data_dirs, allow_missing_baseline):
             continue
 
         if directory.name.lower() == "kodak_gray":
+            validate_original_baseline(path, array)
             baseline_stems.add(path.stem.lower())
         digest = pixel_sha256(array)
         record = dict(
