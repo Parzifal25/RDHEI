@@ -4,10 +4,15 @@ on:
   push:
     branches:
       - research/capacity-aware-edr1
+      - research/edr2-publication-hardening
     paths:
       - ".github/workflows/edr2-natural-image-gate.yml"
       - "final_rdhei_protocol_gate_20261022/**"
+      - "tests/test_mapping.py"
       - "tests/test_edr2_receiver_only.py"
+      - "tests/test_edr2_publication_hardening.py"
+      - "src/cnn_model.py"
+      - "src/rdhei_core.py"
   workflow_dispatch:
     inputs:
       run_full_corpus:
@@ -49,8 +54,12 @@ jobs:
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
             src/train.py
 
-      - name: Test receiver input contract, key separation, corpus discovery and capacity ledger
-        run: python -m pytest -q tests/test_edr2_receiver_only.py
+      - name: Test mapping, receiver contract, EDR2 protocol and natural-corpus guards
+        run: |
+          python -m pytest -q \
+            tests/test_mapping.py \
+            tests/test_edr2_receiver_only.py \
+            tests/test_edr2_publication_hardening.py
 
   full-natural-image-corpus:
     if: ${{ inputs.run_full_corpus == true }}
@@ -90,16 +99,21 @@ jobs:
             final_rdhei_protocol_gate_20261022/wire.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py
 
-      - name: Prepare official native grayscale corpus inside data/kodak_gray
+      - name: Require curator-reviewed allowlist for expanded USC-SIPI data
         run: |
-          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
-            --output-dir data/kodak_gray \
-            --archive-dir /tmp/usc_sipi_archives
+          if [ -d data/usc_sipi_gray ] && find data/usc_sipi_gray -type f -name '*.tiff' -print -quit | grep -q .; then
+            test -s data/usc_sipi_gray/natural_image_allowlist.json || {
+              echo "USC-SIPI inventory is present but no manually reviewed natural_image_allowlist.json was committed."
+              echo "Prepare and curate the archive locally, then commit the exact allowlist before running the expanded corpus gate."
+              exit 1
+            }
+          fi
 
-      - name: Run complete EDR2 capacity and exact-recovery evaluation
+      - name: Run complete EDR2 natural-image capacity and exact-recovery evaluation
         run: |
           python final_rdhei_protocol_gate_20261022/run_gate.py \
             --data-dir data/kodak_gray \
+            --data-dir data/usc_sipi_gray \
             --output-dir /tmp/edr2-full-natural-corpus-evidence
 
       - name: Upload full natural-image EDR2 evidence
