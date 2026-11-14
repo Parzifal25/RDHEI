@@ -383,7 +383,10 @@ def capacity_row(image, q, seconds):
         authentication_bits=int(stats["authentication_bits"]),
         selected_lattice_phase=int(q["phase"]),
         phase_net_capacity_bits=q["phase_net_bits"],
-        phase_selection_gain_bits=int(q["net"]) - int(q["phase_net_bits"][0]),
+        phase_selection_gain_bits=(
+            int(q["net"]) - int(q["phase_net_bits"][0])
+            if q["phase_net_bits"][0] is not None else None
+        ),
         phase_scores=q["phase_scores"],
         candidate_fraction=float(stats["candidate_fraction"]),
     )
