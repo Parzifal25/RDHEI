@@ -143,13 +143,29 @@ jobs:
         if: ${{ inputs.run_fixed_phase_ablation == true }}
         run: |
           set -euo pipefail
+          BASELINE_READY=1
+          for image_name in Airplane Baboon Goldhill Jetplane Lena Peppers; do
+            if [ ! -s "data/kodak_gray/$image_name.png" ]; then
+              BASELINE_READY=0
+              break
+            fi
+          done
           for phase in 0 1 2 3; do
             echo "Running fixed EDR2 lattice phase $phase"
-            python final_rdhei_protocol_gate_20261022/run_gate.py \
-              --data-dir data/usc_sipi_gray \
-              --allow-missing-baseline \
-              --fixed-phase "$phase" \
-              --output-dir "/tmp/edr2-fixed-phase-$phase"
+            if [ "$BASELINE_READY" -eq 1 ]; then
+              python final_rdhei_protocol_gate_20261022/run_gate.py \
+                --data-dir data/kodak_gray \
+                --data-dir data/usc_sipi_gray \
+                --allow-missing-baseline \
+                --fixed-phase "$phase" \
+                --output-dir "/tmp/edr2-fixed-phase-$phase"
+            else
+              python final_rdhei_protocol_gate_20261022/run_gate.py \
+                --data-dir data/usc_sipi_gray \
+                --allow-missing-baseline \
+                --fixed-phase "$phase" \
+                --output-dir "/tmp/edr2-fixed-phase-$phase"
+            fi
           done
 
       - name: Analyze fixed phases and correlation-clustered capacity
@@ -164,6 +180,7 @@ jobs:
         run: |
           python final_rdhei_protocol_gate_20261022/prepare_edr2_visual_samples.py \
             --source-dir data/usc_sipi_gray \
+            --baseline-dir data/kodak_gray \
             --evidence-dir /tmp/edr2-full-natural-corpus-evidence \
             --output-dir data/usc_sipi_visual_samples
 
@@ -225,7 +242,8 @@ jobs:
           path: |
             /tmp/edr2-visual-sample-evidence/
             /tmp/edr2-visual-gallery/
-            data/usc_sipi_visual_samples/
+            data/usc_sipi_visual_samples/ \
+            data/kodak_gray/
           if-no-files-found: warn
           retention-days: 30
 
