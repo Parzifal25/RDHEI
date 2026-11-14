@@ -258,7 +258,7 @@ def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_head
         bootstrap["y"][:wire.HEADER_BYTES], bootstrap["x"][:wire.HEADER_BYTES]
     ].tobytes()
     assert header_ciphertext != wire.HEADER.pack(
-        wire.PROTOCOL_MAGIC, bootstrap["mode"], b"\\x00\\x00\\x00",
+        wire.PROTOCOL_MAGIC, bootstrap["mode"], b"\x00\x00\x00",
         bootstrap["length"], 0
     )
 
