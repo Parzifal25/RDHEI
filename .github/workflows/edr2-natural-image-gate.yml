@@ -45,7 +45,8 @@ jobs:
             final_rdhei_protocol_gate_20261022/run_gate.py \
             final_rdhei_protocol_gate_20261022/protocol.py \
             final_rdhei_protocol_gate_20261022/wire.py \
-            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            src/train.py
 
       - name: Test receiver input contract, key separation, corpus discovery and capacity ledger
         run: python -m pytest -q tests/test_edr2_receiver_only.py
