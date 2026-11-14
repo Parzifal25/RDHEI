@@ -240,7 +240,7 @@ def test_rgb_paper_analyzer_rejects_missing_full_capacity_recovery():
     roundtrip = roundtrip[roundtrip["payload_bits"] == 0]
     run["roundtrip_cases"] = 1
     run["roundtrip_passed"] = 1
-    with pytest.raises(ValueError, match="empty and full-capacity"):
+    with pytest.raises(ValueError, match="payload-boundary ledger mismatch"):
         rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
 
 
