@@ -177,21 +177,31 @@ def _valid_rgb_evidence_frames():
             "pixels_sha256": "a" * 64,
             "status": "roundtrip_passed",
             "signed_net_capacity_bits": 137,
+            "blend_0_net_capacity_bits": 137, "blend_0_status": "roundtrip_passed",
+            "blend_1_net_capacity_bits": 137, "blend_1_status": "roundtrip_passed",
+            "blend_2_net_capacity_bits": 137, "blend_2_status": "roundtrip_passed",
+            "blend_3_net_capacity_bits": 137, "blend_3_status": "roundtrip_passed",
         },
         {
             "image": "misc/b.tiff",
             "pixels_sha256": "b" * 64,
-            "status": "rejected_nonpositive_net_capacity",
-            "signed_net_capacity_bits": -4,
+            "status": "roundtrip_passed",
+            "signed_net_capacity_bits": 137,
+            "blend_0_net_capacity_bits": 137, "blend_0_status": "roundtrip_passed",
+            "blend_1_net_capacity_bits": 137, "blend_1_status": "roundtrip_passed",
+            "blend_2_net_capacity_bits": 137, "blend_2_status": "roundtrip_passed",
+            "blend_3_net_capacity_bits": 137, "blend_3_status": "roundtrip_passed",
         },
     ])
     lengths = [0, 1, 7, 8, 9, 37, 136, 137]
     roundtrip = pd.DataFrame([
         {
             "image": "aerials/a.tiff", "pixels_sha256": "a" * 64,
+            "blend_num": blend, "blend_den": 4,
             "case": f"payload_{length}", "payload_bits": length, "net_capacity_bits": 137,
             "image_exact": True, "payload_exact": True, "passed": True,
         }
+        for blend in (0, 1, 2, 3)
         for length in lengths
     ])
     assignment_rows = []
