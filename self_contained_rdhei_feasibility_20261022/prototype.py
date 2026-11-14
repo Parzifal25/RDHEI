@@ -26,7 +26,7 @@ def model():
   _MODEL=load_model(str(CHECKPOINT),device='cpu')[0];_MODEL.eval();_MODEL.requires_grad_(False)
  return _MODEL
 
-def coords(shape,step=3,radius=2):
+def coords(shape,step=2,radius=2):
  y,x=np.meshgrid(np.arange(radius,shape[0]-radius,step),np.arange(radius,shape[1]-radius,step),indexing='ij')
  return y.ravel(),x.ravel()
 
