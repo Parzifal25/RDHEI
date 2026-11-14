@@ -50,7 +50,7 @@ jobs:
       - name: Install RGB protocol dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy pillow pycryptodome pytest
+          python -m pip install numpy pillow pycryptodome pytest pandas matplotlib
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Compile grayscale and RGB protocol modules
