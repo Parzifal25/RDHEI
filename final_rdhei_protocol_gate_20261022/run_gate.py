@@ -53,6 +53,13 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=20261113, help="Seed for reproducible payload bits and test mutations.")
     parser.add_argument("--short-payload-bits", type=int, default=37)
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument(
+        "--fixed-phase",
+        type=int,
+        choices=range(wire.SAFE_ZONE_PHASES),
+        default=None,
+        help="Evaluate one fixed phase (0-3) for ablation. Omit to select the phase with maximum signed net capacity.",
+    )
     parser.add_argument("--keep-artifacts", action="store_true", help="Retain all reserved/cipher/recovered image and payload arrays for every case.")
     return parser.parse_args()
 
@@ -499,8 +506,13 @@ def main():
                 "EDR2 key hierarchy",
             ],
             receiver_semantic_inputs=["marked encrypted image", "master key", "nonce"],
-            lattice_phase_policy="owner selects the phase with the highest signed net payload; phase is discovered by the authenticated header location",
+            lattice_phase_policy=(
+                "fixed phase requested for matched ablation"
+                if args.fixed_phase is not None
+                else "owner selects the phase with the highest signed net payload; phase is discovered by the authenticated header location"
+            ),
             lattice_phase_count=wire.SAFE_ZONE_PHASES,
+            requested_fixed_phase=args.fixed_phase,
             data_hider_semantic_inputs=["encrypted reserved image", "payload", "one derived data-hiding key"],
             input_directories=[str(p) for p in data_dirs],
             seed=args.seed,
@@ -521,7 +533,7 @@ def main():
             raise AssertionError(f"input pixels changed after inventory: {image['name']}")
         start = time.perf_counter()
         try:
-            q = pr.prepare(original)
+            q = pr.prepare(original, phase_override=args.fixed_phase)
         except ValueError as exc:
             elapsed = time.perf_counter() - start
             row = dict(
@@ -731,6 +743,11 @@ def main():
             negative_check_records=len(rejected),
             missing_original_baseline_stems=missing_baseline,
             capacity_identity="net = gross - metadata_foregone_slots - bootstrap_backup",
+            phase_evaluation_mode=(
+                f"fixed_phase_{args.fixed_phase}"
+                if args.fixed_phase is not None else "adaptive_maximum_signed_net_capacity"
+            ),
+            fixed_phase=args.fixed_phase,
             metadata_wire_storage_bits_reported_separately=True,
             metadata_foregone_slots_are_the_metadata_opportunity_cost=True,
             all_exact_recovery=roundtrip_passes == len(results),
