@@ -127,3 +127,13 @@ def test_rgb_rejects_gray_and_rgba_inputs():
         rgb_protocol.prepare(np.zeros((128, 128), dtype=np.uint8))
     with pytest.raises(ValueError, match="RGB HxWx3"):
         rgb_protocol.prepare(np.zeros((128, 128, 4), dtype=np.uint8))
+
+
+@pytest.mark.parametrize("bit_length", [0, 1, 7, 8, 9, 31, 137, 1025])
+def test_rgb_bit_exact_ctr_roundtrip_for_partial_bytes(bit_length):
+    key = bytes(range(32))
+    bits = np.random.default_rng(bit_length + 73).integers(0, 2, bit_length, dtype=np.uint8)
+    encrypted = rgb_wire.crypt_bits(bits, key)
+    decrypted = rgb_wire.crypt_bits(encrypted, key)
+    assert len(encrypted) == bit_length
+    np.testing.assert_array_equal(decrypted, bits)
