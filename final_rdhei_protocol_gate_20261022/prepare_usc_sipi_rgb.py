@@ -107,9 +107,24 @@ def main() -> None:
         raise FileExistsError(f"refusing to overwrite {output}")
     output.mkdir(parents=True)
 
-    checksum_bytes = fetch(CHECKSUMS_URL)
-    checksum_sha = sha256_bytes(checksum_bytes)
-    official_checksums = parse_checksums(checksum_bytes)
+    snapshot_path = Path(__file__).with_name("usc_sipi_rgb_checksums_2026-11-14.json")
+    snapshot_bytes = snapshot_path.read_bytes()
+    checksum_sha = sha256_bytes(snapshot_bytes)
+    snapshot = json.loads(snapshot_bytes)
+    if (
+        snapshot.get("source_url") != CHECKSUMS_URL
+        or snapshot.get("checksum_program") != "POSIX cksum"
+        or set(snapshot.get("scope_volumes", [])) != set(ARCHIVES)
+    ):
+        raise ValueError("pinned USC-SIPI checksum snapshot provenance or scope is invalid")
+    official_checksums = {
+        str(name): int(value)
+        for name, value in snapshot.get("checksums", {}).items()
+    }
+    for name in official_checksums:
+        parts = PurePosixPath(name).parts
+        if len(parts) != 2 or parts[0] not in ARCHIVES or not parts[1].lower().endswith(".tiff"):
+            raise ValueError(f"invalid path in pinned USC-SIPI checksum snapshot: {name}")
 
     archive_records = {}
     accepted = []
@@ -205,6 +220,9 @@ def main() -> None:
         "source_database": DATABASE_URL,
         "checksum_page": CHECKSUMS_URL,
         "checksum_page_sha256": checksum_sha,
+        "checksum_snapshot_file": snapshot_path.name,
+        "checksum_snapshot_retrieved_date": snapshot["retrieved_date"],
+        "checksum_snapshot_sha256": checksum_sha,
         "archive_records": archive_records,
         "catalogue_expected_colour_images": EXPECTED_CATALOGUE_COUNTS,
         "accepted_native_rgb_images": len(accepted),
