@@ -25,9 +25,10 @@ BATCH_SIZE = 2048
 
 BOOK = wire.BOOK.copy()
 ENC = {tuple(map(int, row)): index for index, row in enumerate(BOOK)}
-from src.rdhei_core import _compute_bpp_and_range
+# EDR2 owns its allocation rule in wire.py; do not import the legacy
+# dense pipeline or its external-map receiver into the active protocol.
 LABEL = np.asarray(
-    [ENC[tuple(map(int, _compute_bpp_and_range(error)))] for error in range(256)],
+    [ENC[tuple(map(int, wire.allocation(error)))] for error in range(256)],
     dtype=np.uint8,
 )
 
