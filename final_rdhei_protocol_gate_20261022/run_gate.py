@@ -91,6 +91,42 @@ def file_sha256(path):
     return digest.hexdigest()
 
 
+def load_natural_allowlist(directory):
+    """Load human-reviewed native-grayscale image file hashes for expanded natural corpora."""
+    path = directory / "natural_image_allowlist.json"
+    if not path.is_file():
+        return {}
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(f"invalid natural-image allowlist {path}: {exc}") from exc
+    rows = manifest.get("images") if isinstance(manifest, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError(f"{path} must contain an 'images' array")
+    allowed = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError(f"invalid allowlist entry in {path}")
+        rel = row.get("path")
+        digest = row.get("sha256")
+        classification = row.get("classification")
+        note = row.get("curation_note")
+        if (not isinstance(rel, str) or not rel or Path(rel).is_absolute()
+                or ".." in Path(rel).parts):
+            raise ValueError(f"unsafe relative path in {path}: {rel!r}")
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+            raise ValueError(f"invalid SHA-256 for {rel!r} in {path}")
+        if classification != "natural" or not isinstance(note, str) or not note.strip():
+            raise ValueError(
+                f"{rel!r} must be classified natural and have a nonempty curation_note"
+            )
+        key = Path(rel).as_posix()
+        if key in allowed:
+            raise ValueError(f"duplicate allowlist path {key!r} in {path}")
+        allowed[key] = {"sha256": digest.lower(), "curation_note": note.strip()}
+    return allowed
+
+
 def read_native_gray(path):
     """Accept true 8-bit grayscale only; do not silently convert RGB or 16-bit images."""
     with Image.open(path) as image:
@@ -130,9 +166,50 @@ def load_corpus(data_dirs, allow_missing_baseline):
     corpus, skipped, duplicates = [], [], []
     pixel_owner = {}
     baseline_stems = set()
+    allowlists = {
+        directory.resolve(): load_natural_allowlist(directory)
+        for directory in data_dirs
+        if directory.name.lower() != "kodak_gray"
+    }
 
     for directory, path in discovered:
         label = rel_label(path, directory)
+
+        # Synthetic controls and unreviewed files never enter paper-facing EDR2 metrics.
+        if path.stem.lower() in SYNTHETIC_STEMS:
+            skipped.append(dict(
+                path=str(path), relative_path=label, accepted=False,
+                reason="synthetic control explicitly excluded from paper-facing EDR2 corpus",
+            ))
+            continue
+
+        if directory.name.lower() == "kodak_gray":
+            allowed_baseline = (
+                path.parent.resolve() == directory.resolve()
+                and path.name.lower() in BASELINE_FILES
+            )
+            if not allowed_baseline:
+                skipped.append(dict(
+                    path=str(path), relative_path=label, accepted=False,
+                    reason="not one of the six fixed root-level grayscale baseline PNGs",
+                ))
+                continue
+            baseline_stems.add(path.stem.lower())
+        else:
+            allow = allowlists.get(directory.resolve(), {}).get(label)
+            if allow is None:
+                skipped.append(dict(
+                    path=str(path), relative_path=label, accepted=False,
+                    reason=f"not curator-allowlisted in {NATURAL_ALLOWLIST_NAME}",
+                ))
+                continue
+            actual_sha = file_sha256(path)
+            if actual_sha != allow["sha256"]:
+                raise ValueError(
+                    f"allowlisted file hash changed for {path}: "
+                    f"expected {allow['sha256']}, found {actual_sha}"
+                )
+
         try:
             array = read_native_gray(path)
         except Exception as exc:
@@ -142,8 +219,6 @@ def load_corpus(data_dirs, allow_missing_baseline):
             )
             continue
 
-        if directory.name.lower() == "kodak_gray":
-            baseline_stems.add(path.stem.lower())
         digest = pixel_sha256(array)
         record = dict(
             name=label,
@@ -304,8 +379,14 @@ def main():
         skipped_nonconforming_files=len(skipped),
         duplicate_pixel_files=len(duplicates),
         missing_original_baseline_stems=missing_baseline,
-        baseline_requirement="original six names required unless --allow-missing-baseline",
+        baseline_requirement="original six root-level PNG names required unless --allow-missing-baseline",
         image_modes="native 8-bit grayscale mode L only; no RGB conversion, resize, crop or recompression",
+        paper_corpus_policy=(
+            "Only the six fixed root-level baseline PNGs in data/kodak_gray and "
+            "byte-hash-verified files classified natural in natural_image_allowlist.json "
+            "are accepted. Synthetic controls and unreviewed files are excluded."
+        ),
+        synthetic_stems_explicitly_excluded=sorted(SYNTHETIC_STEMS),
     ))
 
     # Keep the historical exact mapping and all-pairs recovery checks as hard gates.
@@ -414,8 +495,10 @@ def main():
         short_len = min(args.short_payload_bits, q["net"])
         payload_cases = [
             ("empty", 0),
+            ("one_bit", min(1, q["net"])),
             ("short", short_len),
             ("partial", q["net"] // 2),
+            ("near_max", max(0, q["net"] - 1)),
             ("full", q["net"]),
         ]
 
@@ -595,7 +678,7 @@ def main():
     )
     assert state_unchanged
     assert roundtrip_passes == len(results)
-    assert len(results) == sum(4 for row in capacities if row.get("accepted"))
+    assert len(results) == sum(6 for row in capacities if row.get("accepted"))
     print("ALL CHECKS PASSED", flush=True)
 
 
