@@ -88,3 +88,62 @@ def test_rgb_archive_extraction_confines_member_paths(tmp_path):
                 archive, members["aerials/../../escape.tiff"], destination
             )
     assert not (tmp_path / "escape.tiff").exists()
+
+
+
+def test_rgb_runner_completion_gate_fails_when_every_input_is_skipped():
+    status, failures = rgb_gate.completion_status([], [], [])
+    assert status == "completed_with_failures"
+    assert any("no native" in failure for failure in failures)
+
+
+def test_rgb_runner_completion_gate_fails_on_roundtrip_or_missing_full_capacity():
+    inventory = [{"image": "aerials/a.tiff"}]
+    capacity = [{
+        "image": "aerials/a.tiff",
+        "status": "roundtrip_passed",
+        "signed_net_capacity_bits": 100,
+    }]
+    incomplete = [{
+        "image": "aerials/a.tiff",
+        "payload_bits": 37,
+        "passed": True,
+    }]
+    status, failures = rgb_gate.completion_status(capacity, inventory, incomplete)
+    assert status == "completed_with_failures"
+    assert any("full-capacity" in failure for failure in failures)
+
+    failed = [{
+        "image": "aerials/a.tiff",
+        "payload_bits": 100,
+        "passed": False,
+    }]
+    status, failures = rgb_gate.completion_status(capacity, inventory, failed)
+    assert status == "completed_with_failures"
+    assert any("exact-recovery" in failure for failure in failures)
+
+
+def test_rgb_runner_completion_gate_accepts_rejected_capacity_and_exact_positive_case():
+    inventory = [
+        {"image": "aerials/a.tiff"},
+        {"image": "misc/b.tiff"},
+    ]
+    capacity = [
+        {
+            "image": "aerials/a.tiff",
+            "status": "roundtrip_passed",
+            "signed_net_capacity_bits": 100,
+        },
+        {
+            "image": "misc/b.tiff",
+            "status": "rejected_nonpositive_net_capacity",
+            "signed_net_capacity_bits": -5,
+        },
+    ]
+    roundtrips = [
+        {"image": "aerials/a.tiff", "payload_bits": 0, "passed": True},
+        {"image": "aerials/a.tiff", "payload_bits": 100, "passed": True},
+    ]
+    status, failures = rgb_gate.completion_status(capacity, inventory, roundtrips)
+    assert status == "completed"
+    assert failures == []
