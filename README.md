@@ -2,7 +2,7 @@
 
 ## Current research implementation: EDR2
 
-The active publication-hardening branch is research/edr2-publication-hardening (based on research/capacity-aware-edr1). Its current protocol implementation is **EDR2**, a grayscale RRBE/RDHEI design with receiver-side external-side-information-free recovery.
+The active publication-hardening branch is research/edr2-publication-hardening (based on research/capacity-aware-edr1). Its current protocol implementation is **EDR2**, a grayscale RRBE/RDHEI design with receiver-side external-side-information-free recovery. The current maximum-density four-phase lattice requires even image height and width; odd-sized inputs are rejected rather than processed under an unproven phase-count assumption.
 
 ### Receiver contract
 
