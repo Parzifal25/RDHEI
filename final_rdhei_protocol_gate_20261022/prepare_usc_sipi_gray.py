@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Inventory native 8-bit grayscale TIFFs from official USC-SIPI archives.
 
-This script never converts RGB images to grayscale and never extracts arbitrary tar paths.
-The resulting files are an inventory, not an automatically approved paper corpus. The
-EDR2 natural-image gate requires a separate, manually reviewed natural_image_allowlist.json
-with the exact file SHA-256 and a curation note for each extra image.
+USC-SIPI uses legacy filenames without conventional .tif/.tiff suffixes. This
+script detects TIFF content by its file signature, preserves the original TIFF
+bytes, and writes safe normalized .tiff filenames. It does not convert RGB,
+resize, crop, recompress, or blindly extract archive paths. The generated
+inventory is not itself an approved evaluation corpus; run
+curate_usc_sipi_allowlist.py for hash-pinned catalogue curation.
 """
 from __future__ import annotations
 
@@ -15,7 +17,7 @@ import json
 import tarfile
 import urllib.error
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 from PIL import Image
@@ -27,7 +29,7 @@ ARCHIVES = {
     "misc": "https://sipi.usc.edu/database/misc.tar.gz",
     "sequences": "https://sipi.usc.edu/database/sequences.tar.gz",
 }
-IMAGE_SUFFIXES = {".tif", ".tiff"}
+TIFF_MAGICS = {b"II*\x00", b"MM\x00*", b"II+\x00", b"MM\x00+"}
 
 
 def sha256(data: bytes) -> str:
@@ -44,11 +46,10 @@ def sha256_file(path: Path) -> str:
 
 def download(url: str, destination: Path) -> str:
     request = urllib.request.Request(
-        url,
-        headers={"User-Agent": "RDHEI-EDR2-reproducibility/1.0"},
+        url, headers={"User-Agent": "RDHEI-EDR2-reproducibility/1.0"}
     )
     try:
-        with urllib.request.urlopen(request, timeout=60) as response, destination.open("wb") as out:
+        with urllib.request.urlopen(request, timeout=90) as response, destination.open("wb") as out:
             digest = hashlib.sha256()
             while True:
                 block = response.read(1024 * 1024)
@@ -62,18 +63,36 @@ def download(url: str, destination: Path) -> str:
     return digest.hexdigest()
 
 
+def normalized_output_path(volume: str, member_name: str, output_root: Path) -> Path:
+    member = PurePosixPath(member_name)
+    if member.is_absolute() or not member.parts or any(part in ("..", "") for part in member.parts):
+        raise ValueError(f"unsafe archive member path: {member_name!r}")
+    if ":" in member.parts[0] or "\\" in member_name:
+        raise ValueError(f"unsafe archive member path: {member_name!r}")
+    original_name = member.name
+    suffix = Path(original_name).suffix.lower()
+    stem = Path(original_name).stem if suffix in {".tif", ".tiff"} else original_name
+    if not stem or stem in {".", ".."}:
+        raise ValueError(f"invalid archive member filename: {member_name!r}")
+    relative = Path(volume, *member.parts[:-1], stem + ".tiff")
+    destination = (output_root / relative).resolve()
+    if output_root.resolve() not in destination.parents:
+        raise ValueError(f"archive member escapes output directory: {member_name!r}")
+    return destination
+
+
 def extract_grayscale(archive_path: Path, volume: str, output_root: Path, archive_url: str, archive_sha: str):
     accepted, skipped = [], []
     with tarfile.open(archive_path, mode="r:gz") as archive:
         for member in sorted(archive.getmembers(), key=lambda item: item.name):
-            member_path = Path(member.name)
-            if not member.isfile() or member_path.suffix.lower() not in IMAGE_SUFFIXES:
+            if not member.isfile():
                 continue
             source = archive.extractfile(member)
             if source is None:
-                skipped.append({"member": member.name, "reason": "archive member could not be read"})
                 continue
             raw = source.read()
+            if len(raw) < 4 or raw[:4] not in TIFF_MAGICS:
+                continue
             try:
                 with Image.open(io.BytesIO(raw)) as image:
                     if getattr(image, "n_frames", 1) != 1:
@@ -93,13 +112,16 @@ def extract_grayscale(archive_path: Path, volume: str, output_root: Path, archiv
                 skipped.append({"member": member.name, "reason": f"{type(exc).__name__}: {exc}"})
                 continue
 
-            # Use only the archive member's basename below a fixed volume directory.
-            # No archive path is extracted directly, preventing traversal.
-            filename = member_path.name
-            destination = output_root / volume / filename
+            try:
+                destination = normalized_output_path(volume, member.name, output_root)
+            except ValueError as exc:
+                skipped.append({"member": member.name, "reason": str(exc)})
+                continue
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists():
-                raise FileExistsError(f"refusing to overwrite existing image: {destination}")
+                raise FileExistsError(
+                    f"two archive members normalize to the same path: {destination}"
+                )
             destination.write_bytes(raw)
             accepted.append({
                 "path": destination.relative_to(output_root).as_posix(),
@@ -115,7 +137,7 @@ def extract_grayscale(archive_path: Path, volume: str, output_root: Path, archiv
     return accepted, skipped
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", default="data/usc_sipi_gray")
     parser.add_argument("--archive-dir", default="data/usc_sipi_archives")
@@ -124,7 +146,7 @@ def main():
     output_root = Path(args.output_dir).expanduser().resolve()
     archive_root = Path(args.archive_dir).expanduser().resolve()
     if output_root.exists() and any(
-        path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+        path.is_file() and path.suffix.lower() in {".tif", ".tiff"}
         for path in output_root.rglob("*")
     ):
         raise FileExistsError(
@@ -149,22 +171,29 @@ def main():
             "url": url,
             "archive_path": str(archive_path),
             "archive_sha256": archive_sha,
-            "grayscale_images": len(images),
-            "skipped_image_members": len(skipped),
+            "native_grayscale_tiffs": len(images),
+            "skipped_tiff_candidates": len(skipped),
         })
         all_images.extend(images)
         all_skipped.extend([{"volume": volume, **row} for row in skipped])
-        print(f"{volume}: retained {len(images)} native grayscale TIFFs; skipped {len(skipped)}", flush=True)
+        print(f"{volume}: retained {len(images)} native grayscale TIFFs; skipped {len(skipped)} TIFF candidates", flush=True)
 
     manifest = {
         "dataset": "USC-SIPI Image Database",
         "preparation_script": "final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py",
         "source_homepage": "https://sipi.usc.edu/database/",
-        "policy": "Only native single-frame 8-bit grayscale TIFFs (Pillow mode L, uint8, 2D) are retained. RGB files are not converted. Retained files are inventory candidates only; human review and exact file hashes are required in natural_image_allowlist.json before EDR2 paper-facing evaluation.",
+        "policy": (
+            "TIFF files are identified by byte signature rather than filename suffix. "
+            "Only native single-frame 8-bit grayscale TIFFs (Pillow mode L, uint8, 2D) "
+            "are retained. RGB and 16-bit images are not converted. Original TIFF bytes "
+            "are preserved under safe normalized .tiff filenames. This is an inventory "
+            "only; catalogue review, exact-file SHA-256 checks, even dimensions, and a "
+            "curated allowlist are required before EDR2 paper-facing evaluation."
+        ),
         "archive_records": archive_records,
         "image_count_before_pixel_deduplication": len(all_images),
         "images": all_images,
-        "skipped_image_members": all_skipped,
+        "skipped_tiff_candidates": all_skipped,
     }
     manifest_path = output_root / "dataset_manifest.json"
     if manifest_path.exists():
@@ -172,7 +201,7 @@ def main():
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Manifest: {manifest_path}")
     print(f"Native grayscale TIFFs retained: {len(all_images)}")
-    print("This inventory does not authorize paper inclusion. Review each candidate and create natural_image_allowlist.json with path, file SHA-256, classification='natural', and a curation note before running the EDR2 gate.")
+    print("Next: run curate_usc_sipi_allowlist.py. The inventory itself is not an approved paper corpus.")
 
 
 if __name__ == "__main__":
