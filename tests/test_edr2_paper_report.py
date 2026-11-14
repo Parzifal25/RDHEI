@@ -45,11 +45,17 @@ def test_report_generator_marks_six_baselines_missing_and_uses_raw_ledgers(tmp_p
     (adaptive / "negative_checks_and_rejections.json").write_text("[]", encoding="utf-8")
 
     out = tmp_path / "report.md"
-    report.generate(adaptive, None, out, None)
+    sys.argv = [
+        "build_edr2_paper_report.py",
+        "--adaptive-dir", str(adaptive),
+        "--output", str(out),
+        "--literature-file", "",
+    ]
+    report.main()
     text = out.read_text(encoding="utf-8")
 
     assert "Six-image baseline status" in text
     assert "airplane, baboon" in text
     assert "No matched fixed-phase analysis artifact" in text
-    assert "163" not in text  # report uses fixture ledger, not cached historical counts
+    assert "- Distinct evaluation inputs: 1" in text
     assert "abc123" in text
