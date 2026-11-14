@@ -1,0 +1,36 @@
+name: Verify exact original grayscale baseline sources
+
+on:
+  push:
+    branches:
+      - research/edr2-baseline-source-check
+    paths:
+      - ".github/workflows/verify-original-baselines.yml"
+      - "tools/verify_original_grayscale_baseline_candidates.py"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Pillow and NumPy
+        run: python -m pip install pillow numpy
+      - name: Check candidate sources against pinned exact hashes
+        run: python tools/verify_original_grayscale_baseline_candidates.py
+      - name: Upload provenance report and only exact matches
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-six-baseline-source-verification
+          path: |
+            baseline_candidate_verification.json
+            data/kodak_gray/
+          if-no-files-found: warn
+          retention-days: 30
