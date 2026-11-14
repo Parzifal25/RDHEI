@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Download the official USC-SIPI archives and retain native 8-bit grayscale TIFFs only.
+"""Inventory native 8-bit grayscale TIFFs from official USC-SIPI archives.
 
 This script never converts RGB images to grayscale and never extracts arbitrary tar paths.
-It is intentionally a dataset-preparation utility; it does not alter the EDR1 codec.
+The resulting files are an inventory, not an automatically approved paper corpus. The
+EDR2 natural-image gate requires a separate, manually reviewed natural_image_allowlist.json
+with the exact file SHA-256 and a curation note for each extra image.
 """
 from __future__ import annotations
 
@@ -43,7 +45,7 @@ def sha256_file(path: Path) -> str:
 def download(url: str, destination: Path) -> str:
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "RDHEI-EDR1-reproducibility/1.0"},
+        headers={"User-Agent": "RDHEI-EDR2-reproducibility/1.0"},
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as response, destination.open("wb") as out:
@@ -158,7 +160,7 @@ def main():
         "dataset": "USC-SIPI Image Database",
         "preparation_script": "final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py",
         "source_homepage": "https://sipi.usc.edu/database/",
-        "policy": "Only native single-frame 8-bit grayscale TIFFs (Pillow mode L, uint8, 2D) are retained. RGB files are not converted.",
+        "policy": "Only native single-frame 8-bit grayscale TIFFs (Pillow mode L, uint8, 2D) are retained. RGB files are not converted. Retained files are inventory candidates only; human review and exact file hashes are required in natural_image_allowlist.json before EDR2 paper-facing evaluation.",
         "archive_records": archive_records,
         "image_count_before_pixel_deduplication": len(all_images),
         "images": all_images,
@@ -170,7 +172,7 @@ def main():
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Manifest: {manifest_path}")
     print(f"Native grayscale TIFFs retained: {len(all_images)}")
-    print("Pixel-identical copies are deduplicated later by run_gate.py using decoded pixels + dimensions.")
+    print("This inventory does not authorize paper inclusion. Review each candidate and create natural_image_allowlist.json with path, file SHA-256, classification='natural', and a curation note before running the EDR2 gate.")
 
 
 if __name__ == "__main__":
