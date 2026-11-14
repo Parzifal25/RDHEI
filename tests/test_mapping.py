@@ -72,6 +72,7 @@ def test_exact_recovery_for_every_original_prediction_pair_and_payload_word():
 
             if n == 0:
                 assert _recover_pixel(original, prediction, n, lo, hi) == original
+                tested_payload_words += 1  # the single empty/pass-through word
                 continue
 
             preserved_bits = 8 - n
