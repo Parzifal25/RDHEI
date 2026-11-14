@@ -352,7 +352,7 @@ def main():
             protocol="EDR2",
             protocol_sha256=sha(BASE / "PROTOCOL_EDR2.md"),
             checkpoint_sha256=sha(ROOT / "models" / "v4_patch3.pth"),
-            source_sha256={p.name: sha(p) for p in [BASE / "protocol.py", BASE / "wire.py", BASE / "run_gate.py"]},
+            source_sha256={p.name: sha(p) for p in [BASE / "predictor.py", BASE / "protocol.py", BASE / "wire.py", BASE / "run_gate.py"]},
             test_master_hex=master.hex(),
             test_nonce_base_hex=f"{nonce_base:032x}",
             training=False,
@@ -407,7 +407,7 @@ def main():
         y, x = q["ys"], q["xs"]
         changed = original.copy()
         changed[y, x] = payload_rng.integers(0, 256, len(y), dtype=np.uint8)
-        assert np.array_equal(old.predict(changed, y, x), q["floats"])
+        assert np.array_equal(old.predict(changed, y, x), q["predictions"])
 
         short_len = min(args.short_payload_bits, q["net"])
         payload_cases = [
