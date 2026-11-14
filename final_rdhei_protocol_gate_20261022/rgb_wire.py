@@ -196,8 +196,40 @@ def inspect(image: np.ndarray, capability: dict, stage: str = "final"):
     valid, errors = [], []
     for red_phase in range(PHASES):
         try:
-            ys, xs, codec, length, payload_length, bootstrap = _read_header(image, capability, stage, red_phase)
-            directory_cipher = image[ys[HEADER_BYTES:HEADER_BYTES + length], xs[HEADER_BYTES:HEADER_BYTES + length], 0].tobytes()
+            ys, xs, codec, length, payload_length, bootstrap = _read_header(
+                image, capability, stage, red_phase
+            )
+            actual_tag = image[
+                ys[HEADER_BYTES + length:bootstrap],
+                xs[HEADER_BYTES + length:bootstrap],
+                0
+            ].tobytes()
+            remaining = [phase for phase in range(PHASES) if phase != red_phase]
+
+            # Authenticate the phase tuple before decrypting/decompressing the directory.
+            # There are 3*2 assignments for G/B once the red header location is known.
+            authenticated = []
+            for green_phase in remaining:
+                for blue_phase in remaining:
+                    if blue_phase == green_phase:
+                        continue
+                    calibration_phase = next(
+                        phase for phase in remaining
+                        if phase not in (green_phase, blue_phase)
+                    )
+                    phases = (red_phase, green_phase, blue_phase, calibration_phase)
+                    expected_tag = tag(image, capability, stage, phases, length)
+                    if hmac.compare_digest(actual_tag, expected_tag):
+                        authenticated.append(phases)
+            if len(authenticated) != 1:
+                raise ValueError("RGB phase authentication yielded zero or multiple assignments")
+            authenticated_phases = authenticated[0]
+
+            directory_cipher = image[
+                ys[HEADER_BYTES:HEADER_BYTES + length],
+                xs[HEADER_BYTES:HEADER_BYTES + length],
+                0
+            ].tobytes()
             raw = crypt(directory_cipher, capability["directory"])
             candidate_count = len(wire.grid((height, width), phase=0)[0])
             expected_length = 8 + 3 * ((candidate_count + 1) // 2)
@@ -209,14 +241,12 @@ def inspect(image: np.ndarray, capability: dict, stage: str = "final"):
             else:
                 data = raw
             phases, labels = _unpack_labels(data, candidate_count)
-            if phases[0] != red_phase:
-                raise ValueError("RGB phase tuple inconsistent with red header location")
-            actual = image[ys[HEADER_BYTES + length:bootstrap], xs[HEADER_BYTES + length:bootstrap], 0].tobytes()
-            expected = tag(image, capability, stage, phases, length)
-            if not hmac.compare_digest(actual, expected):
-                raise ValueError("RGB authentication failed")
-            positions = enumerate_slots((height, width), labels, phases[:3], bootstrap)
-            gross = int(sum(row[:, 0].sum() for row in [wire.BOOK[item] for item in labels]))
+            if phases != authenticated_phases:
+                raise ValueError("authenticated phase tuple differs from encrypted directory")
+            positions = enumerate_slots(
+                (height, width), labels, phases[:3], bootstrap
+            )
+            gross = int(sum(int(wire.BOOK[row, 0].sum()) for row in labels))
             foregone = int(wire.BOOK[labels[0][:bootstrap], 0].sum())
             stream = gross - foregone
             backup = 8 * bootstrap
