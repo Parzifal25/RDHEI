@@ -121,3 +121,59 @@ This remains a candidate contribution. A full-text comparison with existing encr
 ## 9. Implementation status
 
 The RGB code is a research prototype. It has not yet passed CI, full-corpus evaluation, independent security review or publication-level matched experiments. The grayscale protocol and its existing results remain the baseline and are not modified by this branch.
+
+
+## 10. Dataset and reproduction plan
+
+The six familiar project baseline PNGs are grayscale-only inputs. They are not reused as RGB images and are not converted to colour. The initial RGB corpus is the official USC-SIPI native colour subset:
+
+- Volume 2 Aerials: catalogue lists 37 colour images (plus one monochrome image in the volume).
+- Volume 3 Miscellaneous: catalogue lists 16 colour images (plus 28 monochrome images in the volume).
+
+The preparer downloads only the official aerials.tar.gz and misc.tar.gz archives. It checks every TIFF candidate against the publisher's POSIX cksum page, then retains only native, single-frame, Pillow RGB, uint8, HxWx3 files with even dimensions. No colour conversion, channel reordering, crop, resize, or recompression is performed. Exact decoded RGB duplicates are removed. The accepted set may be smaller than 53 after strict validation and deduplication; the manifest is authoritative.
+
+USC-SIPI notes that it does not own the copyright of most images and the copyright status of some is unknown. The evaluation workflow therefore uploads image hashes, source manifest and measured result tables, not the original TIFF corpus.
+
+### Full-corpus command
+
+On the GitHub Actions page for EDR2 RGB extension gate, choose branch research/edr2-rgb-extension, keep run_rgb_smoke_tests=true, and set run_rgb_full_corpus=true. The full-corpus job depends on a passing protocol-test job.
+
+The equivalent commands on a machine with Python 3.11 and the project's dependencies installed are:
+
+    python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py \
+      --output-dir /tmp/usc-sipi-native-rgb
+
+    python final_rdhei_protocol_gate_20261022/run_rgb_gate.py \
+      --data-dir /tmp/usc-sipi-native-rgb \
+      --output-dir /tmp/cc-edr2-rgb-evidence
+
+    python final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py \
+      --evidence-dir /tmp/cc-edr2-rgb-evidence \
+      --output-dir /tmp/cc-edr2-rgb-paper-analysis
+
+The run stores the frozen checkpoint identity and the source-file and decoded-pixel hashes. It computes the twelve spatial CNN channel/phase prediction batches once per image and reuses them for four blend settings (0, 1/4, 1/2 and 3/4). For each blend, it evaluates all 24 ordered channel-phase assignments. It also evaluates the fixed assignment (0,1,2) with calibration phase 3, and reports the adaptive assignment gain.
+
+Exact image and payload recovery is tested at empty, 1-bit, 7-bit, 8-bit, 9-bit, 37-bit, 137-bit, near-capacity (N−1) and full-capacity (N) payload lengths. If payload lengths coincide for a small-capacity image, the runner tests that distinct length once. Exact recovery checks are run for the predeclared 1/4 blend; the other blend settings are capacity/MAE ablations only.
+
+### Expected evidence files
+
+Raw run artifact:
+
+- rgb_capacity_summary.csv: per-image net capacity, all four blend capacities and channel MAEs, selected phase tuple, metadata and timing.
+- rgb_phase_assignment_scores.csv: all 24 assignment scores per image and blend setting.
+- rgb_roundtrip_summary.csv: exact image/payload recovery outcomes for each distinct payload length.
+- rgb_input_inventory.csv, rgb_skipped_inputs.csv, rgb_run_summary.json, rgb_input_manifest.json, rgb_source_manifest.json.
+
+Analysis artifact:
+
+- rgb_blend_ablation_summary.csv
+- rgb_prediction_mae_summary.csv
+- rgb_selected_phase_frequency.csv
+- rgb_all_24_phase_assignments_per_image.csv
+- rgb_exact_recovery_summary.csv
+- fig_rgb_01_capacity_by_blend.png
+- fig_rgb_02_prediction_mae.png
+- fig_rgb_03_phase_selection_gain.png
+- CC_EDR2_RGB_FINAL_REPORT.md
+
+Do not state the RGB experiment is complete or that RGB improves the grayscale results until the full-corpus job has completed and these files have been checked. Grayscale bpp and RGB bits-per-pixel are different operating contexts: RGB net bpp is defined per spatial RGB pixel, with one aggregate capacity across the three channels.
