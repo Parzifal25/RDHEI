@@ -48,7 +48,15 @@ The owner delivers only Kh to the authorized hider. From Kh, both hider and rece
     Kp = HKDF-SHA256(Kh, salt=empty, info="EDR2/hider/payload", length=32)
     Ka = HKDF-SHA256(Kh, salt=empty, info="EDR2/hider/auth", length=32)
 
-The distinct HKDF info strings provide cryptographic domain separation. Possession of Kh does not provide the input K_root or K_img, so the hider cannot derive the image-encryption key from its capability.
+From Kh, both owner/hider and receiver derive five 32-byte subkeys using independent HKDF-SHA256 info strings:
+
+    K_header_bootstrap = HKDF-SHA256(Kh, info="EDR2/hider/header-bootstrap")
+    K_header_final     = HKDF-SHA256(Kh, info="EDR2/hider/header-final")
+    Kd                 = HKDF-SHA256(Kh, info="EDR2/hider/directory")
+    Kp                 = HKDF-SHA256(Kh, info="EDR2/hider/payload")
+    Ka                 = HKDF-SHA256(Kh, info="EDR2/hider/auth")
+
+The distinct HKDF info strings provide cryptographic domain separation. Possession of Kh does not provide K_root or K_img, so the hider cannot derive the image-encryption key from its capability. The two header-stage keys are distinct because reusing one CTR key for the reservation header and final header would expose the XOR of the two header plaintexts to an observer who obtains both packet states.
 
 AES-256-CTR starts at counter zero independently under each derived key. A nonce V must never be reused with the same master key K for another packet, including an empty-payload packet. Each reservation packet is single-use. Nonce reuse would repeat derived keys and CTR keystreams and is prohibited.
 
@@ -76,7 +84,7 @@ The first 20 candidate bytes contain a fixed-width header with the big-endian st
 | Directory length L | 4 bytes | Encrypted directory length in bytes |
 | Payload length P | 8 bytes | User payload length in bits |
 
-The header is encrypted under one of two separate HKDF-derived header keys: a bootstrap-header key for the owner's reservation packet and a final-header key for the completed marked image. Separate keys prevent an observer who sees both packet states from cancelling a reused CTR keystream and recovering the XOR of the two header plaintexts. The hider can authenticate and decrypt the bootstrap header, then writes the final header under the final-header key. The receiver derives the final-header key from K and V.
+The header is encrypted using AES-256-CTR with the stage-specific HKDF-derived header key. The owner uses K_header_bootstrap for its reservation packet. The hider authenticates and decrypts the bootstrap header, then writes the completed header using K_header_final. The receiver derives K_header_final from K and V. Separate header keys prevent an observer who sees both packet states from cancelling a reused CTR keystream and recovering the XOR of the two header plaintexts.
 
 The next L candidate bytes contain the encrypted packed label directory. The next 32 candidate bytes contain the HMAC-SHA256 authentication tag. The bootstrap length is therefore:
 
@@ -126,7 +134,7 @@ The hider derives Kd,Kp,Ka and the bootstrap/final header keys from its single K
 2. Checks that the payload is a one-dimensional binary sequence and 0<=P<=N.
 3. Forms payload || zero padding of exactly N bits, packs it with zero low-byte padding, encrypts the packed bytes under Kp, and takes the first N ciphertext bits.
 4. Replaces only the ciphertext positions U with these encrypted payload bits. The hider does not decrypt the image and does not insert payload into the pre-encryption plaintext image.
-5. Updates P in the public header and recomputes the HMAC. The directory and backup prefix remain unchanged.
+5. Encrypts the updated header containing P using K_header_final and recomputes the HMAC. The directory and backup prefix remain unchanged.
 
 The hider needs no CNN, original image, image-encryption key, original prediction map or external per-image capacity map.
 
@@ -134,7 +142,7 @@ The hider needs no CNN, original image, image-encryption key, original predictio
 
 The receiver takes exactly the final marked encrypted image, K, and V as per-image semantic inputs.
 
-1. Derives K_img and Kh from K,V, then Kd,Kp,Ka and the final-header key.
+1. Derives K_img and Kh from K,V, then K_header_final, Kd,Kp,Ka.
 2. Decrypts the fixed-size header, checks its bounds, and authenticates the marked image before decompressing the directory or running the CNN. It validates the decoded directory length, labels, padding and payload length.
 3. Reads the encrypted payload bits from U, decrypts them under Kp, checks that all bits after P are zero padding, and returns exactly the first P bits. This includes P=0 and non-byte-aligned payload lengths.
 4. Generates the image keystream Z under K_img. Replaces U ciphertext bits with the corresponding keystream bits and restores the H bootstrap ciphertext bytes to Z. These positions were zero in the reserved plaintext R, so their ciphertext is exactly recomputable.
@@ -150,8 +158,8 @@ The receiver must not access source images, payload files, capability-key files,
 ## 10. Security and scope limits
 
 - EDR2 is an RDHEI/RRBE protocol design, not a certified or independently audited cryptosystem.
-- The data hider is authorized to read the label directory and holds the authentication key. A malicious authorized hider can alter the packet and recompute its tag; this threat is outside the current model.
-- The header fields, directory length and payload bit length are encrypted in-band. The image dimensions and total file size remain observable; image-level traffic analysis and length leakage through the outer file/container are not claimed to be eliminated.
+- The data hider is authorized to read the label directory and holds the data-hiding/authentication capability derived from Kh. A malicious authorized hider can alter the packet and recompute its tag; this threat is outside the current model.
+- The header fields, directory length and payload bit length are encrypted in-band. The image dimensions and total outer file size remain observable; image-level traffic analysis and length leakage through the PNG/container size are not claimed to be eliminated.
 - The fixed CNN checkpoint and arithmetic environment are shared protocol software; cross-runtime floating-point equivalence has not been established.
 - Positive net capacity is image-dependent. The algorithm rejects N<=0. No universal positive-capacity claim is made.
 - EDR2 uses a different magic and key hierarchy from EDR1. Never decode an EDR1 packet as EDR2 or mix EDR1 results with EDR2 measurements.
