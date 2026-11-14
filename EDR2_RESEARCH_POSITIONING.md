@@ -28,7 +28,7 @@ The legacy `src/rdhei_core.py` dense pipeline remains a separate historical impl
 
 ## 2. The strongest technical contribution candidate
 
-The primary candidate contribution is a **maximum-density, context-invariant candidate lattice for a fixed non-causal 3x3 CNN, integrated with authenticated in-image metadata, reversible bootstrap backup and exact receiver-only reconstruction**.
+The primary candidate contribution is a **four-phase, content-adaptive selection among maximum-density context-invariant lattices for a fixed non-causal 3x3 CNN, where the selected phase maximizes signed net payload after in-band directory compression and bootstrap restoration costs**. The phase is implicitly identified by the authenticated header's carrier coordinates, so selection adds neither a per-image sidecar nor extra phase bits.
 
 The 3x3 predictor uses a local patch and masks its centre before inference. Only the chosen candidate centres may be modified. Let the candidate centre set be (G), and let (B_1(g)) be the 3x3 Chebyshev-radius-one neighbourhood around (g). Require
 
@@ -50,6 +50,28 @@ For an (h\times w) image, valid centres lie in the interior rectangle ({1,\ldots
 ]
 
 The step-2 lattice ((y,x)=(1+2i,1+2j)), restricted to valid 3x3 centres, attains this bound. For a 512x512 image it selects (255\times255=65{,}025) candidate centres, or 24.81% of all image pixels. This is a geometric candidate-density result, **not** an embedding-capacity result. Net capacity must still be measured after label coding, header, authentication and backup overhead.
+
+The four step-2 phases are alternatives, not a union of mutable centres. For phase q in {0,1,2,3}, let the row/column offsets be r_q=1+floor(q/2) and c_q=1+(q mod 2). Every phase independently attains 65,025 centres on a 512x512 image and preserves the same radius-one context invariant.
+
+### Net-capacity phase selection
+
+For each phase q, the owner independently runs the frozen checkpoint and computes the compressed label directory, bootstrap carrier count H_q, ordinary-slot opportunity cost F_q and signed payload budget
+
+\[
+N_q = G_{0,q} - F_q - 8H_q.
+\]
+
+The selected phase is
+
+\[
+q^* = \arg\max_{q\in\{0,1,2,3\}} N_q,
+\]
+
+with the lowest phase index used as a deterministic tie-break. A packet is rejected when max_q N_q is non-positive. Because label compression and bootstrap labels vary by phase, this optimizes actual net payload, not gross allocation.
+
+The selected phase is inferred from the fixed-format encrypted header location. Hider and receiver test the four public header locations and accept exactly one whose framing, phase-bound HMAC and bounded directory validate. The phase index is part of the HMAC input but is not separately stored or sent out-of-band. This selection does not increase the number of candidate centres; it can only improve the best net budget among the four equal-density layouts.
+
+This is a candidate method contribution, not a measured gain. The natural-image evaluation must report all four N_q values, chosen phase, gain over a preregistered fixed phase (phase 0), and the percentage of natural images for which selection improves net bits. The maximum-of-four selection advantage must be measured on a frozen corpus and compared with adaptive spatial/partition methods in the literature.
 
 The proof is conditional on the implemented model actually having only a 3x3 per-pixel input and on no cross-candidate/global operations being introduced at inference. The protocol identity must pin the checkpoint hash, preprocessing, rounding, evaluation mode, batch behaviour and software environment.
 
@@ -88,12 +110,14 @@ CNN-based prediction, prediction-error-based bit-plane allocation, MSB replaceme
 
 The research claim should be framed as a verifiable integration of:
 
-1. a finite-domain maximum-density candidate lattice derived from the fixed 3x3 CNN's masked receptive field;
-2. prediction synchronization under arbitrary candidate-centre modification;
-3. an encrypted, compressed, self-framed in-image class directory;
-4. complete backup of bootstrap carriers;
-5. authenticated encrypted-domain payload insertion; and
-6. an explicit signed net-capacity acceptance test with receiver-only exact reconstruction.
+1. a finite-domain maximum-density safe lattice derived from the fixed 3x3 CNN's masked receptive field;
+2. four parity phases, each preserving the same CNN-context synchronization guarantee;
+3. content-adaptive phase selection maximizing the exact signed net payload N_q after directory compression, metadata-carrier opportunity cost and bootstrap backup;
+4. implicit phase discovery through the authenticated in-band header location, without external phase metadata;
+5. an encrypted, compressed, self-framed class directory and complete bootstrap backup; and
+6. receiver-only exact reconstruction with explicit net-capacity acceptance.
+
+This claim is narrower than generic partitioning, embedded labels, adaptive bit-plane coding or authenticated encryption. Novelty remains conditional on full-text comparison of the four-phase net-capacity selection and implicit authenticated phase-discovery mechanism against close prior art.
 
 The claim is **conditional**. The full texts of the closest partitioning and prediction-synchronization methods must be compared before saying this combination is previously unreported. Do not use “first”, “state of the art”, “superior”, “high capacity”, “universal” or “novel CNN” without direct supporting evidence.
 
@@ -139,11 +163,12 @@ Use per-image values and paired comparisons. Report the number of accepted and r
 
 At minimum compare:
 
-1. step-3 versus step-2 candidate geometry using the same checkpoint, codebook, header, directory codec and overhead accounting;
-2. the theoretical maximal-density step-2 grid versus a deliberately sparser grid as a synchronization/capacity trade-off;
-3. compressed directory versus raw packed labels (same packet overhead accounting);
-4. complete bootstrap backup versus a negative control that intentionally omits it, which must fail reversibility; and
-5. the EDR2 receiver-only packet path versus the legacy dense-map receiver, with all external side-information bits explicitly charged for the legacy method.
+1. fixed phase 0 versus four-phase adaptive selection; report all N_q values and chosen phase per natural image;
+2. step-3 versus each step-2 phase using the same checkpoint, codebook, header, codec and net-overhead accounting;
+3. the maximum-density step-2 family versus a deliberately sparser lattice;
+4. compressed directory versus raw packed labels;
+5. complete bootstrap backup versus an intentionally omitted-backup negative control, which must fail reversibility; and
+6. EDR2 receiver-only packets versus the legacy dense-map receiver, with all external map bits charged to the legacy baseline.
 
 Do not tune lattice phase, label coding, test images or payloads after seeing per-image results without recording the change and rerunning the frozen protocol.
 
