@@ -127,7 +127,7 @@ def encode_header(mode, directory_length, payload_length, capability, header_sta
         raise ValueError("directory too large")
     if not 0 <= payload_length < 2**64:
         raise ValueError("payload length outside uint64")
-    plain = HEADER.pack(PROTOCOL_MAGIC, mode, b"\\x00\\x00\\x00", directory_length, payload_length)
+    plain = HEADER.pack(PROTOCOL_MAGIC, mode, b"\x00\x00\x00", directory_length, payload_length)
     return crypt(plain, _header_key(capability, header_stage))
 
 
@@ -143,7 +143,7 @@ def framing(a, capability, header_stage="final"):
     magic, mode, reserved, length, plen = HEADER.unpack(raw)
     h = HEADER_BYTES + length + TAG_BYTES
     if (magic != PROTOCOL_MAGIC or mode not in (0, 1)
-            or reserved != b"\\x00\\x00\\x00" or h >= len(y)):
+            or reserved != b"\x00\x00\x00" or h >= len(y)):
         raise ValueError("invalid encrypted header, reserved bytes, or directory bound")
     return y, x, mode, length, plen, h
 
