@@ -154,3 +154,35 @@ def test_rgb_writer_preserves_multiple_bit_slots_in_one_channel_byte():
     assert image[0, 0, 0] == 0b10100000
     assert image[0, 0, 2] == 0
     assert image[0, 1, 2] == 0b10000000
+
+
+def test_rgb_fixed_assignment_ablation_records_one_predeclared_tuple(monkeypatch):
+    monkeypatch.setattr(predictor, "model", lambda: object())
+    monkeypatch.setattr(predictor, "predict", fake_spatial)
+    original = constant_rgb()
+    prepared = rgb_protocol.prepare(
+        original,
+        blend_num=1,
+        blend_den=4,
+        assignment_override=(0, 1, 2),
+    )
+    assert prepared["assignment_search"] == "fixed_override"
+    assert prepared["phases"] == (0, 1, 2)
+    assert prepared["calibration_phase"] == 3
+    assert len(prepared["assignment_scores"]) == 1
+    assert len(prepared["prediction_metrics"]) == 3
+    assert all(
+        set(row) == {"spatial_mae", "cross_channel_mae", "fused_mae"}
+        for row in prepared["prediction_metrics"]
+    )
+
+
+def test_rgb_adaptive_search_evaluates_all_24_ordered_phase_assignments(monkeypatch):
+    monkeypatch.setattr(predictor, "model", lambda: object())
+    monkeypatch.setattr(predictor, "predict", fake_spatial)
+    prepared = rgb_protocol.prepare(constant_rgb(), blend_num=0, blend_den=4)
+    assert prepared["assignment_search"] == "adaptive_24"
+    assert len(prepared["assignment_scores"]) == 24
+    assert all(len(row["phases"]) == 3 for row in prepared["assignment_scores"])
+    assert all(len(set(row["phases"] + (row["calibration_phase"],))) == 4
+               for row in prepared["assignment_scores"])
