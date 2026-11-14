@@ -93,8 +93,15 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
         if row["status"] != "roundtrip_passed" or cases.empty:
             raise ValueError(f"{image}: positive-capacity input lacks a passing round-trip ledger")
         lengths = set(pd.to_numeric(cases["payload_bits"], errors="raise").astype(int))
-        if 0 not in lengths or net not in lengths:
-            raise ValueError(f"{image}: empty and full-capacity payload cases are required")
+        expected_lengths = {
+            min(requested, net) for requested in (0, 1, 7, 8, 9, 37, 137)
+        }
+        expected_lengths.update({max(0, net - 1), net})
+        if lengths != expected_lengths:
+            raise ValueError(
+                f"{image}: payload-boundary ledger mismatch; "
+                f"expected {sorted(expected_lengths)}, observed {sorted(lengths)}"
+            )
         if not (pd.to_numeric(cases["net_capacity_bits"], errors="raise").astype(int) == net).all():
             raise ValueError(f"{image}: round-trip capacity differs from the capacity ledger")
         if (pd.to_numeric(cases["payload_bits"], errors="raise") > net).any():
@@ -113,8 +120,22 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
             if row["assignment_search"] != "adaptive_24":
                 raise ValueError(f"{image}: non-adaptive phase assignment entered the ablation ledger")
             scores = json.loads(row["phase_assignment_scores_json"])
-            if len(scores) != 24:
-                raise ValueError(f"{image}: expected 24 ordered phase assignments per blend")
+            expected_assignments = {
+                (r, g, b, next(p for p in range(4) if p not in (r, g, b)))
+                for r in range(4) for g in range(4) if g != r
+                for b in range(4) if b not in (r, g)
+            }
+            observed_assignments = {
+                (
+                    int(score["phases"][0]), int(score["phases"][1]),
+                    int(score["phases"][2]), int(score["calibration_phase"]),
+                )
+                for score in scores
+            }
+            if len(scores) != 24 or observed_assignments != expected_assignments:
+                raise ValueError(
+                    f"{image}: expected every one of the 24 distinct ordered phase assignments"
+                )
 
 
 def main():
