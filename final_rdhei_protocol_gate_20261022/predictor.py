@@ -118,7 +118,57 @@ def packlabels(labels):
     return ((labels[::2] << 4) | labels[1::2]).astype(np.uint8).tobytes()
 
 
-def prepare(image, phase_override=None):
+def fuse_predictions(spatial_predictions, cross_references, ys, xs, cross_offset=0, blend_num=0, blend_den=4):
+    """Fuse the frozen spatial CNN with a deterministic co-located cross-channel estimate.
+
+    The two reference-channel samples are read at the target candidate coordinate.
+    In the RGB protocol those coordinates are untouched in both reference channels
+    because the three channels are assigned distinct lattice phases.
+    """
+    spatial = np.asarray(spatial_predictions, dtype=np.float32)
+    if spatial.ndim != 1 or len(spatial) != len(ys) or len(xs) != len(ys):
+        raise ValueError("spatial prediction and candidate coordinate lengths differ")
+    if cross_references is None:
+        if blend_num not in (0,):
+            raise ValueError("cross-channel blend requires two reference channels")
+        return spatial
+    if not isinstance(cross_references, (tuple, list)) or len(cross_references) != 2:
+        raise ValueError("cross_references must contain exactly two channel arrays")
+    if not isinstance(blend_den, int) or blend_den < 1:
+        raise ValueError("blend_den must be a positive integer")
+    if not isinstance(blend_num, int) or not 0 <= blend_num <= blend_den:
+        raise ValueError("blend_num must be an integer in [0, blend_den]")
+    if not isinstance(cross_offset, int) or not -255 <= cross_offset <= 255:
+        raise ValueError("cross_offset must be an integer in [-255,255]")
+    ref_a, ref_b = (np.asarray(value) for value in cross_references)
+    if (ref_a.dtype != np.uint8 or ref_b.dtype != np.uint8
+            or ref_a.ndim != 2 or ref_b.ndim != 2
+            or ref_a.shape != ref_b.shape):
+        raise ValueError("cross-reference channels must be same-sized 2D uint8 arrays")
+    if np.any(ys < 0) or np.any(xs < 0) or np.any(ys >= ref_a.shape[0]) or np.any(xs >= ref_a.shape[1]):
+        raise ValueError("cross-reference candidate coordinate outside image")
+    # Integer half-up average, signed integer bias, then clipping.
+    total = ref_a[ys, xs].astype(np.uint16) + ref_b[ys, xs].astype(np.uint16)
+    mean = ((total + 1) // 2).astype(np.int16)
+    cross = np.clip(mean + cross_offset, 0, 255).astype(np.float32)
+    if blend_num == 0:
+        return spatial
+    # Keep the same float32 operations and nearest-even np.rint at both ends.
+    return (
+        np.float32(blend_den - blend_num) * spatial
+        + np.float32(blend_num) * cross
+    ) / np.float32(blend_den)
+
+
+def prepare(
+    image,
+    phase_override=None,
+    cross_references=None,
+    cross_offset=0,
+    cross_blend_num=0,
+    cross_blend_den=4,
+    spatial_prediction_override=None,
+):
     """Evaluate four maximum-density safe-grid phases and select by true net payload.
 
     Inference is performed phase-by-phase with the same coordinate order and
@@ -127,6 +177,8 @@ def prepare(image, phase_override=None):
     """
     if image.dtype != np.uint8 or image.ndim != 2:
         raise ValueError("expected uint8 grayscale")
+    if spatial_prediction_override is not None and phase_override is None:
+        raise ValueError("spatial_prediction_override requires one fixed phase")
 
     active_model = model()
     alternatives = []
@@ -146,7 +198,21 @@ def prepare(image, phase_override=None):
 
         # Do not batch phases together: receiver inference for the selected
         # phase must reproduce the owner's exact floating-point batch schedule.
-        predictions = predict(image, ys, xs, active_model)
+        if spatial_prediction_override is None:
+            spatial_predictions = predict(image, ys, xs, active_model)
+        else:
+            spatial_predictions = np.asarray(spatial_prediction_override, dtype=np.float32)
+            if spatial_predictions.ndim != 1 or len(spatial_predictions) != len(ys):
+                raise ValueError("spatial_prediction_override has the wrong candidate count")
+        predictions = fuse_predictions(
+            spatial_predictions,
+            cross_references,
+            ys,
+            xs,
+            cross_offset=cross_offset,
+            blend_num=cross_blend_num,
+            blend_den=cross_blend_den,
+        )
         rounded = np.rint(predictions).astype(np.int32)
         error_abs = np.abs(image[ys, xs].astype(np.int32) - rounded)
         labels = LABEL[error_abs]
@@ -194,9 +260,16 @@ def prepare(image, phase_override=None):
             payload_encryption_expansion_bits=0,
             accepted=net > 0,
             phase=phase,
+            cross_offset=int(cross_offset) if cross_references is not None else None,
+            cross_blend_num=int(cross_blend_num),
+            cross_blend_den=int(cross_blend_den),
         )
         alternatives.append(dict(
             phase=phase, ys=ys, xs=xs, predictions=predictions,
+            spatial_predictions=spatial_predictions,
+            cross_offset=int(cross_offset) if cross_references is not None else None,
+            cross_blend_num=int(cross_blend_num),
+            cross_blend_den=int(cross_blend_den),
             p=rounded, labels=labels, ns=counts, meta=metadata,
             mode=codec, h=header_pixels, net=net, positions=positions,
             stats=stats,
