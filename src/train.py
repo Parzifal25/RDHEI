@@ -48,6 +48,7 @@ def load_native_gray_images(directory: str):
     if not root.is_dir():
         raise FileNotFoundError(f"training directory does not exist: {root}")
     records = []
+    seen_hashes = set()
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.suffix.lower() not in SUPPORTED:
             continue
@@ -62,6 +63,9 @@ def load_native_gray_images(directory: str):
         digest_obj.update(b"|uint8|")
         digest_obj.update(array.tobytes(order="C"))
         digest = digest_obj.hexdigest()
+        if digest in seen_hashes:
+            continue
+        seen_hashes.add(digest)
         records.append((path, np.ascontiguousarray(array), digest))
     if not records:
         raise FileNotFoundError(f"no native grayscale images found recursively under {root}")
