@@ -146,12 +146,21 @@ def readbits(image: np.ndarray, positions, start: int = 0) -> np.ndarray:
 def writebits(image: np.ndarray, positions, bits: np.ndarray, start: int = 0) -> None:
     pixel, channel, shift = (part[start:] for part in positions[:3])
     bits = np.asarray(bits, dtype=np.uint8)
-    if bits.ndim != 1 or len(bits) != len(pixel):
-        raise ValueError("RGB slot write length mismatch")
-    flat = image.reshape(-1, 3)
-    values = flat[pixel, channel].astype(np.uint8)
-    mask = (255 ^ (1 << shift.astype(np.int64))).astype(np.uint8)
-    flat[pixel, channel] = (values & mask) | (bits << shift)
+    if bits.ndim != 1 or len(bits) != len(pixel) or np.any((bits != 0) & (bits != 1)):
+        raise ValueError("RGB slot write length/value mismatch")
+    # Multiple MSB slots may target the same channel byte. Vectorized assignment
+    # with repeated indices loses earlier bit updates. Aggregate all requested
+    # bit masks per flattened channel byte, then update each byte exactly once.
+    element = pixel * CHANNELS + channel.astype(np.int64)
+    bit_mask = (1 << shift.astype(np.int64)).astype(np.uint8)
+    set_bits = (bits << shift).astype(np.uint8)
+    flat = image.reshape(-1)
+    change_mask = np.zeros(flat.size, dtype=np.uint8)
+    set_mask = np.zeros(flat.size, dtype=np.uint8)
+    np.bitwise_or.at(change_mask, element, bit_mask)
+    np.bitwise_or.at(set_mask, element, set_bits)
+    touched = np.flatnonzero(change_mask)
+    flat[touched] = (flat[touched] & np.bitwise_not(change_mask[touched])) | set_mask[touched]
 
 
 def _tag_message(image: np.ndarray, capability: dict, stage: str,
