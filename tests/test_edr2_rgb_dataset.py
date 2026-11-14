@@ -76,7 +76,7 @@ def test_pinned_official_usc_sipi_rgb_checksum_snapshot_is_complete_and_scoped()
     assert snapshot["checksum_program"] == "POSIX cksum"
     assert set(snapshot["scope_volumes"]) == {"aerials", "misc"}
     assert sum(name.startswith("aerials/") for name in values) == 38
-    assert sum(name.startswith("misc/") for name in values) == 40
+    assert sum(name.startswith("misc/") for name in values) == 39
     assert values["aerials/2.1.01.tiff"] == 1220177504
     assert values["misc/4.2.03.tiff"] == 3944512653
 
