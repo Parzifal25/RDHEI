@@ -135,7 +135,7 @@ def test_prepared_state_identity_binds_dimensions_and_pixel_bytes():
     assert digest != protocol._image_identity(changed)
 
 
-def test_paper_corpus_rejects_synthetic_and_unreviewed_inputs(tmp_path):
+def test_paper_corpus_rejects_synthetic_and_unreviewed_inputs(tmp_path, monkeypatch):
     baseline = tmp_path / "kodak_gray"
     expanded = tmp_path / "usc_sipi_gray"
     volume = expanded / "textures"
@@ -150,6 +150,11 @@ def test_paper_corpus_rejects_synthetic_and_unreviewed_inputs(tmp_path):
     allowlisted_path = volume / "texture_01.tiff"
 
     Image.fromarray(base_pixels).save(baseline_path)
+    monkeypatch.setitem(run_gate.BASELINE_EXPECTED_HASHES, "airplane.png", {
+        "file_sha256": run_gate.file_sha256(baseline_path),
+        "pixels_sha256": run_gate.pixel_sha256(base_pixels),
+        "shape": [10, 10],
+    })
     Image.fromarray(np.full((10, 10), 128, dtype=np.uint8)).save(synthetic_path)
     Image.fromarray(np.flipud(base_pixels)).save(unreviewed_path)
     Image.fromarray(np.fliplr(base_pixels)).save(allowlisted_path)
@@ -287,3 +292,33 @@ def test_edr2_allocation_is_pixel_unique_for_every_original_prediction_pair_and_
 
     assert tested_pairs == 65_536
     assert tested_payload_words == 379_136
+
+
+def test_fixed_six_baselines_reject_same_named_nonoriginal_images(tmp_path, monkeypatch):
+    baseline = tmp_path / "kodak_gray"
+    baseline.mkdir()
+    image_path = baseline / "Airplane.png"
+    pixels = np.arange(100, dtype=np.uint8).reshape(10, 10)
+    Image.fromarray(pixels).save(image_path)
+    monkeypatch.setitem(run_gate.BASELINE_EXPECTED_HASHES, "airplane.png", {
+        "file_sha256": "0" * 64,
+        "pixels_sha256": run_gate.pixel_sha256(pixels),
+        "shape": [10, 10],
+    })
+    with pytest.raises(ValueError, match="does not match the exact original project image"):
+        run_gate.load_corpus([baseline], allow_missing_baseline=True)
+
+
+def test_fixed_six_baselines_verify_decoded_pixel_hash_and_dimensions(tmp_path, monkeypatch):
+    baseline = tmp_path / "kodak_gray"
+    baseline.mkdir()
+    image_path = baseline / "Airplane.png"
+    pixels = np.arange(100, dtype=np.uint8).reshape(10, 10)
+    Image.fromarray(pixels).save(image_path)
+    monkeypatch.setitem(run_gate.BASELINE_EXPECTED_HASHES, "airplane.png", {
+        "file_sha256": run_gate.file_sha256(image_path),
+        "pixels_sha256": "1" * 64,
+        "shape": [10, 10],
+    })
+    with pytest.raises(ValueError, match="does not match the exact original project image"):
+        run_gate.load_corpus([baseline], allow_missing_baseline=True)
