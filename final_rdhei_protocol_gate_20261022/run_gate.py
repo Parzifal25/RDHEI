@@ -24,6 +24,9 @@ ROOT = BASE.parent
 D = None
 SUPPORTED_SUFFIXES = {".png", ".pgm", ".bmp", ".tif", ".tiff"}
 BASELINE_STEMS = {"airplane", "baboon", "goldhill", "jetplane", "lena", "peppers"}
+BASELINE_FILES = {f"{stem}.png" for stem in BASELINE_STEMS}
+SYNTHETIC_STEMS = {"constant128", "random256", "tiny8"}
+NATURAL_ALLOWLIST_NAME = "natural_image_allowlist.json"
 IMAGE_EXTENSIONS = sorted(SUPPORTED_SUFFIXES)
 
 
@@ -194,7 +197,6 @@ def load_corpus(data_dirs, allow_missing_baseline):
                     reason="not one of the six fixed root-level grayscale baseline PNGs",
                 ))
                 continue
-            baseline_stems.add(path.stem.lower())
         else:
             allow = allowlists.get(directory.resolve(), {}).get(label)
             if allow is None:
@@ -219,6 +221,8 @@ def load_corpus(data_dirs, allow_missing_baseline):
             )
             continue
 
+        if directory.name.lower() == "kodak_gray":
+            baseline_stems.add(path.stem.lower())
         digest = pixel_sha256(array)
         record = dict(
             name=label,
