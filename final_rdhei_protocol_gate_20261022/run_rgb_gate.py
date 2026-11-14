@@ -98,7 +98,7 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None)
 def completion_status(capacity_rows: list[dict], inventory: list[dict],
                       roundtrip_rows: list[dict],
                       input_limit: int = 0) -> tuple[str, list[str]]:
-    """Fail closed when an RGB run did not evaluate or exactly verify its inputs."""
+    """Require complete exact-recovery evidence for every positive-capacity blend."""
     failures = []
     if input_limit:
         failures.append("limited-input smoke runs are not eligible for paper analysis")
@@ -109,32 +109,48 @@ def completion_status(capacity_rows: list[dict], inventory: list[dict],
             f"capacity ledger has {len(capacity_rows)} rows for {len(inventory)} accepted inputs"
         )
 
-    bad_rows = [
-        row for row in capacity_rows
-        if row.get("status") in {"error", "roundtrip_failed"}
-    ]
-    if bad_rows:
-        failures.append(
-            f"{len(bad_rows)} image(s) have processing or exact-recovery failures"
-        )
+    if any(row.get("status") in {"error", "blend_roundtrip_failed"} for row in capacity_rows):
+        failures.append("one or more RGB inputs have processing or exact-recovery failures")
 
-    roundtrips_by_image = {}
+    by_image_blend = {}
     for row in roundtrip_rows:
-        roundtrips_by_image.setdefault(row.get("image"), []).append(row)
+        key = (row.get("image"), int(row.get("blend_num", -1)))
+        by_image_blend.setdefault(key, []).append(row)
 
     for capacity in capacity_rows:
-        if int(capacity.get("signed_net_capacity_bits", 0) or 0) <= 0:
-            continue
         image = capacity.get("image")
-        cases = roundtrips_by_image.get(image, [])
-        if not cases:
-            failures.append(f"{image}: positive-capacity image has no exact-recovery tests")
-            continue
-        if any(row.get("passed") is not True for row in cases):
-            failures.append(f"{image}: one or more exact-recovery cases failed")
-        capacity_bits = int(capacity["signed_net_capacity_bits"])
-        if not any(int(row.get("payload_bits", -1)) == capacity_bits for row in cases):
-            failures.append(f"{image}: full-capacity payload was not tested")
+        for blend_num, _ in BLENDS:
+            net = int(capacity.get(f"blend_{blend_num}_net_capacity_bits", 0) or 0)
+            blend_status = capacity.get(f"blend_{blend_num}_status")
+            cases = by_image_blend.get((image, blend_num), [])
+            if net <= 0:
+                if blend_status != "rejected_nonpositive_net_capacity" or cases:
+                    failures.append(
+                        f"{image}: blend {blend_num}/4 has invalid non-positive-capacity handling"
+                    )
+                continue
+            if blend_status != "roundtrip_passed" or not cases:
+                failures.append(
+                    f"{image}: positive-capacity blend {blend_num}/4 has no exact-recovery evidence"
+                )
+                continue
+            if any(row.get("passed") is not True for row in cases):
+                failures.append(
+                    f"{image}: blend {blend_num}/4 has one or more exact-recovery failures"
+                )
+            expected_lengths = {
+                min(requested, net) for requested in (0, 1, 7, 8, 9, 37, 137)
+            }
+            expected_lengths.update({max(0, net - 1), net})
+            observed_lengths = {int(row.get("payload_bits", -1)) for row in cases}
+            if observed_lengths != expected_lengths:
+                failures.append(
+                    f"{image}: blend {blend_num}/4 payload-boundary evidence mismatch"
+                )
+            if any(int(row.get("net_capacity_bits", -1)) != net for row in cases):
+                failures.append(
+                    f"{image}: blend {blend_num}/4 round-trip capacity mismatch"
+                )
 
     return ("completed_with_failures" if failures else "completed"), failures
 
@@ -246,7 +262,6 @@ def main():
                     "prepare_seconds": time.perf_counter() - blend_started,
                 })
 
-            selected = blend_results[1]
             fixed = rgb_protocol.prepare(
                 image,
                 blend_num=1,
@@ -256,113 +271,135 @@ def main():
                 coordinate_cache=coordinate_cache,
             )
             best_blend = max(blend_results, key=lambda b: blend_results[b]["net"])
-            for blend_value, result in blend_results.items():
-                base_row[f"blend_{blend_value}_net_capacity_bits"] = int(result["net"])
-                base_row[f"blend_{blend_value}_net_bpp"] = float(
-                    result["net"] / (image.shape[0] * image.shape[1])
-                )
-                base_row[f"blend_{blend_value}_phases"] = json.dumps(list(result["phases"]))
-                for channel, metric in enumerate(result["prediction_metrics"]):
-                    for metric_name, metric_value in metric.items():
-                        base_row[f"blend_{blend_value}_channel_{channel}_{metric_name}"] = float(metric_value)
-            base_row.update({
-                "status": "capacity_evaluated",
-                "candidate_count_per_channel": int(selected["stats"]["candidate_count_per_channel"]),
-                "gross_slots_all_channels": int(selected["stats"]["gross_slots_all_channels"]),
-                "foregone_red_header_slots": int(selected["stats"]["foregone_red_header_slots"]),
-                "metadata_bytes": int(selected["stats"]["directory_stored_bytes"] + rgb_protocol.rgb_wire.HEADER_BYTES + rgb_protocol.rgb_wire.TAG_BYTES)
-                    if hasattr(rgb_protocol, "rgb_wire") else int(selected["stats"]["directory_stored_bytes"]),
-                "bootstrap_candidates": int(selected["stats"]["bootstrap_candidates"]),
-                "backup_bits": int(selected["stats"]["bootstrap_backup_bits"]),
-                "stream_bits": int(selected["stats"]["ordinary_stream_bits"]),
-                "signed_net_capacity_bits": int(selected["net"]),
-                "signed_net_bpp_per_rgb_pixel": float(selected["net"] / (image.shape[0] * image.shape[1])),
-                "selected_rgb_phases": json.dumps(list(selected["phases"])),
-                "calibration_phase": int(selected["calibration_phase"]),
-                "best_blend_num_by_capacity": int(best_blend),
-                "best_blend_net_capacity_bits": int(blend_results[best_blend]["net"]),
-                "fixed_assignment_012_net_capacity_bits": int(fixed["net"]),
-                "adaptive_assignment_gain_bits": int(selected["net"] - fixed["net"]),
-                "channel_prediction_metrics": json.dumps(selected["prediction_metrics"], separators=(",", ":")),
-                "phase_assignment_scores": json.dumps(selected["assignment_scores"], separators=(",", ":")),
-                "image_prepare_seconds": time.perf_counter() - image_started,
-            })
-
-            if selected["net"] <= 0:
-                base_row["status"] = "rejected_nonpositive_net_capacity"
-                capacity_rows.append(base_row)
-                continue
-
             if args.keep_artifacts:
                 image_dir = artifact_root / safe_id(relative)
                 image_dir.mkdir(parents=True, exist_ok=False)
                 shutil.copy2(source, image_dir / ("original" + source.suffix.lower()))
 
-            # Every reservation packet is single-use. Give each distinct payload
-            # trial a deterministic but different nonce so that AES-CTR keystreams
-            # are never reused under the same per-packet derived keys.
-            used_nonces = set()
-            lengths = []
-            for case, requested in PAYLOAD_CASES:
-                if requested >= 0:
-                    length = requested
-                elif requested == -1:
-                    length = max(0, int(selected["net"]) - 1)
-                else:
-                    length = int(selected["net"])
-                length = min(int(length), int(selected["net"]))
-                if length not in lengths:
-                    lengths.append(length)
+            for blend_value, result in blend_results.items():
+                blend_net = int(result["net"])
+                prefix = f"blend_{blend_value}"
+                base_row[f"{prefix}_net_capacity_bits"] = blend_net
+                base_row[f"{prefix}_net_bpp"] = float(
+                    blend_net / (image.shape[0] * image.shape[1])
+                )
+                base_row[f"{prefix}_phases"] = json.dumps(list(result["phases"]))
+                base_row[f"{prefix}_status"] = (
+                    "rejected_nonpositive_net_capacity" if blend_net <= 0 else "pending_roundtrip"
+                )
+                for channel, metric in enumerate(result["prediction_metrics"]):
+                    for metric_name, metric_value in metric.items():
+                        base_row[
+                            f"{prefix}_channel_{channel}_{metric_name}"
+                        ] = float(metric_value)
+
+                if blend_net <= 0:
+                    continue
+
+                used_nonces = set()
+                tested_lengths = set()
+                blend_rows = []
+                for case, requested in PAYLOAD_CASES:
+                    if requested >= 0:
+                        length = requested
+                    elif requested == -1:
+                        length = max(0, blend_net - 1)
+                    else:
+                        length = blend_net
+                    length = min(int(length), blend_net)
+                    if length in tested_lengths:
+                        continue
+                    tested_lengths.add(length)
+
+                    packet_context = f"blend_{blend_value}_{case}"
                     packet_master, packet_nonce = stable_ids(
-                        args.seed, pixels_hash, packet_context=case,
+                        args.seed, pixels_hash, packet_context=packet_context,
                         nonce_namespace=nonce_namespace
                     )
                     if packet_master != master or packet_nonce in used_nonces:
                         raise RuntimeError("benchmark packet key/nonce separation failed")
                     used_nonces.add(packet_nonce)
                     reserved, capability = rgb_protocol.reserve(
-                        image, packet_master, packet_nonce, prepared=selected
+                        image, packet_master, packet_nonce, prepared=result
                     )
                     if args.keep_artifacts and len(used_nonces) == 1:
                         Image.fromarray(reserved, mode="RGB").save(
-                            image_dir / "reserved_first_packet.png"
+                            image_dir / f"{prefix}_reserved.png"
                         )
-                    payload = payload_for(length, args.seed, pixels_hash, case)
+
+                    payload = payload_for(length, args.seed, pixels_hash, packet_context)
                     marked_started = time.perf_counter()
                     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
                     embed_seconds = time.perf_counter() - marked_started
                     receive_started = time.perf_counter()
-                    recovered, extracted = rgb_protocol.receive(marked, master, nonce)
+                    recovered, extracted = rgb_protocol.receive(
+                        marked, packet_master, packet_nonce
+                    )
                     receiver_seconds = time.perf_counter() - receive_started
                     image_exact = bool(np.array_equal(recovered, image))
                     payload_exact = bool(np.array_equal(extracted, payload))
-                    roundtrip_rows.append({
+                    roundtrip = {
                         "image": relative,
                         "pixels_sha256": pixels_hash,
+                        "blend_num": int(blend_value),
+                        "blend_den": 4,
                         "case": case,
                         "payload_bits": int(length),
-                        "net_capacity_bits": int(selected["net"]),
+                        "net_capacity_bits": blend_net,
                         "image_exact": image_exact,
                         "payload_exact": payload_exact,
                         "embed_seconds": embed_seconds,
                         "receiver_seconds": receiver_seconds,
                         "passed": image_exact and payload_exact,
-                    })
+                    }
+                    roundtrip_rows.append(roundtrip)
+                    blend_rows.append(roundtrip)
                     if args.keep_artifacts:
-                        Image.fromarray(marked, mode="RGB").save(image_dir / f"marked_{case}.png")
-                        Image.fromarray(recovered, mode="RGB").save(image_dir / f"recovered_{case}.png")
-                        np.save(image_dir / f"payload_{case}.npy", payload, allow_pickle=False)
-                        np.save(image_dir / f"extracted_{case}.npy", extracted, allow_pickle=False)
-                # Payload lengths are deduplicated per image; no duplicate row is
-                # added, so a skipped repeated length cannot be counted as a failure.
+                        Image.fromarray(marked, mode="RGB").save(
+                            image_dir / f"{prefix}_marked_{case}.png"
+                        )
+                        Image.fromarray(recovered, mode="RGB").save(
+                            image_dir / f"{prefix}_recovered_{case}.png"
+                        )
+                        np.save(
+                            image_dir / f"{prefix}_payload_{case}.npy",
+                            payload, allow_pickle=False
+                        )
+                        np.save(
+                            image_dir / f"{prefix}_extracted_{case}.npy",
+                            extracted, allow_pickle=False
+                        )
 
-            all_passed = all(
-                row["passed"] is True
-                for row in roundtrip_rows if row["image"] == relative
-                and row["passed"] != "duplicate_payload_length_not_retested"
-            )
-            base_row["status"] = "roundtrip_passed" if all_passed else "roundtrip_failed"
-            base_row["all_roundtrips_passed"] = all_passed
+                blend_passed = (
+                    len(blend_rows) > 0
+                    and all(row["passed"] is True for row in blend_rows)
+                    and any(row["payload_bits"] == blend_net for row in blend_rows)
+                    and any(row["payload_bits"] == 0 for row in blend_rows)
+                )
+                base_row[f"{prefix}_status"] = (
+                    "roundtrip_passed" if blend_passed else "roundtrip_failed"
+                )
+
+            base_row.update({
+                "status": (
+                    "roundtrip_passed"
+                    if all(base_row.get(f"blend_{blend}_status") in {
+                        "roundtrip_passed", "rejected_nonpositive_net_capacity"
+                    } for blend, _ in BLENDS)
+                    else "blend_roundtrip_failed"
+                ),
+                "candidate_count_per_channel": int(
+                    blend_results[1]["stats"]["candidate_count_per_channel"]
+                ),
+                "best_blend_num_by_capacity": int(best_blend),
+                "best_blend_net_capacity_bits": int(blend_results[best_blend]["net"]),
+                "fixed_assignment_012_net_capacity_bits": int(fixed["net"]),
+                "adaptive_assignment_gain_bits": int(
+                    blend_results[1]["net"] - fixed["net"]
+                ),
+                "image_prepare_seconds": time.perf_counter() - image_started,
+            })
+            base_row["all_blends_exact"] = base_row["status"] == "roundtrip_passed"
             capacity_rows.append(base_row)
         except Exception as exc:
             base_row["status"] = "error"
@@ -395,6 +432,27 @@ def main():
     status, failure_reasons = completion_status(
         capacity_rows, inventory, roundtrip_rows, input_limit=args.limit
     )
+    per_blend_summary = {}
+    for blend_num, blend_den in BLENDS:
+        net_values = [
+            int(row.get(f"blend_{blend_num}_net_capacity_bits", 0) or 0)
+            for row in capacity_rows
+        ]
+        per_blend_summary[f"{blend_num}/{blend_den}"] = {
+            "positive_net_images": sum(value > 0 for value in net_values),
+            "nonpositive_net_images": sum(value <= 0 for value in net_values),
+            "roundtrip_passed_images": sum(
+                row.get(f"blend_{blend_num}_status") == "roundtrip_passed"
+                for row in capacity_rows
+            ),
+            "roundtrip_failed_images": sum(
+                row.get(f"blend_{blend_num}_status") == "roundtrip_failed"
+                for row in capacity_rows
+            ),
+            "roundtrip_cases": sum(
+                int(row.get("blend_num", -1)) == blend_num for row in roundtrip_rows
+            ),
+        }
     summary = {
         "protocol": "CC-EDR2-RGB",
         "status": status,
@@ -404,8 +462,7 @@ def main():
         "distinct_native_rgb_inputs": len(inventory),
         "skipped_files": len(skipped),
         "capacity_rows": len(capacity_rows),
-        "positive_net_images": sum(int(row.get("signed_net_capacity_bits", 0)) > 0 for row in capacity_rows),
-        "nonpositive_net_images": sum(row.get("status") == "rejected_nonpositive_net_capacity" for row in capacity_rows),
+        "blend_summaries": per_blend_summary,
         "roundtrip_cases": len(roundtrip_rows),
         "roundtrip_passed": sum(row.get("passed") is True for row in roundtrip_rows),
         "roundtrip_failed": sum(row.get("passed") is False for row in roundtrip_rows),
@@ -415,8 +472,9 @@ def main():
         "checkpoint": model_identity,
         "training_performed": False,
         "benchmark_key_policy": (
-            "Deterministically derived per-image keys/nonces for reproducible experiments only; "
-            "not a deployment key-management recommendation."
+            "Public deterministic test keys with a random namespace per corpus run; "
+            "each blend/payload packet uses a fresh nonce and fresh reservation. "
+            "Not a deployment key-management recommendation."
         ),
         "seed": args.seed,
         "input_limit": args.limit,
