@@ -1,0 +1,181 @@
+# EDR2 research positioning and publication gate
+
+**Branch:** `research/edr2-publication-hardening`  
+**Status:** implementation hardening and research positioning; **not yet publication-ready**  
+**Checkpoint policy:** use the existing `models/v4_patch3.pth` weights unchanged. No retraining is part of this revision.
+
+## 1. What the active system is
+
+EDR2 is a reserve-room-before-encryption (RRBE) reversible data hiding in encrypted images (RDHEI) protocol for native 8-bit grayscale images.
+
+The per-image semantic inputs at the receiver are:
+
+1. the final marked encrypted image;
+2. a 32-byte master key (K); and
+3. a 128-bit nonce (V), unique per packet under (K).
+
+The receiver also has the shared protocol software and the fixed CNN-3x3 checkpoint installed. It is not supplied with per-image prediction maps, label maps, error intervals, a sender-side object, a payload-length sidecar, or an original image. The owner supplies a nonce-specific data-hiding capability key to the independent hider; this is cryptographic key material, not an image-dependent sidecar. The protocol does not eliminate the owner's setup/key handoff to the hider.
+
+The active implementation is under `final_rdhei_protocol_gate_20261022/`:
+
+- `predictor.py`: frozen 3x3 inference, candidate geometry, class labels and compressed directory;
+- `wire.py`: EDR2 wire format, encrypted header and directory, HMAC, payload ciphering and ciphertext-domain insertion;
+- `protocol.py`: owner reservation and receiver-only extraction/reconstruction;
+- `PROTOCOL_EDR2.md`: normative packet and protocol specification;
+- `run_gate.py`: natural-image capacity ledger and fresh-process end-to-end gate.
+
+The legacy `src/rdhei_core.py` dense pipeline remains a separate historical implementation. Its receiver requires externally supplied maps and payload length; it is not evidence for EDR2's receiver contract. The active EDR2 predictor and evaluation gate must not depend on that legacy receiver.
+
+## 2. The strongest technical contribution candidate
+
+The primary candidate contribution is a **maximum-density, context-invariant candidate lattice for a fixed non-causal 3x3 CNN, integrated with authenticated in-image metadata, reversible bootstrap backup and exact receiver-only reconstruction**.
+
+The 3x3 predictor uses a local patch and masks its centre before inference. Only the chosen candidate centres may be modified. Let the candidate centre set be (G), and let (B_1(g)) be the 3x3 Chebyshev-radius-one neighbourhood around (g). Require
+
+[
+  |g-g'|_infty geq 2
+  quad 	ext{for every distinct }g,g'in G.
+]
+
+Then no other mutable centre lies in a candidate's 3x3 input patch. The candidate's own centre is masked. Thus, after arbitrary changes to all candidate-centre bytes, the complete masked input tensor at every candidate remains unchanged. With the checkpoint in evaluation mode (fixed BatchNorm running statistics), fixed preprocessing, rounding and inference settings, the owner and receiver obtain the same candidate predictions. This is the synchronization guarantee; it is not a claim that dense CNN predictions can be recomputed after arbitrary dense embedding.
+
+### Finite-domain density bound
+
+For an (h\times w) image, valid centres lie in the interior rectangle ({1,\ldots,h-2}\times{1,\ldots,w-2}). Partition that rectangle into disjoint 2x2 tiles. At most one candidate centre can be selected from each tile, because any two positions within one tile have Chebyshev distance at most one. Therefore,
+
+[
+ |G| \leq
+ \left\lceil\frac{h-2}{2}\right\rceil
+ \left\lceil\frac{w-2}{2}\right\rceil.
+]
+
+The step-2 lattice ((y,x)=(1+2i,1+2j)), restricted to valid 3x3 centres, attains this bound. For a 512x512 image it selects (255\times255=65{,}025) candidate centres, or 24.81% of all image pixels. This is a geometric candidate-density result, **not** an embedding-capacity result. Net capacity must still be measured after label coding, header, authentication and backup overhead.
+
+The proof is conditional on the implemented model actually having only a 3x3 per-pixel input and on no cross-candidate/global operations being introduced at inference. The protocol identity must pin the checkpoint hash, preprocessing, rounding, evaluation mode, batch behaviour and software environment.
+
+## 3. In-band metadata and complete net-capacity accounting
+
+EDR2 stores a four-bit class for each candidate, packs two classes per byte, and uses zlib level 9 only when it strictly reduces the packed byte count. The in-band packet has a fixed 20-byte encrypted header, the encrypted directory and a 32-byte HMAC-SHA256 tag. The header contains the directory codec, directory length and payload length. The reserved three-byte header field must decode to zero; a malformed value is rejected before the directory length is used.
+
+Let:
+
+- (C=|G|) be the number of candidate centres;
+- (n_i) be the number of replaceable MSBs for candidate (i);
+- (G_0=\sum_{i=0}^{C-1}n_i) be gross candidate slots;
+- (L) be the encoded directory length in bytes;
+- (H=20+L+32=52+L) be the number of bootstrap candidate bytes;
+- (F=\sum_{i=0}^{H-1}n_i) be the ordinary slots forfeited at bootstrap carriers;
+- (S=G_0-F) be the ordinary slots remaining; and
+- (B=8H) be the bits required to back up the original (H) bootstrap bytes.
+
+The signed net user-payload budget is
+
+[
+  N=S-B=G_0-F-8H.
+]
+
+An image is rejected before producing a packet whenever (N\leq0). The reported rate must be (N/(hw)), not (G_0/(hw)). Rejected images must retain their signed negative budget in the results ledger; they must not be reported as zero-capacity successes.
+
+The backup is mandatory: writing a header, encrypted directory or tag over candidate bytes without preserving those original bytes would violate reversibility. The backup and payload slot ranges are disjoint, even if the boundary falls inside a candidate byte.
+
+## 4. What is and is not new
+
+### Established ingredients — do not claim these as new
+
+CNN-based prediction, prediction-error-based bit-plane allocation, MSB replacement, room reservation before encryption, in-image location/label maps, entropy coding, AES-CTR, keyed authentication and separable RDHEI have prior art. The project must not claim any of these primitives alone as a novelty.
+
+### Narrow candidate contribution
+
+The research claim should be framed as a verifiable integration of:
+
+1. a finite-domain maximum-density candidate lattice derived from the fixed 3x3 CNN's masked receptive field;
+2. prediction synchronization under arbitrary candidate-centre modification;
+3. an encrypted, compressed, self-framed in-image class directory;
+4. complete backup of bootstrap carriers;
+5. authenticated encrypted-domain payload insertion; and
+6. an explicit signed net-capacity acceptance test with receiver-only exact reconstruction.
+
+The claim is **conditional**. The full texts of the closest partitioning and prediction-synchronization methods must be compared before saying this combination is previously unreported. Do not use “first”, “state of the art”, “superior”, “high capacity”, “universal” or “novel CNN” without direct supporting evidence.
+
+## 5. Prior-art checks that the manuscript must address
+
+The following works already overlap with important EDR2 ingredients. They must be included in the related-work comparison and checked at full-text level for candidate selection, receiver inputs, metadata representation, recovery synchronisation, authentication and net-capacity accounting.
+
+- Xu, D. (2022). *Reversible data hiding in encrypted images with high payload*. IET Information Security, 16(4), 301–313. [https://doi.org/10.1049/ise2.12062](https://doi.org/10.1049/ise2.12062). This work uses improved GAP prediction, a binary location map and multi-MSB substitution; it is directly relevant to predictor-driven bit-plane embedding and embedded location information.
+- Qin, J., He, Z., Xiang, X., Tan, Y., & Michienzi, A. (2022). *Reversible Data Hiding in Encrypted Images Based on Adaptive Gradient Prediction*. Security and Communication Networks. [https://doi.org/10.1155/2022/8757594](https://doi.org/10.1155/2022/8757594). This is relevant to adaptive local prediction and prediction-guided room allocation.
+- Li, Z., & Li, T. (2025). *A Robust Multi-Key Reversible Data Hiding Scheme Leveraging Image Duplication and Smoothness Estimation*. Security and Privacy, 8(6). [https://doi.org/10.1002/spy2.70145](https://doi.org/10.1002/spy2.70145). This work is relevant to context enlargement, block selection and recovery under small-block settings.
+- Zhou, G., & Li, N. (2026). *Reversible Data Hiding in Encrypted Images Based on Bit-Plane Classification and Adaptive Group Coding*. IET Image Processing, 20(1), e70310. [https://doi.org/10.1049/ipr2.70310](https://doi.org/10.1049/ipr2.70310). It combines prediction errors, block/sequence-level bit-plane classification and adaptive group coding.
+- Peng, S., Zhang, M., Ke, Y., Jiang, C., et al. (2026). *High-capacity reversible data hiding in encrypted images using dual-stage bit-plane compression and CP-ABE-based recovery authorization*. Scientific Reports. [https://doi.org/10.1038/s41598-026-65778-w](https://doi.org/10.1038/s41598-026-65778-w). It uses predictor errors, bit-plane compression, adaptive hierarchical block variable-length coding and block rearrangement.
+- Hoang Nam, T., & Nguyen, T.-S. (2026). *Reversible data hiding in encrypted images based on overlapping block partitioning and shared-MSB encoding*. CTU Journal of Innovation and Sustainable Development, 18 (Special issue). [https://doi.org/10.22144/ctujoisd.2026.049](https://doi.org/10.22144/ctujoisd.2026.049). It uses four overlapping sub-blocks and shared-MSB encoding, and is a particularly important recent partitioning comparator.
+- Li, X., Zhou, X., Zhou, Q., Han, S., Liu, Z., & Kuniya, T. (2020). *High-Capacity Reversible Data Hiding in Encrypted Images by Information Preprocessing*. Complexity. [https://doi.org/10.1155/2020/6989452](https://doi.org/10.1155/2020/6989452). It is relevant to room reservation, preprocessing and in-image label-map coding.
+
+These references are a starting comparison set, not an exhaustive systematic review. In particular, the partition-grid synchronisation idea must be compared against the full methods—not just titles, abstracts or secondary summaries—before stating the exact research gap.
+
+## 6. Evaluation protocol required before paper writing
+
+### Natural-image corpus only
+
+The paper-facing EDR2 gate must contain natural images only. The six fixed root-level grayscale baselines in `data/kodak_gray/` are the initial minimum set. Any expanded USC-SIPI subset must be manually reviewed and entered in `natural_image_allowlist.json` with a relative path, exact source-file SHA-256, classification `natural`, and curation note. Inventory presence alone does not qualify an image. RGB and 16-bit images must not be silently converted into grayscale. Exact pixel duplicates must be deduplicated and reported.
+
+Synthetic constant, random, tiny, checkerboard, noise, or other generated controls are excluded from paper-facing capacity, recovery, averages, plots and claims. Historical synthetic-control experiments remain only as archived engineering history; they are not EDR2 natural-image evidence. Small generated arrays may still appear inside unit tests because they are software fixtures, not experimental samples.
+
+### Required measurements
+
+For every natural image, report:
+
+- source file SHA-256, decoded-pixel SHA-256, dimensions and corpus provenance;
+- candidate count and candidate fraction;
+- directory raw size, compressed size and selected codec;
+- gross slots (G_0), bootstrap opportunity cost (F), backup cost (8H), signed net bits (N), net bpp and accept/reject decision;
+- predictor and end-to-end preparation, embedding and receiver timings with hardware, software, threads and repetitions;
+- exact image recovery and exact payload recovery for payload lengths 0, 1, short, half-capacity, capacity-minus-one and full capacity;
+- authentication rejection for changed ciphertext/header/directory/tag, plus wrong key, wrong nonce, wrong hider capability key, malformed header, invalid directory and over-capacity payload;
+- receiver file-read audit showing that its only image-dependent input is the final marked encrypted image; and
+- checkpoint and source-code SHA-256 identities.
+
+Use per-image values and paired comparisons. Report the number of accepted and rejected natural images. Do not average away rejected images; present the signed budget distribution. Do not describe (65{,}025) candidate centres per 512x512 image as 65,025 bits or as net bpp.
+
+### Matched ablations required
+
+At minimum compare:
+
+1. step-3 versus step-2 candidate geometry using the same checkpoint, codebook, header, directory codec and overhead accounting;
+2. the theoretical maximal-density step-2 grid versus a deliberately sparser grid as a synchronization/capacity trade-off;
+3. compressed directory versus raw packed labels (same packet overhead accounting);
+4. complete bootstrap backup versus a negative control that intentionally omits it, which must fail reversibility; and
+5. the EDR2 receiver-only packet path versus the legacy dense-map receiver, with all external side-information bits explicitly charged for the legacy method.
+
+Do not tune lattice phase, label coding, test images or payloads after seeing per-image results without recording the change and rerunning the frozen protocol.
+
+## 7. Frozen checkpoint and training provenance
+
+No retraining is planned. The author confirms that the existing residual CNN-3x3 checkpoint was trained using 10,000 BOSSBase grayscale images. The checkpoint is evaluated as a frozen artifact and must be identified by its full SHA-256 in every result release.
+
+The original per-checkpoint training manifest, image list, split file and historical logs are not present in the current repository. Therefore the 10,000-image training history is author-attested, not independently reconstructable from the checkpoint. A previous rejected manuscript draft stated that 200 BOSSBase images were sampled; this conflicts with the current author-confirmed 10,000-image account. Remove the obsolete 200-image statement if it does not describe the actual run, and report the provenance limitation transparently. Do not infer optimiser, epochs, seed, split or validation accuracy from the binary weights. No retraining is needed to complete the EDR2 protocol evaluation.
+
+## 8. Current limitations and non-claims
+
+- EDR2 is currently specified for native 8-bit grayscale only; RGB is not validated.
+- The protocol's positive net capacity is content-dependent; images with (N\leq0) are rejected. No general positive-capacity guarantee is claimed.
+- The candidate lattice improves the geometric mutable fraction but does not, by itself, prove improved net payload.
+- Exact prediction identity has been verified only on the pinned implementation environment until a cross-platform or integer-inference study exists.
+- The security design uses domain-separated HKDF keys, AES-256-CTR and HMAC-SHA256, but this is not a formal cryptographic proof. State the threat model and the hider's capability-key assumptions.
+- The authorised hider receives capability keys and learns the encrypted directory's decoded class map. This leakage and trust assumption must be stated.
+- No matched comparison against recent RDHEI schemes has yet been run.
+- The existing EDR2 natural-image gate and new assert-based tests have been changed in this branch but **must be executed** before their results can support the paper. Do not call them passing until CI/local execution supplies logs.
+
+## 9. Paper-writing gate
+
+Paper writing should begin only after all of the following are complete:
+
+1. `pytest -q` passes, including the assert-based exhaustive mapping and new EDR2 tests.
+2. The 6-image natural baseline gate completes with all accepted and rejected records.
+3. The manually curated expanded natural-image corpus gate completes, if that corpus is used.
+4. The step-2 versus step-3 matched ablation is measured.
+5. The receiver-only input audit, payload-boundary tests and all negative security tests pass.
+6. Per-image net capacity and all aggregates are recomputed from raw result files.
+7. The novelty/related-work comparison is reviewed against the full texts of the closest 2025–2026 methods.
+8. The authors reconcile the BOSSBase 10,000-versus-200 discrepancy and approve the final provenance statement.
+9. The paper claims, tables and figures are independently checked against committed evidence hashes.
+
+**No fresh EDR2 capacity numbers are asserted in this document.** The candidate count and protocol equations are design facts; measured EDR2 rates require a fresh natural-image run.
