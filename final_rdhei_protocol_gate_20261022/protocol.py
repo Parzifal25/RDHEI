@@ -1,4 +1,6 @@
 """Active EDR2 owner reservation and receiver; receiver semantic inputs are image, K, V."""
+import hashlib
+import struct
 import os
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 import sys
@@ -21,12 +23,22 @@ def shared():
     return predictor
 
 
+def _image_identity(image):
+    digest = hashlib.sha256()
+    digest.update(struct.pack(">QQ", *image.shape))
+    digest.update(b"|uint8|")
+    digest.update(image.tobytes(order="C"))
+    return digest.hexdigest()
+
+
 def prepare(original):
     old = shared()
     if original.ndim != 2 or original.dtype != np.uint8:
         raise ValueError('expected uint8 grayscale')
     # Reuse unchanged checkpoint, preprocessing, prediction, labels and compression.
     q = old.prepare(original)
+    q["source_shape"] = tuple(map(int, original.shape))
+    q["source_sha256"] = _image_identity(original)
     h = 52+len(q['meta'])
     if h >= len(q['ys']):
         raise ValueError('metadata occupies all candidates')
@@ -54,6 +66,9 @@ def prepare(original):
 def reserve(original, master, nonce, prepared=None):
     """Owner has no user payload argument: reservation precedes its creation."""
     q = prepare(original) if prepared is None else prepared
+    if (tuple(q.get("source_shape", ())) != tuple(map(int, original.shape))
+            or q.get("source_sha256") != _image_identity(original)):
+        raise ValueError("prepared prediction/label state does not belong to this exact source image")
     if q['net'] <= 0:
         raise ValueError('nonpositive net capacity')
     k = wire.keys(master, nonce)
