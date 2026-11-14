@@ -120,34 +120,108 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
 
         group, note = GROUPS[volume]
         classification = "natural"
+        correlation_cluster = Path(rel).stem
         texture_stem = Path(archive_member).stem.lower()
-        is_constructed_texture_mosaic = (
-            volume == "textures"
-            and (
+
+        if volume == "textures":
+            is_constructed_texture_mosaic = (
                 (texture_stem.startswith("texmos") and ".s512" not in member_basename)
                 or texture_stem.startswith("1.5.")
             )
-        )
-        if is_constructed_texture_mosaic:
-            classification = "constructed"
-            group = "constructed_texture_mosaics"
-            if texture_stem.startswith("texmos"):
+            if is_constructed_texture_mosaic:
+                classification = "constructed"
+                group = "constructed_texture_mosaics"
+                correlation_cluster = "constructed_texture_mosaics"
+                if texture_stem.startswith("texmos"):
+                    note = (
+                        "USC-SIPI catalogue identifies this file as a texture mosaic assembled "
+                        "from Brodatz texture regions. It is a real image-domain composite, "
+                        "not an independent natural-scene photograph; report separately."
+                    )
+                else:
+                    note = (
+                        "USC-SIPI catalogue labels the 1.5.xx family as texture mosaics. "
+                        "It is a constructed texture composition, not an independent "
+                        "natural-scene photograph; report separately."
+                    )
+            else:
+                group = "texture_scans"
+                tokens = texture_stem.split(".")
+                correlation_cluster = (
+                    f"texture_series_{tokens[0]}.{tokens[1]}"
+                    if len(tokens) >= 3 else f"texture_item_{texture_stem}"
+                )
                 note = (
-                    "USC-SIPI catalogue identifies this file as a texture mosaic assembled "
-                    "from Brodatz texture regions. It is a real image-domain composite, "
-                    "not an independent natural-scene photograph; report separately."
+                    "Native USC-SIPI grayscale texture scan. Images in the same catalogue "
+                    "texture series share source material/context and are summarized as a "
+                    "cluster rather than assumed independent scenes."
+                )
+        elif volume == "rotate":
+            group = "rotated_texture_series"
+            family = texture_stem.rsplit(".", 1)[0]
+            correlation_cluster = f"rotated_texture_{family}"
+            note = (
+                f"USC-SIPI rotation variant from the {family} texture family. All angular "
+                "variants of this source texture are a correlated cluster."
+            )
+        elif volume == "sequences":
+            if texture_stem.startswith("motion"):
+                group = "sequence_motion_toy_vehicles"
+                correlation_cluster = "sequence_motion_toy_vehicles"
+                note = (
+                    "USC-SIPI Volume 4 toy-vehicle motion sequence; frames are correlated "
+                    "observations of one source sequence."
                 )
             else:
-                note = (
-                    "USC-SIPI catalogue labels the 1.5.xx family as texture mosaics. "
-                    "It is a constructed texture composition, not an independent "
-                    "natural-scene photograph; report separately."
-                )
+                parts = texture_stem.split(".")
+                sequence_id = ".".join(parts[:2]) if len(parts) >= 2 else texture_stem
+                frame = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else -1
+                correlation_cluster = f"sequence_{sequence_id}"
+                if sequence_id == "6.1":
+                    group = "sequence_6_1_walter_cronkite"
+                    note = "USC-SIPI Walter Cronkite moving-head sequence; frames are correlated."
+                elif sequence_id == "6.2" and 1 <= frame <= 16:
+                    group = "sequence_6_2_true_motion_frames_01_16"
+                    note = (
+                        "USC-SIPI chemical-plant close-view sequence, frames 1-16. "
+                        "The database identifies these as a true motion sequence; frames "
+                        "are correlated and grouped together."
+                    )
+                elif sequence_id == "6.2" and 17 <= frame <= 32:
+                    group = "sequence_6_2_undirected_frames_17_32"
+                    note = (
+                        "USC-SIPI chemical-plant close-view frames 17-32. The database "
+                        "states these show motion but no clear direction; they are not "
+                        "pooled with the first 16-frame true-motion subset."
+                    )
+                elif sequence_id == "6.3":
+                    group = "sequence_6_3_chemical_plant_far"
+                    note = "USC-SIPI chemical-plant far-view sequence; frames are correlated."
+                else:
+                    group = "sequence_other"
+                    note = "USC-SIPI grayscale sequence frame; related frames are correlated."
+        elif volume == "misc":
+            group = "miscellaneous_monochrome"
+            parts = texture_stem.split(".")
+            if len(parts) >= 2 and parts[0] in {"5", "7"}:
+                correlation_cluster = f"misc_family_{parts[0]}.{parts[1]}"
+            else:
+                correlation_cluster = f"misc_item_{texture_stem}"
+            note = (
+                "USC-SIPI monochrome miscellaneous image. Calibration charts and "
+                "test patterns are excluded; retained items are grouped by catalogue "
+                "family where the filename indicates a shared series."
+            )
+        elif volume == "aerials":
+            group = "monochrome_aerial"
+            correlation_cluster = f"aerial_item_{texture_stem}"
+            note = "USC-SIPI catalogue-listed monochrome aerial image."
         accepted.append({
             "path": Path(rel).as_posix(),
             "sha256": actual,
             "classification": classification,
             "corpus_group": group,
+            "correlation_cluster": correlation_cluster,
             "curation_note": (
                 f"{note} Source archive member: {archive_member}. "
                 "Verified from the official USC-SIPI archive inventory as a native "
@@ -166,11 +240,12 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             "Catalogue-based inclusion of native single-frame 8-bit grayscale TIFF "
             "images from the five official archive groups. Images must have even "
             "height and width. RGB/16-bit/non-grayscale images, segmentation-information "
-            "maps, resolution charts, calibration wedges, pixel rulers, unrecognized "
-            "volumes, and duplicate decoded pixels are removed by the EDR2 evaluation runner. Textures, rotated "
-            "texture series, aerial imagery, miscellaneous imagery, and sequence frames "
-            "remain tagged in separate corpus groups; USC-assembled mosaics use the "
-            "constructed classification and are not pooled with natural photographs.  USC-SIPI's "
+            "maps, resolution charts, calibration wedges, pixel rulers, and unrecognized "
+            "volumes are excluded; exact decoded-pixel duplicates are removed by the runner. "
+            "Texture scans, 1.5.xx/texmos constructed mosaics, rotation families, aerial, "
+            "miscellaneous, and sequence subgroups carry explicit group and correlation-cluster "
+            "labels. Sequence 6.2 frames 1-16 and 17-32 are separated according to the "
+            "USC-SIPI catalogue description. USC-SIPI's "
             "copyright notes contain mixed and sometimes unknown per-image rights; "
             "this experiment manifest is not permission to redistribute source images."
         ),
