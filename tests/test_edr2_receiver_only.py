@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import io
 import json
+import os
 import subprocess
 import sys
 import tarfile
@@ -311,7 +312,8 @@ def test_receiver_fresh_process_reads_only_marked_image_and_recovers_exactly(tmp
     assert audit["source_reads"] == []
     read_paths = set(audit["read_paths"])
     assert str(marked_path.resolve()) in read_paths
-    assert not any("/data/" in path.replace("\\", "/") for path in read_paths)
+    project_data_root = str((SCRIPT_DIR.parent / "data").resolve()) + os.sep
+    assert not any(path.startswith(project_data_root) for path in read_paths)
 
     assert np.array_equal(np.load(recovered_path, allow_pickle=False), original)
     assert np.array_equal(np.load(payload_path, allow_pickle=False), payload)
