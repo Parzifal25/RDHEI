@@ -17,7 +17,7 @@ from Crypto.Protocol.KDF import HKDF
 import wire
 
 RGB_ID = b"EDR2RGB"
-RGB_MAGIC = b"R3D1"
+RGB_MAGIC = b"R3D2"
 HEADER = wire.HEADER
 HEADER_BYTES = wire.HEADER_BYTES
 TAG_BYTES = wire.TAG_BYTES
@@ -196,13 +196,16 @@ def seal(image: np.ndarray, capability: dict, stage: str,
 
 def _unpack_labels(data: bytes, candidate_count: int):
     expected = (candidate_count + 1) // 2
-    if len(data) != 8 + 3 * expected or data[:4] != RGB_MAGIC:
+    if len(data) != 10 + 3 * expected or data[:4] != RGB_MAGIC:
         raise ValueError("invalid RGB directory length or magic")
     phases = tuple(int(v) for v in data[4:8])
+    blend_num, blend_den = int(data[8]), int(data[9])
+    if blend_den == 0 or blend_num > blend_den:
+        raise ValueError("invalid authenticated RGB blend ratio")
     if len(set(phases)) != 4 or set(phases) != set(range(PHASES)):
         raise ValueError("RGB phases must be a permutation of 0,1,2,3")
     labels = []
-    offset = 8
+    offset = 10
     for _ in range(3):
         packed = np.frombuffer(data[offset:offset + expected], dtype=np.uint8)
         offset += expected
@@ -213,7 +216,7 @@ def _unpack_labels(data: bytes, candidate_count: int):
         if np.any(values >= len(wire.BOOK)):
             raise ValueError("invalid RGB label class")
         labels.append(values.astype(np.uint8, copy=True))
-    return phases, labels
+    return phases, labels, blend_num, blend_den
 
 
 def inspect(image: np.ndarray, capability: dict, stage: str = "final"):
@@ -261,7 +264,7 @@ def inspect(image: np.ndarray, capability: dict, stage: str = "final"):
             ].tobytes()
             raw = crypt(directory_cipher, capability["directory"])
             candidate_count = len(wire.grid((height, width), phase=0)[0])
-            expected_length = 8 + 3 * ((candidate_count + 1) // 2)
+            expected_length = 10 + 3 * ((candidate_count + 1) // 2)
             if codec:
                 dec = zlib.decompressobj()
                 data = dec.decompress(raw, expected_length + 1)
@@ -269,7 +272,7 @@ def inspect(image: np.ndarray, capability: dict, stage: str = "final"):
                     raise ValueError("invalid bounded RGB compressed directory")
             else:
                 data = raw
-            phases, labels = _unpack_labels(data, candidate_count)
+            phases, labels, blend_num, blend_den = _unpack_labels(data, candidate_count)
             if phases != authenticated_phases:
                 raise ValueError("authenticated phase tuple differs from encrypted directory")
             positions = enumerate_slots(
@@ -288,6 +291,7 @@ def inspect(image: np.ndarray, capability: dict, stage: str = "final"):
                 "codec": codec, "directory_length": length,
                 "payload_length": payload_length, "bootstrap": bootstrap,
                 "positions": positions, "backup_bits": backup, "net": net,
+                "blend_num": blend_num, "blend_den": blend_den,
                 "gross_slots": gross, "foregone_slots": foregone,
             })
         except (ValueError, IndexError, struct.error, zlib.error) as exc:
