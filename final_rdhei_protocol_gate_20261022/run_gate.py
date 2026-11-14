@@ -35,7 +35,7 @@ BASELINE_EXPECTED_HASHES = {
     },
     "baboon.png": {
         "file_sha256": "011facaeced920692fb981e475d077784a6496be02ccf5fe8745e0d20c79e879",
-        "pixels_sha256": "ec56f895304cff5c0153efc97f9cfa8207b4b949cf57168f",
+        "pixels_sha256": "ec56f895304cff5c0153efcfe517a04fcb7edffe7f9cfa8207b4b949cf57168f",
         "shape": [512, 512],
     },
     "goldhill.png": {
