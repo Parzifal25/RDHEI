@@ -58,10 +58,14 @@ def load_native_rgb(path: Path) -> np.ndarray:
     return np.ascontiguousarray(array)
 
 
-def stable_ids(seed: int, pixel_hash: str):
-    digest = hashlib.sha256(f"CC-EDR2-RGB-BENCH|{seed}|{pixel_hash}".encode("ascii")).digest()
-    master = hashlib.sha256(b"EDR2RGB-MASTER|" + digest).digest()
-    nonce = int.from_bytes(hashlib.sha256(b"EDR2RGB-NONCE|" + digest).digest()[:16], "big")
+def stable_ids(seed: int, pixel_hash: str, packet_context: str = "default"):
+    """Return one stable benchmark master key and a unique nonce per packet context."""
+    base = hashlib.sha256(f"CC-EDR2-RGB-BENCH|{seed}|{pixel_hash}".encode("ascii")).digest()
+    master = hashlib.sha256(b"EDR2RGB-MASTER|" + base).digest()
+    nonce_input = (
+        b"EDR2RGB-NONCE|" + base + b"|" + packet_context.encode("utf-8")
+    )
+    nonce = int.from_bytes(hashlib.sha256(nonce_input).digest()[:16], "big")
     return master, nonce
 
 
@@ -280,15 +284,15 @@ def main():
                 capacity_rows.append(base_row)
                 continue
 
-            reserved, capability = rgb_protocol.reserve(
-                image, master, nonce, prepared=selected
-            )
             if args.keep_artifacts:
                 image_dir = artifact_root / safe_id(relative)
                 image_dir.mkdir(parents=True, exist_ok=False)
                 shutil.copy2(source, image_dir / ("original" + source.suffix.lower()))
-                Image.fromarray(reserved, mode="RGB").save(image_dir / "reserved_encrypted.png")
 
+            # Every reservation packet is single-use. Give each distinct payload
+            # trial a deterministic but different nonce so that AES-CTR keystreams
+            # are never reused under the same per-packet derived keys.
+            used_nonces = set()
             lengths = []
             for case, requested in PAYLOAD_CASES:
                 if requested >= 0:
@@ -300,6 +304,19 @@ def main():
                 length = min(int(length), int(selected["net"]))
                 if length not in lengths:
                     lengths.append(length)
+                    packet_master, packet_nonce = stable_ids(
+                        args.seed, pixels_hash, packet_context=case
+                    )
+                    if packet_master != master or packet_nonce in used_nonces:
+                        raise RuntimeError("benchmark packet key/nonce separation failed")
+                    used_nonces.add(packet_nonce)
+                    reserved, capability = rgb_protocol.reserve(
+                        image, packet_master, packet_nonce, prepared=selected
+                    )
+                    if args.keep_artifacts and len(used_nonces) == 1:
+                        Image.fromarray(reserved, mode="RGB").save(
+                            image_dir / "reserved_first_packet.png"
+                        )
                     payload = payload_for(length, args.seed, pixels_hash, case)
                     marked_started = time.perf_counter()
                     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
