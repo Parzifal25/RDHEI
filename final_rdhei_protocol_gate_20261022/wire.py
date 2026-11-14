@@ -17,6 +17,7 @@ PROTOCOL_ID = b"EDR2"
 SAFE_ZONE_STEP = 2
 PREDICTOR_RADIUS = 1
 SAFE_ZONE_BORDER = PREDICTOR_RADIUS
+SAFE_ZONE_PHASES = 4
 
 
 def allocation(e):
@@ -36,13 +37,22 @@ def allocation(e):
 BOOK = np.array(sorted({allocation(e) for e in range(256)}), dtype=np.int32)
 
 
-def grid(shape):
-    """Maximum-density square lattice with no mutable center in another 3x3 patch."""
+def grid(shape, phase=0):
+    """One of four maximum-density step-2 safe lattices for the 3x3 predictor.
+
+    The phase selects row/column parity. Any two centres in one lattice are
+    Chebyshev-separated by at least two, so no other mutable centre enters a
+    candidate's 3x3 masked prediction context.
+    """
     if len(shape) != 2:
         raise ValueError("grayscale only")
+    if not isinstance(phase, int) or not 0 <= phase < SAFE_ZONE_PHASES:
+        raise ValueError("phase must be an integer in [0,3]")
+    row_start = SAFE_ZONE_BORDER + phase // 2
+    col_start = SAFE_ZONE_BORDER + phase % 2
     y, x = np.meshgrid(
-        np.arange(SAFE_ZONE_BORDER, shape[0] - SAFE_ZONE_BORDER, SAFE_ZONE_STEP),
-        np.arange(SAFE_ZONE_BORDER, shape[1] - SAFE_ZONE_BORDER, SAFE_ZONE_STEP),
+        np.arange(row_start, shape[0] - SAFE_ZONE_BORDER, SAFE_ZONE_STEP),
+        np.arange(col_start, shape[1] - SAFE_ZONE_BORDER, SAFE_ZONE_STEP),
         indexing="ij",
     )
     return y.ravel(), x.ravel()
@@ -82,8 +92,8 @@ def crypt(data, key):
     return AES.new(key, AES.MODE_CTR, nonce=b"", initial_value=0).encrypt(data)
 
 
-def slots(shape, labels, h):
-    y, x = grid(shape)
+def slots(shape, labels, h, phase=0):
+    y, x = grid(shape, phase=phase)
     pixels, shifts = [], []
     for i in range(h, len(y)):
         n = int(BOOK[labels[i], 0])
@@ -131,11 +141,13 @@ def encode_header(mode, directory_length, payload_length, capability, header_sta
     return crypt(plain, _header_key(capability, header_stage))
 
 
-def framing(a, capability, header_stage="final"):
-    """Read fixed-size encrypted header, then bound the in-band directory/tag region."""
+def framing(a, capability, header_stage="final", phase=0):
+    """Read the encrypted header at one fixed candidate-lattice phase."""
     if a.dtype != np.uint8 or a.ndim != 2:
         raise ValueError("expected uint8 grayscale")
-    y, x = grid(a.shape)
+    if not isinstance(phase, int) or not 0 <= phase < SAFE_ZONE_PHASES:
+        raise ValueError("invalid lattice phase")
+    y, x = grid(a.shape, phase=phase)
     if len(y) < HEADER_BYTES:
         raise ValueError("too few candidates for header")
     encrypted_header = a[y[:HEADER_BYTES], x[:HEADER_BYTES]].tobytes()
@@ -148,30 +160,31 @@ def framing(a, capability, header_stage="final"):
     return y, x, mode, length, plen, h
 
 
-def tag(a, capability, header_stage="final"):
-    y, x, _, length, _, h = framing(a, capability, header_stage)
+def tag(a, capability, header_stage="final", phase=0):
+    y, x, _, length, _, h = framing(a, capability, header_stage, phase=phase)
     buf = a.copy()
     buf[y[HEADER_BYTES + length:h], x[HEADER_BYTES + length:h]] = 0
-    return hmac.new(
-        capability["auth"],
-        struct.pack(">QQ", *a.shape) + buf.tobytes(),
-        hashlib.sha256,
-    ).digest()
+    # Binding the phase into the MAC prevents a valid packet from being
+    # interpreted under a different candidate lattice.
+    message = struct.pack(">QQB", *a.shape, phase) + buf.tobytes()
+    return hmac.new(capability["auth"], message, hashlib.sha256).digest()
 
 
-def seal(a, capability, header_stage="final"):
-    y, x, _, length, _, h = framing(a, capability, header_stage)
+def seal(a, capability, header_stage="final", phase=0):
+    y, x, _, length, _, h = framing(a, capability, header_stage, phase=phase)
     a[y[HEADER_BYTES + length:h], x[HEADER_BYTES + length:h]] = np.frombuffer(
-        tag(a, capability, header_stage), np.uint8
+        tag(a, capability, header_stage, phase=phase), np.uint8
     )
 
 
-def inspect(a, capability, header_stage="final"):
-    y, x, mode, length, plen, h = framing(a, capability, header_stage)
+def _inspect_phase(a, capability, header_stage, phase):
+    y, x, mode, length, plen, h = framing(
+        a, capability, header_stage, phase=phase
+    )
     actual = a[y[HEADER_BYTES + length:h], x[HEADER_BYTES + length:h]].tobytes()
-    expected_tag = tag(a, capability, header_stage)
+    expected_tag = tag(a, capability, header_stage, phase=phase)
     if not hmac.compare_digest(actual, expected_tag):
-        raise ValueError("authentication failed")
+        raise ValueError("authentication failed for candidate lattice phase")
 
     # Directory decryption and decompression occur only after packet authentication.
     enc = a[y[HEADER_BYTES:HEADER_BYTES + length], x[HEADER_BYTES:HEADER_BYTES + length]].tobytes()
@@ -195,14 +208,37 @@ def inspect(a, capability, header_stage="final"):
     if np.any(labels >= len(BOOK)):
         raise ValueError("invalid label class")
 
-    positions = slots(a.shape, labels, h)
+    positions = slots(a.shape, labels, h, phase=phase)
     backup = 8 * h
     net = len(positions[0]) - backup
     if net <= 0 or plen > net:
         raise ValueError("invalid capacity or payload length")
     return dict(
-        y=y, x=x, mode=mode, length=length, plen=plen, h=h,
+        y=y, x=x, phase=phase, mode=mode, length=length, plen=plen, h=h,
         labels=labels, positions=positions, backup=backup, net=net,
+    )
+
+
+def inspect(a, capability, header_stage="final", phase=None):
+    """Authenticate and self-locate the packet by testing its four possible header lattices.
+
+    Exactly one phase must parse, authenticate and yield a valid bounded directory.
+    The phase identifier is implicit in the in-image header location; no sidecar
+    or extra phase bits are transmitted.
+    """
+    phases = range(SAFE_ZONE_PHASES) if phase is None else (phase,)
+    valid, errors = [], []
+    for candidate_phase in phases:
+        try:
+            valid.append(_inspect_phase(a, capability, header_stage, candidate_phase))
+        except ValueError as exc:
+            errors.append(exc)
+    if len(valid) == 1:
+        return valid[0]
+    if len(valid) > 1:
+        raise ValueError("ambiguous authenticated lattice phase")
+    raise ValueError("no valid authenticated EDR2 lattice header") from (
+        errors[-1] if errors else None
     )
 
 
@@ -233,7 +269,7 @@ def embed(a, payload, capability):
         q["mode"], q["length"], len(payload), capability, "final"
     )
     out[q["y"][:HEADER_BYTES], q["x"][:HEADER_BYTES]] = np.frombuffer(final_header, np.uint8)
-    seal(out, capability, header_stage="final")
+    seal(out, capability, header_stage="final", phase=q["phase"])
     return out
 
 
