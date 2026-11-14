@@ -76,8 +76,8 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
     payload_exact = roundtrip["payload_exact"].astype(str).str.lower().eq("true")
     if not (passed & image_exact & payload_exact).all():
         raise ValueError("one or more RGB image/payload exact-recovery checks failed")
-    if roundtrip.duplicated(["image", "payload_bits"]).any():
-        raise ValueError("duplicate payload lengths appear in RGB round-trip evidence")
+    if roundtrip.duplicated(["image", "blend_num", "payload_bits"]).any():
+        raise ValueError("duplicate payload lengths appear within an RGB blend round-trip ledger")
     if len(roundtrip) != int(run.get("roundtrip_cases", -1)):
         raise ValueError("run summary round-trip count does not match the round-trip ledger")
     if int(passed.sum()) != int(run.get("roundtrip_passed", -1)):
@@ -111,9 +111,7 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
                     f"{image}: blend {blend}/4 payload-boundary ledger mismatch; "
                     f"expected {sorted(expected_lengths)}, observed {sorted(lengths)}"
                 )
-            if not cases["passed_bool"].all() if "passed_bool" in cases else not (
-                cases["passed"].astype(str).str.lower().eq("true").all()
-            ):
+            if not cases["passed"].astype(str).str.lower().eq("true").all():
                 raise ValueError(f"{image}: failed image/payload exact recovery for blend {blend}/4")
             if not (pd.to_numeric(cases["net_capacity_bits"], errors="raise").astype(int) == blend_net).all():
                 raise ValueError(
