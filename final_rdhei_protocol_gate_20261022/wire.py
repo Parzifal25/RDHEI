@@ -9,13 +9,14 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Protocol.KDF import HKDF
 
-HEADER = struct.Struct(">4sB3xIQ")
+HEADER = struct.Struct(">4sB3sIQ")
 HEADER_BYTES = HEADER.size
 TAG_BYTES = 32
 PROTOCOL_MAGIC = b"EDR2"
 PROTOCOL_ID = b"EDR2"
 SAFE_ZONE_STEP = 2
 PREDICTOR_RADIUS = 1
+SAFE_ZONE_BORDER = PREDICTOR_RADIUS
 
 
 def allocation(e):
@@ -40,8 +41,8 @@ def grid(shape):
     if len(shape) != 2:
         raise ValueError("grayscale only")
     y, x = np.meshgrid(
-        np.arange(2, shape[0] - 2, SAFE_ZONE_STEP),
-        np.arange(2, shape[1] - 2, SAFE_ZONE_STEP),
+        np.arange(SAFE_ZONE_BORDER, shape[0] - SAFE_ZONE_BORDER, SAFE_ZONE_STEP),
+        np.arange(SAFE_ZONE_BORDER, shape[1] - SAFE_ZONE_BORDER, SAFE_ZONE_STEP),
         indexing="ij",
     )
     return y.ravel(), x.ravel()
@@ -126,7 +127,7 @@ def encode_header(mode, directory_length, payload_length, capability, header_sta
         raise ValueError("directory too large")
     if not 0 <= payload_length < 2**64:
         raise ValueError("payload length outside uint64")
-    plain = HEADER.pack(PROTOCOL_MAGIC, mode, directory_length, payload_length)
+    plain = HEADER.pack(PROTOCOL_MAGIC, mode, b"\\x00\\x00\\x00", directory_length, payload_length)
     return crypt(plain, _header_key(capability, header_stage))
 
 
@@ -139,10 +140,11 @@ def framing(a, capability, header_stage="final"):
         raise ValueError("too few candidates for header")
     encrypted_header = a[y[:HEADER_BYTES], x[:HEADER_BYTES]].tobytes()
     raw = crypt(encrypted_header, _header_key(capability, header_stage))
-    magic, mode, length, plen = HEADER.unpack(raw)
+    magic, mode, reserved, length, plen = HEADER.unpack(raw)
     h = HEADER_BYTES + length + TAG_BYTES
-    if magic != PROTOCOL_MAGIC or mode not in (0, 1) or h >= len(y):
-        raise ValueError("invalid encrypted header or directory bound")
+    if (magic != PROTOCOL_MAGIC or mode not in (0, 1)
+            or reserved != b"\\x00\\x00\\x00" or h >= len(y)):
+        raise ValueError("invalid encrypted header, reserved bytes, or directory bound")
     return y, x, mode, length, plen, h
 
 
