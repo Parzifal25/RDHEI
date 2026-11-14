@@ -6,6 +6,7 @@ import argparse
 import csv
 import hashlib
 import json
+import secrets
 import shutil
 import sys
 import time
@@ -58,12 +59,14 @@ def load_native_rgb(path: Path) -> np.ndarray:
     return np.ascontiguousarray(array)
 
 
-def stable_ids(seed: int, pixel_hash: str, packet_context: str = "default"):
-    """Return one stable benchmark master key and a unique nonce per packet context."""
+def stable_ids(seed: int, pixel_hash: str, packet_context: str = "default",
+               nonce_namespace: str = "unit-test"):
+    """Return a stable benchmark key and a namespace-/packet-specific nonce."""
     base = hashlib.sha256(f"CC-EDR2-RGB-BENCH|{seed}|{pixel_hash}".encode("ascii")).digest()
     master = hashlib.sha256(b"EDR2RGB-MASTER|" + base).digest()
     nonce_input = (
         b"EDR2RGB-NONCE|" + base + b"|" + packet_context.encode("utf-8")
+        + b"|" + nonce_namespace.encode("utf-8")
     )
     nonce = int.from_bytes(hashlib.sha256(nonce_input).digest()[:16], "big")
     return master, nonce
@@ -172,6 +175,9 @@ def main():
     skipped = []
     seen_pixel_hashes = set()
     model_identity = predictor.model_identity()
+    # A new namespace per corpus run prevents deterministic benchmark keys
+    # from reusing a CTR nonce when the same image/seed is evaluated again.
+    nonce_namespace = secrets.token_hex(16)
     started = time.perf_counter()
 
     for source in files:
@@ -202,7 +208,7 @@ def main():
             "file_bytes": int(source.stat().st_size),
         }
         inventory.append(record)
-        master, nonce = stable_ids(args.seed, pixels_hash)
+        master, _ = stable_ids(args.seed, pixels_hash, nonce_namespace=nonce_namespace)
         base_row = dict(record)
         base_row["status"] = "prepared"
         image_started = time.perf_counter()
@@ -305,7 +311,8 @@ def main():
                 if length not in lengths:
                     lengths.append(length)
                     packet_master, packet_nonce = stable_ids(
-                        args.seed, pixels_hash, packet_context=case
+                        args.seed, pixels_hash, packet_context=case,
+                        nonce_namespace=nonce_namespace
                     )
                     if packet_master != master or packet_nonce in used_nonces:
                         raise RuntimeError("benchmark packet key/nonce separation failed")
@@ -409,13 +416,20 @@ def main():
             "not a deployment key-management recommendation."
         ),
         "seed": args.seed,
+        "nonce_namespace": nonce_namespace,
+        "benchmark_keys_are_public_test_material": True,
         "elapsed_seconds": elapsed,
     }
     (output / "rgb_run_summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     (output / "rgb_input_manifest.json").write_text(
-        json.dumps({"images": inventory, "skipped": skipped}, indent=2, sort_keys=True) + "\n",
+        json.dumps({
+            "images": inventory,
+            "skipped": skipped,
+            "nonce_namespace": nonce_namespace,
+            "key_policy": "Public benchmark-only keys; a random namespace is used for each run and a fresh nonce/reservation for each payload packet.",
+        }, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
