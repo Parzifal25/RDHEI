@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import inspect
 import io
+import json
+import subprocess
 import sys
 import tarfile
 from pathlib import Path
@@ -269,3 +271,47 @@ def test_cnn_builder_accepts_explicit_three_by_three_cpu_configuration():
     model = build_model(patch_size=3, residual=True, device="cpu")
     assert model.patch_size == 3
     assert sum(parameter.numel() for parameter in model.parameters()) == 46881
+
+
+
+def test_receiver_fresh_process_reads_only_marked_image_and_recovers_exactly(tmp_path):
+    original = np.full((128, 128), 128, dtype=np.uint8)
+    master = bytes(range(32))
+    nonce = 0x102030405060708090A0B0C0D0E0F002
+
+    q = protocol.prepare(original)
+    assert q["net"] > 0
+    reserved, cap = protocol.reserve(original, master, nonce, prepared=q)
+    capability = wire.hider_keys(cap["hider"])
+    payload = np.random.default_rng(7).integers(0, 2, 43, dtype=np.uint8)
+    marked = wire.embed(reserved, payload, capability)
+
+    marked_path = tmp_path / "marked_encrypted.png"
+    recovered_path = tmp_path / "recovered.npy"
+    payload_path = tmp_path / "payload.npy"
+    audit_path = tmp_path / "receiver_audit.json"
+    Image.fromarray(marked, mode="L").save(marked_path)
+
+    completed = subprocess.run(
+        [
+            sys.executable, str(SCRIPT_DIR / "protocol.py"), "receive",
+            str(marked_path), master.hex(), str(nonce),
+            str(recovered_path), str(payload_path), str(audit_path),
+        ],
+        cwd=str(SCRIPT_DIR.parent.parent),
+        capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    assert audit["semantic_inputs"] == [
+        "marked encrypted image", "master key", "nonce"
+    ]
+    assert audit["source_access"] is False
+    assert audit["source_reads"] == []
+    read_paths = set(audit["read_paths"])
+    assert str(marked_path.resolve()) in read_paths
+    assert not any("/data/" in path.replace("\\", "/") for path in read_paths)
+
+    assert np.array_equal(np.load(recovered_path, allow_pickle=False), original)
+    assert np.array_equal(np.load(payload_path, allow_pickle=False), payload)
