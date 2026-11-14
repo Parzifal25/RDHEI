@@ -379,6 +379,10 @@ def capacity_row(image, q, seconds):
             f"capacity identity failed for {image['name']}: "
             f"{gross} - {foregone} - {backup} != {net}"
         )
+    pixel_count = int(stats["pixels"])
+    candidate_count = int(stats["candidates"])
+    candidate_fraction = candidate_count / pixel_count
+
     return dict(
         image=image["name"],
         corpus_group=image.get("corpus_group", "unspecified"),
@@ -388,18 +392,18 @@ def capacity_row(image, q, seconds):
         pixels_sha256=image["pixels_sha256"],
         height=image["shape"][0],
         width=image["shape"][1],
-        pixels=int(stats["pixels"]),
-        candidate_count=int(stats["candidates"]),
+        pixels=pixel_count,
+        candidate_count=candidate_count,
         gross_capacity_bits=gross,
-        gross_bpp=gross / int(stats["pixels"]),
+        gross_bpp=gross / pixel_count,
         bootstrap_foregone_slots_bits=foregone,
         metadata_wire_storage_bits=int(stats["metadata_total_bits"]),
         bootstrap_backup_bits=backup,
         metadata_overhead_bits=metadata_overhead,
         total_overhead_bits=total_overhead,
         net_capacity_bits=net,
-        signed_net_bpp=net / int(stats["pixels"]),
-        usable_net_bpp=max(0, net) / int(stats["pixels"]),
+        signed_net_bpp=net / pixel_count,
+        usable_net_bpp=max(0, net) / pixel_count,
         accepted=bool(stats["accepted"]),
         rejection_reason="" if stats["accepted"] else "nonpositive net capacity",
         prepare_seconds=seconds,
@@ -418,7 +422,7 @@ def capacity_row(image, q, seconds):
             if q["phase_net_bits"][0] is not None else None
         ),
         phase_scores=q["phase_scores"],
-        candidate_fraction=float(stats["candidate_fraction"]),
+        candidate_fraction=candidate_fraction,
     )
 
 
