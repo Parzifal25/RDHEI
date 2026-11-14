@@ -118,7 +118,7 @@ def packlabels(labels):
     return ((labels[::2] << 4) | labels[1::2]).astype(np.uint8).tobytes()
 
 
-def prepare(image):
+def prepare(image, phase_override=None):
     """Evaluate four maximum-density safe-grid phases and select by true net payload.
 
     Inference is performed phase-by-phase with the same coordinate order and
@@ -131,7 +131,14 @@ def prepare(image):
     active_model = model()
     alternatives = []
     invalid_phases = []
-    for phase in range(wire.SAFE_ZONE_PHASES):
+    if phase_override is not None:
+        if not isinstance(phase_override, int) or not 0 <= phase_override < wire.SAFE_ZONE_PHASES:
+            raise ValueError("phase_override must be an integer in [0,3]")
+        phases = (phase_override,)
+    else:
+        phases = range(wire.SAFE_ZONE_PHASES)
+
+    for phase in phases:
         ys, xs = coords(image.shape, phase=phase)
         if len(ys) < wire.HEADER_BYTES:
             invalid_phases.append(phase)
