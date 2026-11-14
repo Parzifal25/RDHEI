@@ -279,3 +279,21 @@ def test_rgb_benchmark_nonce_namespace_prevents_cross_run_reuse():
     )
     assert master_a == master_b
     assert nonce_a != nonce_b
+
+
+def test_rgb_runner_completion_gate_rejects_limited_smoke_runs():
+    inventory = [{"image": "aerials/a.tiff"}]
+    capacity = [{
+        "image": "aerials/a.tiff",
+        "status": "roundtrip_passed",
+        "signed_net_capacity_bits": 2,
+    }]
+    roundtrips = [
+        {"image": "aerials/a.tiff", "payload_bits": 0, "passed": True},
+        {"image": "aerials/a.tiff", "payload_bits": 2, "passed": True},
+    ]
+    status, failures = rgb_gate.completion_status(
+        capacity, inventory, roundtrips, input_limit=1
+    )
+    assert status == "completed_with_failures"
+    assert any("limited-input smoke" in failure for failure in failures)
