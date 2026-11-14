@@ -202,3 +202,43 @@ def test_allowlisted_image_hash_mismatch_fails_closed(tmp_path):
     )
     with pytest.raises(ValueError, match="file hash changed"):
         run_gate.load_corpus([expanded], allow_missing_baseline=True)
+
+
+def test_capacity_row_derives_candidate_fraction_from_counts():
+    image = {
+        "name": "fixture.tiff",
+        "corpus_group": "unit_test_fixture",
+        "classification": "natural",
+        "source": "fixture.tiff",
+        "source_sha256": "a" * 64,
+        "pixels_sha256": "b" * 64,
+        "shape": [10, 10],
+    }
+    stats = {
+        "pixels": 100,
+        "candidates": 25,
+        "gross_slots": 400,
+        "foregone_gross_slots": 20,
+        "backup_bits": 40,
+        "metadata_total_bits": 48,
+        "accepted": True,
+        "codec": "raw",
+        "compressed_label_bytes": 3,
+        "bootstrap_pixels": 6,
+        "fixed_header_bits": 160,
+        "authentication_bits": 256,
+    }
+    prepared = {
+        "stats": stats,
+        "net": 340,
+        "phase": 2,
+        "phase_net_bits": [330, 335, 340, 320],
+        "phase_scores": [],
+    }
+
+    row = run_gate.capacity_row(image, prepared, 0.125)
+
+    assert row["candidate_count"] == 25
+    assert row["pixels"] == 100
+    assert row["candidate_fraction"] == pytest.approx(0.25)
+    assert row["net_capacity_bits"] == 340
