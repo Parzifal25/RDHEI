@@ -265,8 +265,8 @@ def test_rgb_paper_analyzer_rejects_failed_run_even_when_csvs_exist():
 def test_rgb_paper_analyzer_rejects_missing_full_capacity_recovery():
     capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
     roundtrip = roundtrip[roundtrip["payload_bits"] == 0]
-    run["roundtrip_cases"] = 1
-    run["roundtrip_passed"] = 1
+    run["roundtrip_cases"] = len(roundtrip)
+    run["roundtrip_passed"] = len(roundtrip)
     with pytest.raises(ValueError, match="payload-boundary ledger mismatch"):
         rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
 
