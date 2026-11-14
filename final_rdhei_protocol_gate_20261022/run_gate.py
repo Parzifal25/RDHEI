@@ -381,6 +381,11 @@ def capacity_row(image, q, seconds):
         bootstrap_candidates=int(stats["bootstrap_pixels"]),
         fixed_header_bits=int(stats["fixed_header_bits"]),
         authentication_bits=int(stats["authentication_bits"]),
+        selected_lattice_phase=int(q["phase"]),
+        phase_net_capacity_bits=q["phase_net_bits"],
+        phase_selection_gain_bits=int(q["net"]) - int(q["phase_net_bits"][0]),
+        phase_scores=q["phase_scores"],
+        candidate_fraction=float(stats["candidate_fraction"]),
     )
 
 
@@ -483,8 +488,16 @@ def main():
             model_changed=False,
             model_training_performed=False,
             protocol_version="EDR2",
-            protocol_changes_from_EDR1=["step-2 safe-zone grid", "encrypted staged header", "EDR2 key hierarchy"],
+            protocol_changes_from_EDR1=[
+                "step-2 maximum-density safe-zone grid",
+                "four-phase net-capacity selection",
+                "phase-discoverable authenticated header",
+                "encrypted staged header",
+                "EDR2 key hierarchy",
+            ],
             receiver_semantic_inputs=["marked encrypted image", "master key", "nonce"],
+            lattice_phase_policy="owner selects the phase with the highest signed net payload; phase is discovered by the authenticated header location",
+            lattice_phase_count=wire.SAFE_ZONE_PHASES,
             data_hider_semantic_inputs=["encrypted reserved image", "payload", "one derived data-hiding key"],
             input_directories=[str(p) for p in data_dirs],
             seed=args.seed,
@@ -692,7 +705,13 @@ def main():
             checkpoint_sha256=sha(ROOT / "models" / "v4_patch3.pth"),
             model_changed=False,
             model_training_performed=False,
-            protocol_changes_from_EDR1=["step-2 safe-zone grid", "encrypted staged header", "EDR2 key hierarchy"],
+            protocol_changes_from_EDR1=[
+                "step-2 maximum-density safe-zone grid",
+                "four-phase net-capacity selection",
+                "phase-discoverable authenticated header",
+                "encrypted staged header",
+                "EDR2 key hierarchy",
+            ],
         ),
     )
     save(
