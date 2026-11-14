@@ -1,4 +1,4 @@
-"""Owner reservation and receiver; preserves and reuses the historical B predictor."""
+"""Active EDR2 owner reservation and receiver; receiver semantic inputs are image, K, V."""
 import os
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 import sys
@@ -13,11 +13,12 @@ ROOT = BASE.parent
 
 
 def shared():
-    sys.path.insert(0, str(ROOT/'self_contained_rdhei_feasibility_20261022'))
-    import prototype
-    if not np.array_equal(prototype.BOOK, wire.BOOK):
-        raise ValueError('shared codebook mismatch')
-    return prototype
+    # EDR2 uses its own frozen predictor module; never import the historical
+    # SCF1/EDR1 end-to-end prototype into the active packet implementation.
+    import predictor
+    if not np.array_equal(predictor.BOOK, wire.BOOK):
+        raise ValueError('shared EDR2 codebook mismatch')
+    return predictor
 
 
 def prepare(original):
@@ -56,6 +57,7 @@ def reserve(original, master, nonce, prepared=None):
     if q['net'] <= 0:
         raise ValueError('nonpositive net capacity')
     k = wire.keys(master, nonce)
+    hider_subkeys = wire.hider_keys(k['hider'])
     h, y, x = q['h'], q['ys'], q['xs']
     backup = np.unpackbits(original[y[:h], x[:h]])
     stream = np.r_[backup, np.zeros(q['net'], dtype=np.uint8)]
@@ -63,21 +65,30 @@ def reserve(original, master, nonce, prepared=None):
     wire.writebits(reserved, q['positions'], stream)
     reserved[y[:h], x[:h]] = 0
     out = np.frombuffer(wire.crypt(reserved.tobytes(), k['image']), np.uint8).copy().reshape(original.shape)
-    directory = wire.crypt(q['meta'], k['directory'])
-    header = wire.HEADER.pack(b'EDR1', q['mode'], len(directory), 0)
-    out[y[:h], x[:h]] = np.frombuffer(header+directory+bytes(32), np.uint8)
-    wire.seal(out, k['auth'])
-    return out, {d:k[d] for d in ('directory', 'payload', 'auth')}
+    directory = wire.crypt(q['meta'], hider_subkeys['directory'])
+    header = wire.encode_header(
+        q['mode'], len(directory), 0, hider_subkeys, header_stage='bootstrap'
+    )
+    out[y[:wire.HEADER_BYTES], x[:wire.HEADER_BYTES]] = np.frombuffer(header, np.uint8)
+    out[y[wire.HEADER_BYTES:wire.HEADER_BYTES + len(directory)],
+        x[wire.HEADER_BYTES:wire.HEADER_BYTES + len(directory)]] = np.frombuffer(directory, np.uint8)
+    out[y[wire.HEADER_BYTES + len(directory):h],
+        x[wire.HEADER_BYTES + len(directory):h]] = 0
+    wire.seal(out, hider_subkeys, header_stage='bootstrap')
+    # This single derived data-hiding key is delivered to the independent hider.
+    # It cannot derive the image-encryption key.
+    return out, {'hider': k['hider']}
 
 
 def receive(encrypted_image, master, nonce):
     k = wire.keys(master, nonce)
-    q = wire.inspect(encrypted_image, k)
+    hider_subkeys = wire.hider_keys(k['hider'])
+    q = wire.inspect(encrypted_image, hider_subkeys)
     positions = q['positions']
     u = tuple(v[q['backup']:] for v in positions)
     encrypted_bits = wire.readbits(encrypted_image, u)
     plain_bits = np.unpackbits(np.frombuffer(wire.crypt(np.packbits(encrypted_bits).tobytes(),
-                                                     k['payload']), np.uint8))[:q['net']]
+                                                     hider_subkeys['payload']), np.uint8))[:q['net']]
     if np.any(plain_bits[q['plen']:]):
         raise ValueError('nonzero payload padding')
     payload = plain_bits[:q['plen']].copy()
@@ -118,8 +129,9 @@ if __name__ == '__main__':
             if mode is None or 'r' in mode:
                 reads.append(path)
                 # Source images are not permitted even if accidentally referenced.
-                if path.startswith(str(ROOT.parent/'data')+os.sep):
-                    raise RuntimeError('receiver attempted source image access')
+                source_data_root = str((ROOT / 'data').resolve()) + os.sep
+                if path.startswith(source_data_root):
+                    raise RuntimeError('receiver attempted external dataset/source-sidecar access')
     sys.addaudithook(audit)
     start = time.perf_counter()
     from PIL import Image
@@ -128,8 +140,13 @@ if __name__ == '__main__':
     elapsed = time.perf_counter()-start
     np.save(sys.argv[5], recovered, allow_pickle=False)
     np.save(sys.argv[6], payload, allow_pickle=False)
+    source_data_root = str((ROOT / 'data').resolve()) + os.sep
+    source_reads = [path for path in sorted(set(reads)) if path.startswith(source_data_root)]
+    if source_reads:
+        raise RuntimeError(f'receiver accessed source-side data: {source_reads}')
     with open(sys.argv[7], 'x') as f:
         json.dump(dict(receiver_seconds=elapsed, payload_bits=len(payload),
-                       semantic_inputs=['encrypted image', 'master key', 'nonce'],
-                       source_access=False, read_paths=sorted(set(reads))), f, indent=2)
+                       semantic_inputs=['marked encrypted image', 'master key', 'nonce'],
+                       source_access=bool(source_reads), source_reads=source_reads,
+                       read_paths=sorted(set(reads))), f, indent=2)
     print(json.dumps(dict(receiver_seconds=elapsed, payload_bits=len(payload))))

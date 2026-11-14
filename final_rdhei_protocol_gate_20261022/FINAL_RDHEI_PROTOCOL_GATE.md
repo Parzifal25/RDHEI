@@ -1,4 +1,6 @@
-# Final RDHEI protocol gate
+# Historical EDR1 RDHEI protocol gate
+
+> **Version boundary:** This report documents the historical EDR1 feasibility gate, not the current EDR2 protocol. Its synthetic controls (constant128, random256, tiny8) were used only for protocol/software boundary testing. They are not natural-image benchmark observations and must not be included in the current manuscript's natural-image tables, averages, or conclusions. Use the separate EDR2 natural-image evaluation outputs for EDR2 claims.
 
 2026-10-22. **GO** for the specified EDR1 grayscale protocol on images passing its
 explicit reversible-budget test. It performs actual payload insertion after image
