@@ -33,12 +33,16 @@ The independent data hider receives one nonce-specific derived data-hiding capab
 
 The EDR2 paper-facing evaluation excludes synthetic images and unreviewed files. It accepts the six fixed grayscale baseline PNGs at the root of data/kodak_gray/. Additional native 8-bit grayscale USC-SIPI files are considered only when their relative paths, source-file SHA-256 hashes, natural-image classification and curation notes appear in a manually reviewed natural_image_allowlist.json. Unsupported RGB/16-bit inputs are recorded; they are never silently converted. Exact pixel duplicates are deduplicated by dimensions and decoded pixel content. The run ledger records excluded synthetic and unreviewed files with reasons.
 
-Prepare the added USC-SIPI grayscale corpus:
+Prepare and curate the USC-SIPI grayscale corpus:
 
 ~~~bash
 python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
   --output-dir data/usc_sipi_gray \
   --archive-dir data/usc_sipi_archives
+
+python final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+  --manifest data/usc_sipi_gray/dataset_manifest.json \
+  --output data/usc_sipi_gray/natural_image_allowlist.json
 ~~~
 
 Run the full EDR2 gate:
@@ -51,9 +55,9 @@ python final_rdhei_protocol_gate_20261022/run_gate.py \
 
 For expanded USC-SIPI data, prepare a curator-reviewed file-level allowlist after inspecting the inventory. Each entry must contain a relative path, exact file SHA-256, classification "natural", and a short curation note; no archive is automatically approved as a natural-image evaluation set.
 
-For every accepted natural image, the runner records gross ordinary slots, bootstrap opportunity cost, physical metadata storage, backup bits, signed net payload bits, net bpp, and acceptance. It tests payload lengths 0, 1, short, half-capacity, capacity−1 and full capacity in fresh hider/receiver processes. Both recovered pixels and extracted payload bits must match exactly. Rejected natural images remain in the capacity table with their rejection reason.
+For every accepted image, the runner records its USC-SIPI corpus group, gross ordinary slots, bootstrap opportunity cost, physical metadata storage, backup bits, signed net payload bits, net bpp, and acceptance. Rotated texture variants and adjacent sequence frames are related observations and must be analysed as separate strata rather than treated as independent scenes. It tests payload lengths 0, 1, short, half-capacity, capacity−1 and full capacity in fresh hider/receiver processes. Both recovered pixels and extracted payload bits must match exactly. Rejected natural images remain in the capacity table with their rejection reason.
 
-The full corpus job is opt-in via GitHub Actions workflow dispatch. The exact original six baseline files must be available on this branch. The default CI path runs compile and unit tests only.
+The full USC-SIPI job is opt-in via GitHub Actions workflow dispatch. It downloads the official archives, prepares the largest supported native-grayscale subset, creates a hash-pinned catalogue allowlist, and runs EDR2 with exact recovery checks. The original six baseline files are included separately only when all six exist under data/kodak_gray; they are a smoke-test set, not a prerequisite for the independent USC-SIPI evaluation. The default CI path runs compile and unit tests only.
 
 ### Publication-hardening artifacts
 
