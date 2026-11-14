@@ -64,7 +64,7 @@ The full corpus job is opt-in via GitHub Actions workflow dispatch. The exact or
 - `tests/test_edr2_receiver_only.py` checks receiver inputs, encrypted packet recovery and related protocol controls. Generated images in tests are unit fixtures only.
 - `.github/workflows/edr2-natural-image-gate.yml` runs these tests on the publication-hardening branch.
 
-Historical EDR1 synthetic-control results are preserved only as archived experiment history. They are excluded from EDR2 paper-facing results, aggregates and figures. No synthetic image may enter the paper corpus through an unreviewed directory.
+The publication-hardening branch removes all committed constant-image feasibility result artifacts (56 files). No synthetic-image result is used in EDR2 metrics, aggregates, plots or paper claims. Generic generated arrays remain only as isolated unit-test fixtures for exact finite-domain and protocol checks; they are not experimental samples. Older EDR1 narrative records may still mention superseded synthetic controls, but those records are historical and must not be cited or reused in the EDR2 paper.
 
 ### Training status and frozen-checkpoint provenance
 
@@ -77,7 +77,7 @@ The repaired src/train.py is retained only as a future reproducibility utility. 
 ### Version boundary and research claims
 
 - PROTOCOL_EDR2.md is the active protocol specification.
-- PROTOCOL_EDR1.md and FINAL_RDHEI_PROTOCOL_GATE.md are historical EDR1 records. Their metrics—including synthetic-control results—must not be mixed with EDR2.
+- PROTOCOL_EDR1.md and FINAL_RDHEI_PROTOCOL_GATE.md are historical EDR1 records. Their capacity and recovery metrics must not be mixed with EDR2; the old synthetic-control observations are not part of the current publication dataset.
 - The old src/rdhei_core.py receiver requires external maps and a payload length; it is retained as a legacy baseline and is not evidence for EDR2's receiver contract.
 - CNN prediction and compressed in-band label maps are established RDHEI components. The maximum-density step-2 synchronization-safe lattice for the fixed 3×3 context, strict in-band header/directory/bootstrap accounting, and exact receiver-only reconstruction are candidate contributions. Their novelty and superiority remain conditional on full natural-image evaluation and direct comparison with current partition-based and block-based RDHEI methods.
 - Do not update the manuscript with EDR2 numerical results until the full natural-image workflow has completed and its evidence has been independently reviewed.
