@@ -102,7 +102,7 @@ def file_sha256(path):
 
 
 def load_natural_allowlist(directory):
-    """Load human-reviewed native-grayscale image file hashes for expanded natural corpora."""
+    """Load hash-pinned catalogue-curated native-grayscale files for expanded corpora."""
     path = directory / "natural_image_allowlist.json"
     if not path.is_file():
         return {}
