@@ -183,8 +183,9 @@ def main():
             continue
         values = pd.to_numeric(capacity[cap_col], errors="coerce")
         usable = values.dropna()
+        blend_status_col = f"blend_{blend}_status"
         success_images = int(
-            ((values > 0) & capacity["status"].isin(["roundtrip_passed", "roundtrip_failed"])).sum()
+            ((values > 0) & capacity[blend_status_col].eq("roundtrip_passed")).sum()
         )
         rows.append({
             "cross_blend": f"{blend}/4",
@@ -198,7 +199,7 @@ def main():
             "images_better_than_spatial_only": np.nan if blend == 0 else int(
                 (values > pd.to_numeric(capacity["blend_0_net_capacity_bits"], errors="coerce")).sum()
             ),
-            "images_with_roundtrip": success_images if blend == 1 else 0,
+            "images_with_roundtrip": success_images,
         })
         for channel in range(3):
             for metric in ("spatial_mae", "cross_channel_mae", "fused_mae"):
