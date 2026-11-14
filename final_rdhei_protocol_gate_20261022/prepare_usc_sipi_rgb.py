@@ -219,7 +219,6 @@ def main() -> None:
         "dataset": "USC-SIPI native RGB evaluation subset",
         "source_database": DATABASE_URL,
         "checksum_page": CHECKSUMS_URL,
-        "checksum_page_sha256": checksum_sha,
         "checksum_snapshot_file": snapshot_path.name,
         "checksum_snapshot_retrieved_date": snapshot["retrieved_date"],
         "checksum_snapshot_sha256": checksum_sha,
