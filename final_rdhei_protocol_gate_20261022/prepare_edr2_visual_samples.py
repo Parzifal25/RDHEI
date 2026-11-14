@@ -20,11 +20,13 @@ def sha256_file(path: Path) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--source-dir", default="data/usc_sipi_gray")
+    ap.add_argument("--baseline-dir", default="data/kodak_gray")
     ap.add_argument("--evidence-dir", default="/tmp/edr2-full-natural-corpus-evidence")
     ap.add_argument("--output-dir", default="data/usc_sipi_visual_samples")
     args = ap.parse_args()
 
     src = Path(args.source_dir).resolve()
+    baseline = Path(args.baseline_dir).resolve()
     evidence = Path(args.evidence_dir).resolve()
     out = Path(args.output_dir).resolve()
     for name in ("capacity_summary.csv", "corpus.json"):
@@ -73,6 +75,40 @@ def main() -> None:
             "selection_policy": "lexicographically first positive-capacity image in each stratum; if none, first image in that stratum",
         })
 
+    # Include the six original root-level baseline files in the gallery whenever
+    # they were supplied to the main adaptive run. These are not USC-SIPI allowlist
+    # entries; they form a separate, explicitly provenance-labelled baseline stratum.
+    baseline_names = ["Airplane.png", "Baboon.png", "Goldhill.png", "Jetplane.png", "Lena.png", "Peppers.png"]
+    baseline_missing = []
+    if baseline.is_dir():
+        baseline_rows = {r["image"]: r for r in capacities}
+        for filename in baseline_names:
+            source = baseline / filename
+            if not source.is_file():
+                baseline_missing.append(filename)
+                continue
+            row = baseline_rows.get(filename)
+            if row is None:
+                raise ValueError(f"baseline file {filename} is present but absent from adaptive capacity evidence")
+            actual_hash = sha256_file(source)
+            if actual_hash != row["source_sha256"]:
+                raise ValueError(f"baseline source hash mismatch for {filename}")
+            relative = PurePosixPath("baseline_images") / filename
+            selected.append({
+                "path": relative.as_posix(),
+                "source_path": str(source),
+                "corpus_group": "original_six_baseline",
+                "classification": "natural",
+                "accepted_in_adaptive_run": row.get("accepted", "").lower() == "true",
+                "selected_phase": row.get("selected_lattice_phase", ""),
+                "net_capacity_bits": int(float(row.get("net_capacity_bits", "0"))),
+                "source_sha256": actual_hash,
+                "pixels_sha256": row.get("pixels_sha256", ""),
+                "selection_policy": "included as one of the six predefined project baseline images",
+            })
+    else:
+        baseline_missing = baseline_names[:]
+
     if out.exists():
         raise FileExistsError(f"refusing to overwrite {out}")
     out.mkdir(parents=True)
@@ -80,11 +116,29 @@ def main() -> None:
         rel = PurePosixPath(row["path"])
         target = out / Path(*rel.parts)
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src / Path(*rel.parts), target)
+        source = Path(row.get("source_path", src / Path(*rel.parts))).resolve()
+        if not source.is_file():
+            raise FileNotFoundError(source)
+        shutil.copyfile(source, target)
+    sample_allowlist_rows = [allow_rows[r["path"]] for r in selected if r["path"] in allow_rows]
+    sample_allowlist_rows.extend({
+        "path": row["path"],
+        "sha256": row["source_sha256"],
+        "classification": "natural",
+        "corpus_group": row["corpus_group"],
+        "correlation_cluster": f"baseline_{Path(row['path']).stem.lower()}",
+        "curation_note": (
+            "One of the six predefined project grayscale baselines; exact source-file "
+            "SHA-256 is bound to the corresponding adaptive-run capacity record. "
+            "The source provenance should be described using the project baseline manifest."
+        ),
+    } for row in selected if row["corpus_group"] == "original_six_baseline")
     sample_allowlist = {
-        "dataset": "USC-SIPI visual sample subset",
+        "dataset": "EDR2 representative visual sample subset",
         "source_manifest": str(allow_path),
-        "images": [allow_rows[r["path"]] for r in selected],
+        "baseline_source_directory": str(baseline),
+        "missing_original_baseline_files": baseline_missing,
+        "images": sample_allowlist_rows,
     }
     (out / "natural_image_allowlist.json").write_text(
         json.dumps(sample_allowlist, indent=2, sort_keys=True) + "\n",
