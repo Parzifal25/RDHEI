@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - research/edr2-rgb-extension
+      - research/edr2-rgb-full-corpus-execution
     paths:
       - ".github/workflows/edr2-rgb-extension.yml"
       - "final_rdhei_protocol_gate_20261022/rgb_*.py"
@@ -73,7 +74,7 @@ jobs:
 
 
   rgb-full-corpus:
-    if: ${{ inputs.run_rgb_full_corpus == true }}
+    if: ${{ github.event_name == 'push' || inputs.run_rgb_full_corpus == true }}
     needs: rgb-protocol-tests
     runs-on: ubuntu-latest
     timeout-minutes: 360
