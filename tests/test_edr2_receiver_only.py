@@ -55,14 +55,21 @@ def test_one_derived_hider_key_is_separate_from_image_key():
     assert keys["image"] not in hider_keys.values()
 
 
-def test_load_corpus_keeps_six_originals_and_only_curated_grayscale(tmp_path):
+def test_load_corpus_keeps_six_originals_and_only_curated_grayscale(tmp_path, monkeypatch):
     import hashlib
 
     baseline = tmp_path / "kodak_gray"
     expanded = tmp_path / "usc_sipi_gray"
 
     for index, stem in enumerate(sorted(run_gate.BASELINE_STEMS)):
-        write_gray(baseline / f"{stem}.png", index + 10)
+        baseline_path = baseline / f"{stem}.png"
+        write_gray(baseline_path, index + 10)
+        fixture_pixels = run_gate.read_native_gray(baseline_path)
+        monkeypatch.setitem(run_gate.BASELINE_EXPECTED_HASHES, f"{stem}.png", {
+            "file_sha256": run_gate.file_sha256(baseline_path),
+            "pixels_sha256": run_gate.pixel_sha256(fixture_pixels),
+            "shape": list(fixture_pixels.shape),
+        })
 
     duplicate_path = expanded / "duplicates" / "copy_of_airplane.tiff"
     extra_path = expanded / "textures" / "extra_texture.tiff"
