@@ -174,6 +174,33 @@ For every natural image, report:
 
 Use per-image values and paired comparisons. Report the number of accepted and rejected natural images. Do not average away rejected images; present the signed budget distribution. Do not describe (65{,}025) candidate centres per 512x512 image as 65,025 bits or as net bpp.
 
+### Reproducible phase-selection runs
+
+From the repository root, with the original six native grayscale baseline PNGs at `data/kodak_gray/`:
+
+```bash
+# Normal protocol: evaluate all four phases and select maximum signed net payload.
+python final_rdhei_protocol_gate_20261022/run_gate.py \
+  --data-dir data/kodak_gray \
+  --output-dir results/edr2_adaptive_phase
+
+# Matched fixed-phase baselines; use a distinct output folder for each run.
+for phase in 0 1 2 3; do
+  python final_rdhei_protocol_gate_20261022/run_gate.py \
+    --data-dir data/kodak_gray \
+    --fixed-phase "$phase" \
+    --output-dir "results/edr2_fixed_phase_$phase"
+done
+
+# Assert-based mapping, receiver, lattice, phase-discovery and allowlist tests.
+python -m pytest -q \
+  tests/test_mapping.py \
+  tests/test_edr2_receiver_only.py \
+  tests/test_edr2_publication_hardening.py
+```
+
+The auto run's `capacities.csv` must include each image's selected phase, all four per-phase net capacities, and the phase-selection gain relative to phase 0. The fixed-phase runs deliberately report unavailable alternative-phase scores as null; their selected-phase capacity remains directly comparable. Use identical source-image bytes, checkpoint hash, seed, thread count, payload cases and software environment in every run. Do not pool multiple copies of the same natural image as independent samples.
+
 ### Matched ablations required
 
 At minimum compare:
