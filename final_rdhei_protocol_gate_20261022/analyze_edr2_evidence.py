@@ -254,36 +254,64 @@ def main() -> None:
     classification_summary = summarise(base, ["classification"])
     classification_summary.to_csv(out / "classification_phase_summary.csv", index=False)
 
-    cluster_rows = []
-    for (group, cluster), frame in base.groupby(["corpus_group", "correlation_cluster"], dropna=False, sort=True):
-        row = {
-            "corpus_group": group,
-            "correlation_cluster": cluster,
-            "images_in_cluster": int(len(frame)),
-            "adaptive_mean_net_bpp": float(frame["adaptive_net_bpp"].mean()),
-            "phase0_mean_net_bpp": float(frame["phase0_net_bpp"].mean()),
-            "adaptive_gain_vs_phase0_bpp": float(frame["adaptive_gain_vs_phase0_bpp"].mean()),
-            "adaptive_positive_fraction": float((frame["adaptive_net_bits"] > 0).mean()),
-        }
-        for phase in range(4):
-            row[f"phase{phase}_mean_net_bpp"] = float(frame[f"phase{phase}_net_bpp"].mean())
-        cluster_rows.append(row)
-    cluster_summary = pd.DataFrame(cluster_rows)
+    def summarize_clusters(data: pd.DataFrame, group_col: bool) -> pd.DataFrame:
+        rows = []
+        groupby_cols = ["correlation_cluster", "corpus_group"] if group_col else ["correlation_cluster"]
+        for key, frame in data.groupby(groupby_cols, dropna=False, sort=True):
+            if not isinstance(key, tuple):
+                key = (key,)
+            if group_col:
+                cluster, group = key
+            else:
+                cluster, group = key[0], "ALL_CLUSTERS"
+            row = {
+                "corpus_group": group,
+                "correlation_cluster": cluster,
+                "images_in_cluster": int(len(frame)),
+                "source_groups": "|".join(sorted(frame["corpus_group"].dropna().astype(str).unique())),
+                "adaptive_mean_net_bpp": float(frame["adaptive_net_bpp"].mean()),
+                "phase0_mean_net_bpp": float(frame["phase0_net_bpp"].mean()),
+                "adaptive_gain_vs_phase0_bpp": float(frame["adaptive_gain_vs_phase0_bpp"].mean()),
+                "adaptive_positive_fraction": float((frame["adaptive_net_bits"] > 0).mean()),
+            }
+            for phase in range(4):
+                row[f"phase{phase}_mean_net_bpp"] = float(frame[f"phase{phase}_net_bpp"].mean())
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    # Overall dependence analysis clusters sequence 6.2 frames 1-16 and 17-32
+    # together under the same source-sequence identifier. Group-specific tables
+    # remain split for descriptive reporting but are not double-counted overall.
+    cluster_summary = summarize_clusters(base, group_col=False)
+    group_cluster_summary = summarize_clusters(base, group_col=True)
     cluster_summary.to_csv(out / "correlation_cluster_summary.csv", index=False)
+    group_cluster_summary.to_csv(out / "correlation_cluster_by_group_summary.csv", index=False)
 
     ci_rows = []
-    for group_name, subset in [("ALL_CLUSTERS", cluster_summary)] + [
-        (name, cluster_summary[cluster_summary["corpus_group"] == name])
-        for name in sorted(cluster_summary["corpus_group"].unique())
-    ]:
+    overall_values = cluster_summary
+    for metric in ["adaptive_gain_vs_phase0_bpp", "adaptive_mean_net_bpp", "phase0_mean_net_bpp"]:
+        stats = bootstrap_mean_ci(
+            overall_values[metric].to_numpy(), 20261114 + len(ci_rows), args.bootstrap_reps
+        )
+        ci_rows.append({
+            "corpus_group": "ALL_CLUSTERS",
+            "metric": metric,
+            **stats,
+            "bootstrap_reps": args.bootstrap_reps,
+            "resampling_unit": "unique_correlation_cluster",
+        })
+    for group_name in sorted(base["corpus_group"].astype(str).unique()):
+        subset = group_cluster_summary[group_cluster_summary["corpus_group"] == group_name]
         for metric in ["adaptive_gain_vs_phase0_bpp", "adaptive_mean_net_bpp", "phase0_mean_net_bpp"]:
-            stats = bootstrap_mean_ci(subset[metric].to_numpy(), 20261114 + len(ci_rows), args.bootstrap_reps)
+            stats = bootstrap_mean_ci(
+                subset[metric].to_numpy(), 20261114 + len(ci_rows), args.bootstrap_reps
+            )
             ci_rows.append({
                 "corpus_group": group_name,
                 "metric": metric,
                 **stats,
                 "bootstrap_reps": args.bootstrap_reps,
-                "resampling_unit": "correlation_cluster",
+                "resampling_unit": "correlation_cluster_within_stratum",
             })
     cluster_ci = pd.DataFrame(ci_rows)
     cluster_ci.to_csv(out / "cluster_bootstrap_summary.csv", index=False)
