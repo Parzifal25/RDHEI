@@ -46,6 +46,8 @@ def grid(shape, phase=0):
     """
     if len(shape) != 2:
         raise ValueError("grayscale only")
+    if int(shape[0]) % 2 or int(shape[1]) % 2:
+        raise ValueError("four-phase maximum-density EDR2 currently requires even image dimensions")
     if not isinstance(phase, int) or not 0 <= phase < SAFE_ZONE_PHASES:
         raise ValueError("phase must be an integer in [0,3]")
     row_start = SAFE_ZONE_BORDER + phase // 2
