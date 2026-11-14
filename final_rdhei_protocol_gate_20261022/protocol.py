@@ -129,8 +129,9 @@ if __name__ == '__main__':
             if mode is None or 'r' in mode:
                 reads.append(path)
                 # Source images are not permitted even if accidentally referenced.
-                if path.startswith(str(ROOT.parent/'data')+os.sep):
-                    raise RuntimeError('receiver attempted source image access')
+                source_data_root = str((ROOT / 'data').resolve()) + os.sep
+                if path.startswith(source_data_root):
+                    raise RuntimeError('receiver attempted external dataset/source-sidecar access')
     sys.addaudithook(audit)
     start = time.perf_counter()
     from PIL import Image
@@ -139,8 +140,13 @@ if __name__ == '__main__':
     elapsed = time.perf_counter()-start
     np.save(sys.argv[5], recovered, allow_pickle=False)
     np.save(sys.argv[6], payload, allow_pickle=False)
+    source_data_root = str((ROOT / 'data').resolve()) + os.sep
+    source_reads = [path for path in sorted(set(reads)) if path.startswith(source_data_root)]
+    if source_reads:
+        raise RuntimeError(f'receiver accessed source-side data: {source_reads}')
     with open(sys.argv[7], 'x') as f:
         json.dump(dict(receiver_seconds=elapsed, payload_bits=len(payload),
-                       semantic_inputs=['encrypted image', 'master key', 'nonce'],
-                       source_access=False, read_paths=sorted(set(reads))), f, indent=2)
+                       semantic_inputs=['marked encrypted image', 'master key', 'nonce'],
+                       source_access=bool(source_reads), source_reads=source_reads,
+                       read_paths=sorted(set(reads))), f, indent=2)
     print(json.dumps(dict(receiver_seconds=elapsed, payload_bits=len(payload))))
