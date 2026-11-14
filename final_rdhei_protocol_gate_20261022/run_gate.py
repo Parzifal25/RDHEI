@@ -1,4 +1,4 @@
-"""Natural-image EDR2 corpus gate: deterministic discovery, capacity ledger, fresh-process round trips."""
+"""Grayscale EDR2 corpus gate: deterministic discovery, capacity ledger, fresh-process round trips."""
 import argparse
 import csv
 import hashlib
@@ -32,7 +32,7 @@ IMAGE_EXTENSIONS = sorted(SUPPORTED_SUFFIXES)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the frozen EDR2 protocol on every distinct 8-bit grayscale image found."
+        description="Run frozen EDR2 on every distinct allowlisted native 8-bit grayscale evaluation image."
     )
     parser.add_argument(
         "--data-dir",
@@ -447,7 +447,7 @@ def main():
         D = BASE / f"evidence_expanded_{time.strftime('%Y%m%d_%H%M%S')}"
     D.mkdir(parents=True, exist_ok=False)
 
-    total_natural = len(corpus)
+    total_inputs = len(corpus)
     save("corpus.json", inventory)
     save("skipped_inputs.json", skipped)
     save("pixel_duplicates.json", duplicates)
@@ -556,7 +556,7 @@ def main():
     model = frozen_predictor.model()
     initial_state = {key: value.clone() for key, value in model.state_dict().items()}
 
-    # Natural-image evaluation only. Generated test fixtures are confined to
+    # Paper-facing grayscale evaluation only. Generated test fixtures are confined to
     # unit/CI tests and never enter the paper-facing dataset or capacity tables.
     capacities, results, rejected = [], [], []
     sequence = 0
@@ -749,8 +749,8 @@ def main():
         for key, value in model.state_dict().items()
     )
     assert state_unchanged
-    natural_accepted = sum(bool(row.get("accepted")) for row in capacities)
-    natural_rejected = sum(not bool(row.get("accepted")) for row in capacities)
+    accepted_images = sum(bool(row.get("accepted")) for row in capacities)
+    rejected_images = sum(not bool(row.get("accepted")) for row in capacities)
     roundtrip_passes = sum(bool(row["image_exact"] and row["payload_exact"]) for row in results)
     save(
         "integrity.json",
@@ -772,7 +772,7 @@ def main():
     save(
         "run_summary.json",
         dict(
-            distinct_evaluation_inputs=total_natural,
+            distinct_evaluation_inputs=total_inputs,
             corpus_group_counts={
                 group: sum(1 for row in capacities if row.get("corpus_group") == group)
                 for group in sorted({row.get("corpus_group", "unspecified") for row in capacities})
@@ -783,8 +783,8 @@ def main():
             },
             synthetic_controls_included=False,
             total_capacity_rows=len(capacities),
-            accepted_images=natural_accepted,
-            rejected_images=natural_rejected,
+            accepted_images=accepted_images,
+            rejected_images=rejected_images,
             roundtrip_cases=len(results),
             roundtrip_passes=roundtrip_passes,
             roundtrip_failures=len(results) - roundtrip_passes,
@@ -803,8 +803,8 @@ def main():
     )
 
     print(
-        f"COMPLETE: {total_natural} eligible grayscale evaluation inputs; "
-        f"{natural_accepted} accepted, {natural_rejected} rejected; "
+        f"COMPLETE: {total_inputs} eligible grayscale evaluation inputs; "
+        f"{accepted_images} accepted, {rejected_images} rejected; "
         f"{roundtrip_passes}/{len(results)} exact round trips",
         flush=True,
     )
