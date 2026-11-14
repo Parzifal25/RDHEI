@@ -65,6 +65,22 @@ def test_official_checksum_parser_reads_published_posix_cksum_values():
     }
 
 
+
+def test_pinned_official_usc_sipi_rgb_checksum_snapshot_is_complete_and_scoped():
+    snapshot_path = sipi_rgb.Path(sipi_rgb.__file__).with_name(
+        "usc_sipi_rgb_checksums_2026-11-14.json"
+    )
+    snapshot = __import__("json").loads(snapshot_path.read_text(encoding="utf-8"))
+    values = snapshot["checksums"]
+    assert snapshot["source_url"] == sipi_rgb.CHECKSUMS_URL
+    assert snapshot["checksum_program"] == "POSIX cksum"
+    assert set(snapshot["scope_volumes"]) == {"aerials", "misc"}
+    assert sum(name.startswith("aerials/") for name in values) == 38
+    assert sum(name.startswith("misc/") for name in values) == 40
+    assert values["aerials/2.1.01.tiff"] == 1220177504
+    assert values["misc/4.2.03.tiff"] == 3944512653
+
+
 def test_rgb_archive_extraction_confines_member_paths(tmp_path):
     archive_path = tmp_path / "fixture.tar.gz"
     payload = b"native TIFF fixture"
