@@ -98,57 +98,74 @@ def test_rgb_runner_completion_gate_fails_when_every_input_is_skipped():
     assert any("no native" in failure for failure in failures)
 
 
+def _capacity_row_for_gate(image: str, nets=(100, 100, 100, 100)):
+    row = {"image": image, "status": "roundtrip_passed", "signed_net_capacity_bits": nets[1]}
+    for blend, net in enumerate(nets):
+        row[f"blend_{blend}_net_capacity_bits"] = net
+        row[f"blend_{blend}_status"] = (
+            "roundtrip_passed" if net > 0 else "rejected_nonpositive_net_capacity"
+        )
+    return row
+
+
+def _roundtrip_rows_for_gate(image: str, nets=(100, 100, 100, 100)):
+    rows = []
+    for blend, net in enumerate(nets):
+        if net <= 0:
+            continue
+        lengths = {min(value, net) for value in (0, 1, 7, 8, 9, 37, 137)}
+        lengths.update({max(0, net - 1), net})
+        for length in sorted(lengths):
+            rows.append({
+                "image": image, "blend_num": blend,
+                "payload_bits": length, "net_capacity_bits": net, "passed": True,
+            })
+    return rows
+
+
 def test_rgb_runner_completion_gate_fails_on_roundtrip_or_missing_full_capacity():
     inventory = [{"image": "aerials/a.tiff"}]
-    capacity = [{
-        "image": "aerials/a.tiff",
-        "status": "roundtrip_passed",
-        "signed_net_capacity_bits": 100,
-    }]
-    incomplete = [{
-        "image": "aerials/a.tiff",
-        "payload_bits": 37,
-        "passed": True,
-    }]
+    capacity = [_capacity_row_for_gate("aerials/a.tiff")]
+    incomplete = [
+        row for row in _roundtrip_rows_for_gate("aerials/a.tiff")
+        if row["blend_num"] != 0 or row["payload_bits"] != 100
+    ]
     status, failures = rgb_gate.completion_status(capacity, inventory, incomplete)
     assert status == "completed_with_failures"
-    assert any("full-capacity" in failure for failure in failures)
+    assert any("payload-boundary evidence mismatch" in failure for failure in failures)
 
-    failed = [{
-        "image": "aerials/a.tiff",
-        "payload_bits": 100,
-        "passed": False,
-    }]
+    failed = _roundtrip_rows_for_gate("aerials/a.tiff")
+    failed[0]["passed"] = False
     status, failures = rgb_gate.completion_status(capacity, inventory, failed)
     assert status == "completed_with_failures"
-    assert any("exact-recovery" in failure for failure in failures)
+    assert any("exact-recovery failures" in failure for failure in failures)
 
 
-def test_rgb_runner_completion_gate_accepts_rejected_capacity_and_exact_positive_case():
+def test_rgb_runner_completion_gate_accepts_rejected_capacity_and_exact_blend_cases():
     inventory = [
         {"image": "aerials/a.tiff"},
         {"image": "misc/b.tiff"},
     ]
     capacity = [
-        {
-            "image": "aerials/a.tiff",
-            "status": "roundtrip_passed",
-            "signed_net_capacity_bits": 100,
-        },
-        {
-            "image": "misc/b.tiff",
-            "status": "rejected_nonpositive_net_capacity",
-            "signed_net_capacity_bits": -5,
-        },
+        _capacity_row_for_gate("aerials/a.tiff", (100, 100, 100, 100)),
+        _capacity_row_for_gate("misc/b.tiff", (-5, -4, -3, -2)),
     ]
-    roundtrips = [
-        {"image": "aerials/a.tiff", "payload_bits": 0, "passed": True},
-        {"image": "aerials/a.tiff", "payload_bits": 100, "passed": True},
-    ]
+    capacity[1]["status"] = "rejected_nonpositive_net_capacity"
+    roundtrips = _roundtrip_rows_for_gate("aerials/a.tiff")
     status, failures = rgb_gate.completion_status(capacity, inventory, roundtrips)
     assert status == "completed"
     assert failures == []
 
+
+def test_rgb_runner_completion_gate_rejects_limited_smoke_runs():
+    inventory = [{"image": "aerials/a.tiff"}]
+    capacity = [_capacity_row_for_gate("aerials/a.tiff", (2, 2, 2, 2))]
+    roundtrips = _roundtrip_rows_for_gate("aerials/a.tiff", (2, 2, 2, 2))
+    status, failures = rgb_gate.completion_status(
+        capacity, inventory, roundtrips, input_limit=1
+    )
+    assert status == "completed_with_failures"
+    assert any("limited-input smoke" in failure for failure in failures)
 
 
 def test_rgb_benchmark_uses_distinct_nonce_for_each_payload_packet():
@@ -185,12 +202,12 @@ def _valid_rgb_evidence_frames():
         {
             "image": "misc/b.tiff",
             "pixels_sha256": "b" * 64,
-            "status": "roundtrip_passed",
-            "signed_net_capacity_bits": 137,
-            "blend_0_net_capacity_bits": 137, "blend_0_status": "roundtrip_passed",
-            "blend_1_net_capacity_bits": 137, "blend_1_status": "roundtrip_passed",
-            "blend_2_net_capacity_bits": 137, "blend_2_status": "roundtrip_passed",
-            "blend_3_net_capacity_bits": 137, "blend_3_status": "roundtrip_passed",
+            "status": "rejected_nonpositive_net_capacity",
+            "signed_net_capacity_bits": -4,
+            "blend_0_net_capacity_bits": -1, "blend_0_status": "rejected_nonpositive_net_capacity",
+            "blend_1_net_capacity_bits": -2, "blend_1_status": "rejected_nonpositive_net_capacity",
+            "blend_2_net_capacity_bits": -3, "blend_2_status": "rejected_nonpositive_net_capacity",
+            "blend_3_net_capacity_bits": -4, "blend_3_status": "rejected_nonpositive_net_capacity",
         },
     ])
     lengths = [0, 1, 7, 8, 9, 37, 136, 137]
