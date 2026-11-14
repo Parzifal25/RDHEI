@@ -120,14 +120,29 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
 
         group, note = GROUPS[volume]
         classification = "natural"
-        if volume == "textures" and member_basename.startswith("texmos") and ".s512" not in member_basename:
+        texture_stem = Path(archive_member).stem.lower()
+        is_constructed_texture_mosaic = (
+            volume == "textures"
+            and (
+                (texture_stem.startswith("texmos") and ".s512" not in member_basename)
+                or bool(__import__("re").fullmatch(r"1\\.5\\.\\d{2}", texture_stem))
+            )
+        )
+        if is_constructed_texture_mosaic:
             classification = "constructed"
             group = "constructed_texture_mosaics"
-            note = (
-                "USC-SIPI describes this file as a mosaic assembled from eight Brodatz "
-                "textures. It is a real image-domain composite, but not an independent "
-                "natural-scene photograph; report separately from natural images."
-            )
+            if texture_stem.startswith("texmos"):
+                note = (
+                    "USC-SIPI catalogue identifies this file as a texture mosaic assembled "
+                    "from Brodatz texture regions. It is a real image-domain composite, "
+                    "not an independent natural-scene photograph; report separately."
+                )
+            else:
+                note = (
+                    "USC-SIPI catalogue labels the 1.5.xx family as texture mosaics. "
+                    "It is a constructed texture composition, not an independent "
+                    "natural-scene photograph; report separately."
+                )
         accepted.append({
             "path": Path(rel).as_posix(),
             "sha256": actual,
