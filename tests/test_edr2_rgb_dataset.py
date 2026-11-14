@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EDR2 = ROOT / "final_rdhei_protocol_gate_20261022"
 sys.path.insert(0, str(EDR2))
 
+import analyze_rgb_evidence as rgb_analyzer
 import prepare_usc_sipi_rgb as sipi_rgb
 import run_rgb_gate as rgb_gate
 
@@ -164,3 +165,88 @@ def test_rgb_benchmark_nonce_changes_between_images_and_seeds():
     _, nonce_b = rgb_gate.stable_ids(42, "b" * 64, "full")
     _, nonce_c = rgb_gate.stable_ids(43, "a" * 64, "full")
     assert len({nonce_a, nonce_b, nonce_c}) == 3
+
+
+
+def _valid_rgb_evidence_frames():
+    import pandas as pd
+
+    capacity = pd.DataFrame([
+        {
+            "image": "aerials/a.tiff",
+            "pixels_sha256": "a" * 64,
+            "status": "roundtrip_passed",
+            "signed_net_capacity_bits": 100,
+        },
+        {
+            "image": "misc/b.tiff",
+            "pixels_sha256": "b" * 64,
+            "status": "rejected_nonpositive_net_capacity",
+            "signed_net_capacity_bits": -4,
+        },
+    ])
+    roundtrip = pd.DataFrame([
+        {
+            "image": "aerials/a.tiff", "pixels_sha256": "a" * 64,
+            "case": "empty", "payload_bits": 0, "net_capacity_bits": 100,
+            "image_exact": True, "payload_exact": True, "passed": True,
+        },
+        {
+            "image": "aerials/a.tiff", "pixels_sha256": "a" * 64,
+            "case": "full_capacity", "payload_bits": 100, "net_capacity_bits": 100,
+            "image_exact": True, "payload_exact": True, "passed": True,
+        },
+    ])
+    assignment_rows = []
+    phases = [{"phases": [r, g, b], "calibration_phase": next(
+        p for p in range(4) if p not in (r, g, b)
+    ), "net_capacity_bits": 10, "directory_bytes": 5}
+        for r in range(4) for g in range(4) if g != r
+        for b in range(4) if b not in (r, g)]
+    for image, pixel_hash in (("aerials/a.tiff", "a" * 64), ("misc/b.tiff", "b" * 64)):
+        for blend in (0, 1, 2, 3):
+            assignment_rows.append({
+                "image": image, "pixels_sha256": pixel_hash,
+                "blend_num": blend, "blend_den": 4,
+                "assignment_search": "adaptive_24",
+                "phase_assignment_scores_json": __import__("json").dumps(phases),
+            })
+    assignments = pd.DataFrame(assignment_rows)
+    run = {
+        "status": "completed", "analysis_ready": True, "roundtrip_failed": 0,
+        "roundtrip_cases": 2, "roundtrip_passed": 2, "capacity_rows": 2,
+        "distinct_native_rgb_inputs": 2,
+    }
+    manifest = {"images": [
+        {"image": "aerials/a.tiff"}, {"image": "misc/b.tiff"},
+    ]}
+    return capacity, roundtrip, assignments, run, manifest
+
+
+def test_rgb_paper_analyzer_accepts_only_complete_evidence():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_paper_analyzer_rejects_failed_run_even_when_csvs_exist():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    run["status"] = "completed_with_failures"
+    run["analysis_ready"] = False
+    with pytest.raises(ValueError, match="not analysis-ready"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_paper_analyzer_rejects_missing_full_capacity_recovery():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    roundtrip = roundtrip[roundtrip["case"] == "empty"]
+    run["roundtrip_cases"] = 1
+    run["roundtrip_passed"] = 1
+    with pytest.raises(ValueError, match="empty and full-capacity"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_paper_analyzer_rejects_incomplete_phase_assignment_ablations():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    assignments = assignments[assignments["blend_num"] != 3]
+    with pytest.raises(ValueError, match="incomplete"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
