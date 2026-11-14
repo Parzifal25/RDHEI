@@ -47,7 +47,7 @@ jobs:
       - name: Install test and protocol dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy pillow pycryptodome pytest pandas matplotlib
+          python -m pip install numpy pillow pycryptodome pytest pandas matplotlib tabulate
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Compile EDR2 and USC-SIPI preparation scripts
@@ -62,6 +62,8 @@ jobs:
             final_rdhei_protocol_gate_20261022/prepare_edr2_visual_samples.py \
             final_rdhei_protocol_gate_20261022/build_edr2_visual_gallery.py \
             final_rdhei_protocol_gate_20261022/analyze_edr2_evidence.py \
+            final_rdhei_protocol_gate_20261022/build_edr2_paper_report.py \
+            final_rdhei_protocol_gate_20261022/build_edr2_paper_report.py \
             src/train.py
 
       - name: Test mapping, receiver contract, EDR2 protocol and corpus curation
@@ -71,7 +73,8 @@ jobs:
             tests/test_edr2_receiver_only.py \
             tests/test_edr2_publication_hardening.py \
             tests/test_usc_sipi_curation.py \
-            tests/test_edr2_analysis.py
+            tests/test_edr2_analysis.py \
+            tests/test_edr2_paper_report.py
 
   full-natural-image-corpus:
     if: ${{ inputs.run_full_corpus == true }}
@@ -90,7 +93,7 @@ jobs:
       - name: Install EDR2 runtime dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy pillow pycryptodome pandas matplotlib
+          python -m pip install numpy pillow pycryptodome pandas matplotlib tabulate
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Compile EDR2 and corpus preparation scripts
@@ -176,6 +179,18 @@ jobs:
             --fixed-phase-root /tmp \
             --output-dir /tmp/edr2-publication-analysis
 
+      - name: Build paper-facing experimental report from run ledgers
+        if: ${{ inputs.run_fixed_phase_ablation == true }}
+        run: |
+          mkdir -p /tmp/edr2-paper-report
+          python final_rdhei_protocol_gate_20261022/build_edr2_paper_report.py \
+            --adaptive-dir /tmp/edr2-full-natural-corpus-evidence \
+            --analysis-dir /tmp/edr2-publication-analysis \
+            --literature-file EDR2_LITERATURE_COMPARISON.md \
+            --output /tmp/edr2-paper-report/EDR2_FINAL_EXPERIMENTAL_REPORT.md
+          cp EDR2_LITERATURE_COMPARISON.md /tmp/edr2-paper-report/
+          cp EDR2_RESEARCH_POSITIONING.md /tmp/edr2-paper-report/
+
       - name: Prepare one representative sample per USC-SIPI stratum
         run: |
           python final_rdhei_protocol_gate_20261022/prepare_edr2_visual_samples.py \
@@ -242,8 +257,17 @@ jobs:
           path: |
             /tmp/edr2-visual-sample-evidence/
             /tmp/edr2-visual-gallery/
-            data/usc_sipi_visual_samples/ \
+            data/usc_sipi_visual_samples/
             data/kodak_gray/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload final report and literature evidence
+        if: always() && inputs.run_fixed_phase_ablation == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-final-paper-writing-report
+          path: /tmp/edr2-paper-report/
           if-no-files-found: warn
           retention-days: 30
 
