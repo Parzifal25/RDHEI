@@ -40,15 +40,15 @@ At a target candidate location:
 
     p_cross = clip(round_even((m_Q8*x+b_Q8)/256), 0, 255)
 
-The frozen CNN spatial estimate is rounded with the established nearest-even rule. The current prototype uses a fixed blend of 3/4 spatial prediction and 1/4 cross-channel prediction:
+The frozen CNN spatial estimate is rounded with the established nearest-even rule. The blend ratio is encoded in the authenticated R3D2 joint directory alongside the phase tuple and label maps. The receiver reads it from the authenticated packet and does not rely on a compiled-in default. The experiments evaluate the four predeclared blends 0/4, 1/4, 2/4 and 3/4:
 
-    p = clip(round_even((3*p_spatial+p_cross)/4), 0, 255)
+    p = clip(round_even(((blend_den-blend_num)*p_spatial+blend_num*p_cross)/blend_den), 0, 255)
 
 The fused prediction drives the existing EDR2 error-allocation and label mapping. The blend ratio is a protocol parameter, not a learned parameter. Required ablations should test 0, 1/4, 1/2 and 3/4 with identical source images and phase assignments.
 
 ## 4. Joint metadata and net-capacity accounting
 
-The joint directory contains four phase identifiers (qR, qG, qB, qA) and one packed four-bit label sequence for each channel. The raw directory is compressed with zlib level 9 only if the compressed representation is shorter.
+The R3D2 encrypted joint directory contains four phase identifiers (qR, qG, qB, qA), one-byte blend numerator and denominator, and one packed four-bit label sequence for each channel. Its fixed prefix is 10 bytes before the three label streams. The raw directory is compressed with zlib level 9 only if the compressed representation is shorter. The receiver reads the blend from the authenticated directory before recomputing predictions.
 
 A single encrypted header, one encrypted joint directory and one HMAC-SHA256 tag are stored in the first H red-channel candidates of qR. Let GR, GG and GB denote gross ordinary MSB slots across all three candidate lattices. Let FR be the ordinary slots forfeited by the H red bootstrap carriers. The ordinary stream is:
 
@@ -65,6 +65,8 @@ The evidence ledger must report gross slots, red bootstrap opportunity cost, met
 ## 5. Encryption and authentication
 
 A new EDR2RGB HKDF context is used. R, G and B image planes receive three independent AES-256-CTR keys derived from the master key and nonce with channel-specific context strings. This avoids reusing one CTR key/keystream across three planes.
+
+Each reservation packet is single-use. A fresh 128-bit nonce is required for every payload insertion under a given master key, including empty and non-byte-aligned payload packets. The corpus runner derives distinct packet nonces from a run-specific random namespace and the image/payload-case identity, and creates a fresh reservation for every distinct payload length. Reusing a reserved packet for multiple payloads is prohibited because it would repeat the payload/header/image CTR keystream domains. Benchmark keys are public test material and are not deployment credentials.
 
 The RGB data-hiding capability and its header-bootstrap, header-final, directory, payload and authentication keys are separately derived under the EDR2RGB context. The grayscale EDR2 key domains are not reused.
 

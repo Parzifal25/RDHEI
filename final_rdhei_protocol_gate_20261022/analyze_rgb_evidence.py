@@ -17,6 +17,140 @@ import pandas as pd
 BLENDS = (0, 1, 2, 3)
 
 
+def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
+                      assignments: pd.DataFrame, run: dict, manifest: dict) -> None:
+    """Reject incomplete/failed RGB runs before producing paper-facing tables."""
+    if run.get("status") != "completed" or run.get("analysis_ready") is not True:
+        raise ValueError(
+            "RGB run is not analysis-ready; rerun the corpus gate and resolve its failure_reasons"
+        )
+    if int(run.get("roundtrip_failed", -1)) != 0:
+        raise ValueError("run summary reports failed exact-recovery cases")
+
+    capacity_required = {
+        "image", "pixels_sha256", "status", "signed_net_capacity_bits",
+    }
+    roundtrip_required = {
+        "image", "pixels_sha256", "blend_num", "blend_den", "case",
+        "payload_bits", "net_capacity_bits", "image_exact", "payload_exact", "passed",
+    }
+    assignment_required = {
+        "image", "pixels_sha256", "blend_num", "blend_den",
+        "assignment_search", "phase_assignment_scores_json",
+    }
+    for label, frame, required in (
+        ("capacity", capacity, capacity_required),
+        ("roundtrip", roundtrip, roundtrip_required),
+        ("assignment", assignments, assignment_required),
+    ):
+        missing = sorted(required - set(frame.columns))
+        if missing:
+            raise ValueError(f"{label} evidence is missing columns: {missing}")
+
+    if capacity.empty:
+        raise ValueError("RGB capacity evidence is empty")
+    if capacity["image"].duplicated().any():
+        raise ValueError("duplicate image keys in RGB capacity evidence")
+
+    manifest_images = manifest.get("images")
+    if not isinstance(manifest_images, list) or not manifest_images:
+        raise ValueError("RGB input manifest contains no accepted native inputs")
+    manifest_names = {row.get("image") for row in manifest_images}
+    capacity_names = set(capacity["image"].astype(str))
+    if manifest_names != capacity_names:
+        raise ValueError("capacity ledger does not exactly cover the input manifest")
+    if len(capacity) != int(run.get("capacity_rows", -1)):
+        raise ValueError("run summary capacity count does not match the capacity ledger")
+    if len(manifest_images) != int(run.get("distinct_native_rgb_inputs", -1)):
+        raise ValueError("run summary image count does not match the input manifest")
+
+    statuses = set(capacity["status"].fillna("unknown").astype(str))
+    allowed_statuses = {"roundtrip_passed", "rejected_nonpositive_net_capacity"}
+    if statuses - allowed_statuses:
+        raise ValueError(f"capacity ledger contains failed/unknown statuses: {sorted(statuses - allowed_statuses)}")
+
+    capacity_by_image = capacity.set_index("image")
+    roundtrip = roundtrip.copy()
+    passed = roundtrip["passed"].astype(str).str.lower().eq("true")
+    image_exact = roundtrip["image_exact"].astype(str).str.lower().eq("true")
+    payload_exact = roundtrip["payload_exact"].astype(str).str.lower().eq("true")
+    if not (passed & image_exact & payload_exact).all():
+        raise ValueError("one or more RGB image/payload exact-recovery checks failed")
+    if roundtrip.duplicated(["image", "blend_num", "payload_bits"]).any():
+        raise ValueError("duplicate payload lengths appear within an RGB blend round-trip ledger")
+    if len(roundtrip) != int(run.get("roundtrip_cases", -1)):
+        raise ValueError("run summary round-trip count does not match the round-trip ledger")
+    if int(passed.sum()) != int(run.get("roundtrip_passed", -1)):
+        raise ValueError("run summary successful round-trip count does not match the ledger")
+
+    for image, row in capacity_by_image.iterrows():
+        for blend in BLENDS:
+            blend_net = int(row[f"blend_{blend}_net_capacity_bits"])
+            blend_status = row.get(f"blend_{blend}_status")
+            cases = roundtrip[
+                (roundtrip["image"].astype(str) == str(image))
+                & (pd.to_numeric(roundtrip["blend_num"], errors="raise").astype(int) == blend)
+            ]
+            if blend_net <= 0:
+                if blend_status != "rejected_nonpositive_net_capacity" or not cases.empty:
+                    raise ValueError(
+                        f"{image}: invalid rejection ledger for blend {blend}/4"
+                    )
+                continue
+            if blend_status != "roundtrip_passed" or cases.empty:
+                raise ValueError(
+                    f"{image}: positive-capacity blend {blend}/4 lacks exact-recovery tests"
+                )
+            lengths = set(pd.to_numeric(cases["payload_bits"], errors="raise").astype(int))
+            expected_lengths = {
+                min(requested, blend_net) for requested in (0, 1, 7, 8, 9, 37, 137)
+            }
+            expected_lengths.update({max(0, blend_net - 1), blend_net})
+            if lengths != expected_lengths:
+                raise ValueError(
+                    f"{image}: blend {blend}/4 payload-boundary ledger mismatch; "
+                    f"expected {sorted(expected_lengths)}, observed {sorted(lengths)}"
+                )
+            if not cases["passed"].astype(str).str.lower().eq("true").all():
+                raise ValueError(f"{image}: failed image/payload exact recovery for blend {blend}/4")
+            if not (pd.to_numeric(cases["net_capacity_bits"], errors="raise").astype(int) == blend_net).all():
+                raise ValueError(
+                    f"{image}: blend {blend}/4 round-trip capacity differs from capacity ledger"
+                )
+            if set(pd.to_numeric(cases["blend_den"], errors="raise").astype(int)) != {4}:
+                raise ValueError(f"{image}: unexpected blend denominator in round-trip ledger")
+
+    # Each accepted image must have all four predeclared blend settings, and
+    # every setting must expose all 24 ordered phase assignments.
+    if len(assignments) != 4 * len(manifest_images):
+        raise ValueError("phase-assignment evidence is incomplete for the RGB corpus")
+    for image, group in assignments.groupby("image"):
+        if set(pd.to_numeric(group["blend_num"], errors="raise").astype(int)) != set(BLENDS):
+            raise ValueError(f"{image}: missing one or more blend ablations")
+        if set(pd.to_numeric(group["blend_den"], errors="raise").astype(int)) != {4}:
+            raise ValueError(f"{image}: unexpected cross-channel blend denominator")
+        for _, row in group.iterrows():
+            if row["assignment_search"] != "adaptive_24":
+                raise ValueError(f"{image}: non-adaptive phase assignment entered the ablation ledger")
+            scores = json.loads(row["phase_assignment_scores_json"])
+            expected_assignments = {
+                (r, g, b, next(p for p in range(4) if p not in (r, g, b)))
+                for r in range(4) for g in range(4) if g != r
+                for b in range(4) if b not in (r, g)
+            }
+            observed_assignments = {
+                (
+                    int(score["phases"][0]), int(score["phases"][1]),
+                    int(score["phases"][2]), int(score["calibration_phase"]),
+                )
+                for score in scores
+            }
+            if len(scores) != 24 or observed_assignments != expected_assignments:
+                raise ValueError(
+                    f"{image}: expected every one of the 24 distinct ordered phase assignments"
+                )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-dir", required=True)
@@ -34,6 +168,7 @@ def main():
     assignments = pd.read_csv(evidence / "rgb_phase_assignment_scores.csv")
     run = json.loads((evidence / "rgb_run_summary.json").read_text(encoding="utf-8"))
     manifest = json.loads((evidence / "rgb_input_manifest.json").read_text(encoding="utf-8"))
+    validate_evidence(capacity, roundtrip, assignments, run, manifest)
 
     capacity["status"] = capacity["status"].fillna("unknown")
     rows = []
@@ -48,8 +183,9 @@ def main():
             continue
         values = pd.to_numeric(capacity[cap_col], errors="coerce")
         usable = values.dropna()
+        blend_status_col = f"blend_{blend}_status"
         success_images = int(
-            ((values > 0) & capacity["status"].isin(["roundtrip_passed", "roundtrip_failed"])).sum()
+            ((values > 0) & capacity[blend_status_col].eq("roundtrip_passed")).sum()
         )
         rows.append({
             "cross_blend": f"{blend}/4",
@@ -63,7 +199,7 @@ def main():
             "images_better_than_spatial_only": np.nan if blend == 0 else int(
                 (values > pd.to_numeric(capacity["blend_0_net_capacity_bits"], errors="coerce")).sum()
             ),
-            "images_with_roundtrip": success_images if blend == 1 else 0,
+            "images_with_roundtrip": success_images,
         })
         for channel in range(3):
             for metric in ("spatial_mae", "cross_channel_mae", "fused_mae"):
@@ -109,12 +245,15 @@ def main():
     assignment_details = pd.DataFrame(detailed_assignment_rows)
 
     roundtrip["passed_bool"] = roundtrip["passed"].astype(str).str.lower().eq("true")
-    rt_summary = roundtrip.groupby("case", sort=False).agg(
+    rt_summary = roundtrip.groupby(["blend_num", "case"], sort=False).agg(
         tests=("image", "count"),
         passed=("passed_bool", "sum"),
         payload_bits_min=("payload_bits", "min"),
         payload_bits_max=("payload_bits", "max"),
     ).reset_index()
+    rt_summary["cross_blend"] = rt_summary["blend_num"].map(
+        lambda value: f"{int(value)}/4"
+    )
     rt_summary["failed"] = rt_summary["tests"] - rt_summary["passed"]
 
     capacity.to_csv(output / "rgb_per_image_capacity_and_prediction.csv", index=False)
@@ -195,7 +334,7 @@ def main():
         "",
         "The four lattice phases are assigned to R/G/B in all 24 ordered permutations; the remaining phase is an untouched common calibration lattice. The fixed assignment (0,1,2) is compared with adaptive selection. The frozen grayscale 3×3 CNN checkpoint is reused independently in each channel; no RGB retraining is performed.",
         "",
-        "The 0/4 blend is the independent spatial-CNN baseline. The 1/4, 2/4 and 3/4 blends test deterministic cross-channel regression fusion. Report both per-channel MAE and aggregate signed net capacity. A lower MAE alone is not proof of higher net capacity.",
+        "The 0/4 blend is the independent spatial-CNN baseline. The 1/4, 2/4 and 3/4 blends test deterministic cross-channel regression fusion. Every positive-capacity blend was independently reserved, embedded and received with fresh packet nonces; the exact-recovery table is stratified by blend and payload boundary. Report both per-channel MAE and aggregate signed net capacity. A lower MAE alone is not proof of higher net capacity.",
         "",
         "Only images with positive signed net capacity can carry payload. Rejections remain in the denominator. Net bpp is measured per RGB pixel, not per channel sample.",
         "",

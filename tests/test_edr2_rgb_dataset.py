@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EDR2 = ROOT / "final_rdhei_protocol_gate_20261022"
 sys.path.insert(0, str(EDR2))
 
+import analyze_rgb_evidence as rgb_analyzer
 import prepare_usc_sipi_rgb as sipi_rgb
 import run_rgb_gate as rgb_gate
 
@@ -54,14 +55,30 @@ def test_rgb_benchmark_ids_and_payload_are_deterministic():
 
 def test_official_checksum_parser_reads_published_posix_cksum_values():
     page = (
-        b"<pre>aerials/2.1.01.tiff | 1220177504\n"
-        b"misc/4.2.03.tiff | 3944512653\n</pre>"
+        b"<pre><a href='aerials/2.1.01.tiff'>aerials/2.1.01.tiff</a>  | 1220177504\n"
+        b"<a href='misc/4.2.03.tiff'>misc/4.2.03.tiff</a> | 3944512653\n</pre>"
     )
     values = sipi_rgb.parse_checksums(page)
     assert values == {
         "aerials/2.1.01.tiff": 1220177504,
         "misc/4.2.03.tiff": 3944512653,
     }
+
+
+
+def test_pinned_official_usc_sipi_rgb_checksum_snapshot_is_complete_and_scoped():
+    snapshot_path = sipi_rgb.Path(sipi_rgb.__file__).with_name(
+        "usc_sipi_rgb_checksums_2026-11-14.json"
+    )
+    snapshot = __import__("json").loads(snapshot_path.read_text(encoding="utf-8"))
+    values = snapshot["checksums"]
+    assert snapshot["source_url"] == sipi_rgb.CHECKSUMS_URL
+    assert snapshot["checksum_program"] == "POSIX cksum"
+    assert set(snapshot["scope_volumes"]) == {"aerials", "misc"}
+    assert sum(name.startswith("aerials/") for name in values) == 38
+    assert sum(name.startswith("misc/") for name in values) == 39
+    assert values["aerials/2.1.01.tiff"] == 1220177504
+    assert values["misc/4.2.03.tiff"] == 3944512653
 
 
 def test_rgb_archive_extraction_confines_member_paths(tmp_path):
@@ -88,3 +105,238 @@ def test_rgb_archive_extraction_confines_member_paths(tmp_path):
                 archive, members["aerials/../../escape.tiff"], destination
             )
     assert not (tmp_path / "escape.tiff").exists()
+
+
+
+def test_rgb_runner_completion_gate_fails_when_every_input_is_skipped():
+    status, failures = rgb_gate.completion_status([], [], [])
+    assert status == "completed_with_failures"
+    assert any("no native" in failure for failure in failures)
+
+
+def _capacity_row_for_gate(image: str, nets=(100, 100, 100, 100)):
+    row = {"image": image, "status": "roundtrip_passed", "signed_net_capacity_bits": nets[1]}
+    for blend, net in enumerate(nets):
+        row[f"blend_{blend}_net_capacity_bits"] = net
+        row[f"blend_{blend}_status"] = (
+            "roundtrip_passed" if net > 0 else "rejected_nonpositive_net_capacity"
+        )
+    return row
+
+
+def _roundtrip_rows_for_gate(image: str, nets=(100, 100, 100, 100)):
+    rows = []
+    for blend, net in enumerate(nets):
+        if net <= 0:
+            continue
+        lengths = {min(value, net) for value in (0, 1, 7, 8, 9, 37, 137)}
+        lengths.update({max(0, net - 1), net})
+        for length in sorted(lengths):
+            rows.append({
+                "image": image, "blend_num": blend,
+                "payload_bits": length, "net_capacity_bits": net, "passed": True,
+            })
+    return rows
+
+
+def test_rgb_runner_completion_gate_fails_on_roundtrip_or_missing_full_capacity():
+    inventory = [{"image": "aerials/a.tiff"}]
+    capacity = [_capacity_row_for_gate("aerials/a.tiff")]
+    incomplete = [
+        row for row in _roundtrip_rows_for_gate("aerials/a.tiff")
+        if row["blend_num"] != 0 or row["payload_bits"] != 100
+    ]
+    status, failures = rgb_gate.completion_status(capacity, inventory, incomplete)
+    assert status == "completed_with_failures"
+    assert any("payload-boundary evidence mismatch" in failure for failure in failures)
+
+    failed = _roundtrip_rows_for_gate("aerials/a.tiff")
+    failed[0]["passed"] = False
+    status, failures = rgb_gate.completion_status(capacity, inventory, failed)
+    assert status == "completed_with_failures"
+    assert any("exact-recovery failures" in failure for failure in failures)
+
+
+def test_rgb_runner_completion_gate_accepts_rejected_capacity_and_exact_blend_cases():
+    inventory = [
+        {"image": "aerials/a.tiff"},
+        {"image": "misc/b.tiff"},
+    ]
+    capacity = [
+        _capacity_row_for_gate("aerials/a.tiff", (100, 100, 100, 100)),
+        _capacity_row_for_gate("misc/b.tiff", (-5, -4, -3, -2)),
+    ]
+    capacity[1]["status"] = "rejected_nonpositive_net_capacity"
+    roundtrips = _roundtrip_rows_for_gate("aerials/a.tiff")
+    status, failures = rgb_gate.completion_status(capacity, inventory, roundtrips)
+    assert status == "completed"
+    assert failures == []
+
+
+def test_rgb_runner_completion_gate_rejects_limited_smoke_runs():
+    inventory = [{"image": "aerials/a.tiff"}]
+    capacity = [_capacity_row_for_gate("aerials/a.tiff", (2, 2, 2, 2))]
+    roundtrips = _roundtrip_rows_for_gate("aerials/a.tiff", (2, 2, 2, 2))
+    status, failures = rgb_gate.completion_status(
+        capacity, inventory, roundtrips, input_limit=1
+    )
+    assert status == "completed_with_failures"
+    assert any("limited-input smoke" in failure for failure in failures)
+
+
+def test_rgb_benchmark_uses_distinct_nonce_for_each_payload_packet():
+    master_a, nonce_a = rgb_gate.stable_ids(42, "a" * 64, "empty")
+    master_b, nonce_b = rgb_gate.stable_ids(42, "a" * 64, "short_37")
+    master_repeat, nonce_repeat = rgb_gate.stable_ids(42, "a" * 64, "empty")
+    assert master_a == master_b == master_repeat
+    assert nonce_a != nonce_b
+    assert nonce_a == nonce_repeat
+
+
+def test_rgb_benchmark_nonce_changes_between_images_and_seeds():
+    _, nonce_a = rgb_gate.stable_ids(42, "a" * 64, "full")
+    _, nonce_b = rgb_gate.stable_ids(42, "b" * 64, "full")
+    _, nonce_c = rgb_gate.stable_ids(43, "a" * 64, "full")
+    assert len({nonce_a, nonce_b, nonce_c}) == 3
+
+
+
+def _valid_rgb_evidence_frames():
+    import pandas as pd
+
+    capacity = pd.DataFrame([
+        {
+            "image": "aerials/a.tiff",
+            "pixels_sha256": "a" * 64,
+            "status": "roundtrip_passed",
+            "signed_net_capacity_bits": 137,
+            "blend_0_net_capacity_bits": 137, "blend_0_status": "roundtrip_passed",
+            "blend_1_net_capacity_bits": 137, "blend_1_status": "roundtrip_passed",
+            "blend_2_net_capacity_bits": 137, "blend_2_status": "roundtrip_passed",
+            "blend_3_net_capacity_bits": 137, "blend_3_status": "roundtrip_passed",
+        },
+        {
+            "image": "misc/b.tiff",
+            "pixels_sha256": "b" * 64,
+            "status": "rejected_nonpositive_net_capacity",
+            "signed_net_capacity_bits": -4,
+            "blend_0_net_capacity_bits": -1, "blend_0_status": "rejected_nonpositive_net_capacity",
+            "blend_1_net_capacity_bits": -2, "blend_1_status": "rejected_nonpositive_net_capacity",
+            "blend_2_net_capacity_bits": -3, "blend_2_status": "rejected_nonpositive_net_capacity",
+            "blend_3_net_capacity_bits": -4, "blend_3_status": "rejected_nonpositive_net_capacity",
+        },
+    ])
+    lengths = [0, 1, 7, 8, 9, 37, 136, 137]
+    roundtrip = pd.DataFrame([
+        {
+            "image": "aerials/a.tiff", "pixels_sha256": "a" * 64,
+            "blend_num": blend, "blend_den": 4,
+            "case": f"payload_{length}", "payload_bits": length, "net_capacity_bits": 137,
+            "image_exact": True, "payload_exact": True, "passed": True,
+        }
+        for blend in (0, 1, 2, 3)
+        for length in lengths
+    ])
+    assignment_rows = []
+    phases = [{
+        "phases": [r, g, b],
+        "calibration_phase": next(p for p in range(4) if p not in (r, g, b)),
+        "net_capacity_bits": 10,
+        "directory_bytes": 5,
+    } for r in range(4) for g in range(4) if g != r
+      for b in range(4) if b not in (r, g)]
+    for image, pixel_hash in (("aerials/a.tiff", "a" * 64), ("misc/b.tiff", "b" * 64)):
+        for blend in (0, 1, 2, 3):
+            assignment_rows.append({
+                "image": image, "pixels_sha256": pixel_hash,
+                "blend_num": blend, "blend_den": 4,
+                "assignment_search": "adaptive_24",
+                "phase_assignment_scores_json": __import__("json").dumps(phases),
+            })
+    assignments = pd.DataFrame(assignment_rows)
+    run = {
+        "status": "completed", "analysis_ready": True, "roundtrip_failed": 0,
+        "roundtrip_cases": len(roundtrip), "roundtrip_passed": len(roundtrip),
+        "capacity_rows": 2, "distinct_native_rgb_inputs": 2,
+    }
+    manifest = {"images": [
+        {"image": "aerials/a.tiff"}, {"image": "misc/b.tiff"},
+    ]}
+    return capacity, roundtrip, assignments, run, manifest
+
+
+def test_rgb_paper_analyzer_accepts_only_complete_evidence():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_paper_analyzer_rejects_failed_run_even_when_csvs_exist():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    run["status"] = "completed_with_failures"
+    run["analysis_ready"] = False
+    with pytest.raises(ValueError, match="not analysis-ready"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_paper_analyzer_rejects_missing_full_capacity_recovery():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    roundtrip = roundtrip[roundtrip["payload_bits"] == 0]
+    run["roundtrip_cases"] = len(roundtrip)
+    run["roundtrip_passed"] = len(roundtrip)
+    with pytest.raises(ValueError, match="payload-boundary ledger mismatch"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_paper_analyzer_rejects_incomplete_phase_assignment_ablations():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    assignments = assignments[assignments["blend_num"] != 3]
+    with pytest.raises(ValueError, match="incomplete"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+
+def test_rgb_paper_analyzer_rejects_duplicate_phase_permutations():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    scores = __import__("json").loads(assignments.iloc[0]["phase_assignment_scores_json"])
+    scores[-1] = scores[0]
+    assignments.loc[0, "phase_assignment_scores_json"] = __import__("json").dumps(scores)
+    with pytest.raises(ValueError, match="24 distinct ordered phase assignments"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_paper_analyzer_rejects_missing_nonbyte_payload_boundary():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    roundtrip = roundtrip[roundtrip["payload_bits"] != 136]
+    run["roundtrip_cases"] = len(roundtrip)
+    run["roundtrip_passed"] = len(roundtrip)
+    with pytest.raises(ValueError, match="payload-boundary ledger mismatch"):
+        rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_benchmark_nonce_namespace_prevents_cross_run_reuse():
+    master_a, nonce_a = rgb_gate.stable_ids(
+        42, "a" * 64, "empty", nonce_namespace="run-one"
+    )
+    master_b, nonce_b = rgb_gate.stable_ids(
+        42, "a" * 64, "empty", nonce_namespace="run-two"
+    )
+    assert master_a == master_b
+    assert nonce_a != nonce_b
+
+
+def test_rgb_runner_completion_gate_rejects_limited_smoke_runs():
+    inventory = [{"image": "aerials/a.tiff"}]
+    capacity = [{
+        "image": "aerials/a.tiff",
+        "status": "roundtrip_passed",
+        "signed_net_capacity_bits": 2,
+    }]
+    roundtrips = [
+        {"image": "aerials/a.tiff", "payload_bits": 0, "passed": True},
+        {"image": "aerials/a.tiff", "payload_bits": 2, "passed": True},
+    ]
+    status, failures = rgb_gate.completion_status(
+        capacity, inventory, roundtrips, input_limit=1
+    )
+    assert status == "completed_with_failures"
+    assert any("limited-input smoke" in failure for failure in failures)

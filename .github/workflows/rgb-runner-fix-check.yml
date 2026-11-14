@@ -1,0 +1,58 @@
+name: RGB runner fail-closed regression
+
+on:
+  push:
+    branches:
+      - fix/rgb-runner-evidence-gates
+    paths:
+      - ".github/workflows/rgb-runner-fix-check.yml"
+      - "final_rdhei_protocol_gate_20261022/run_rgb_gate.py"
+      - "final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py"
+      - "final_rdhei_protocol_gate_20261022/rgb_protocol.py"
+      - "final_rdhei_protocol_gate_20261022/rgb_wire.py"
+      - "tests/test_edr2_rgb.py"
+      - "tests/test_edr2_rgb_dataset.py"
+      - "tests/test_edr2_receiver_only.py"
+      - "tests/test_edr2_publication_hardening.py"
+
+permissions:
+  contents: read
+
+jobs:
+  protocol-and-evidence-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out fix branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome pytest pandas matplotlib
+
+      - name: Install CPU PyTorch for frozen CNN tests
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile patched RGB runner and analyzer
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/run_rgb_gate.py \
+            final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py \
+            final_rdhei_protocol_gate_20261022/rgb_protocol.py \
+            final_rdhei_protocol_gate_20261022/rgb_wire.py
+
+      - name: Run RGB and grayscale regression tests
+        run: |
+          python -m pytest -q \
+            tests/test_edr2_rgb_dataset.py \
+            tests/test_edr2_rgb.py \
+            tests/test_edr2_receiver_only.py \
+            tests/test_edr2_publication_hardening.py
