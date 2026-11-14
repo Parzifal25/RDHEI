@@ -90,3 +90,36 @@ Recent RDHEI research has advanced prediction-error coding, adaptive bit-plane g
 - Do not compare an article's average bits over a six-image set with EDR2's unweighted mean bpp without a declared aggregation method and identical image set.
 - Do not treat a paper's stated exact recovery, encryption-key separation, or authentication as equivalent to EDR2's specific input contract and phase-discovery mechanism without reading its detailed protocol.
 - The novelty matrix records the current reviewed set, not an exhaustive global proof of absence.
+
+
+## Colour-RDH/RDHEI prior art relevant to CC-EDR2-RGB
+
+| Work | Domain and mechanism | Relevance to CC-EDR2-RGB | Boundary for comparison |
+|---|---|---|---|
+| Li et al., “Reversible data hiding in encrypted color images using cross-channel correlations,” *Journal of Visual Communication and Image Representation* 78 (July 2021), article 103166, DOI [10.1016/j.jvcir.2021.103166](https://doi.org/10.1016/j.jvcir.2021.103166) | Direct encrypted-colour RDH. Preserves/utilizes R/G/B cross-channel correlation through a homomorphic encryption construction and difference-histogram shifting; abstract describes encrypted-domain cross-channel correlations. | Directly rules out claiming the first use of cross-channel correlation in encrypted colour RDH. This is the closest comparator for colour-domain encryption and cross-channel use. | Different encryption/embedding architecture and histogram-shifting primitive. Full-text protocol, key, and exact-rate accounting should be compared before any numerical claim. |
+| Li et al., “Reversible data hiding scheme for color image based on prediction-error expansion and cross-channel correlation,” *Signal Processing* 93(9) (September 2013), DOI [10.1016/j.sigpro.2013.01.020](https://doi.org/10.1016/j.sigpro.2013.01.020) | Plaintext colour RDH. Uses edge information from another colour channel to improve prediction accuracy and prediction-error expansion. | Cross-channel predictive refinement of an individual channel is longstanding colour-RDH prior art. | Not an encrypted-domain protocol; its prediction/embedding details are context, not a directly matched EDR2 baseline. |
+| “Color image reversible data hiding based on multi-channel synchronized histogram,” *Journal of King Saud University – Computer and Information Sciences* 35(10) (December 2023), article 101804, DOI [10.1016/j.jksuci.2023.101804](https://doi.org/10.1016/j.jksuci.2023.101804) | Plaintext colour RDH. Uses inter-channel correlation, adaptive capacity allocation among RGB channels, and a synchronized histogram. | Rules out claiming that joint channel allocation or inter-channel synchronization alone is new. | Not established by its abstract as an encrypted-domain, receiver-only CNN-synchronized protocol. |
+| Wang et al., “Reversible data hiding for color images based on prediction-error value ordering and adaptive embedding,” *Journal of Visual Communication and Image Representation* 103 (August 2024), article 104239, DOI [10.1016/j.jvcir.2024.104239](https://doi.org/10.1016/j.jvcir.2024.104239) | Plaintext colour RDH. Prediction-error value ordering exploits inter- and intra-channel correlation; uses adaptive embedding, dynamic payload partitioning and an improved 2D mapping. | Related to cross-channel prediction and adaptive allocation/partitioning. | Not the same encrypted-domain reservation and receiver contract; do not compare rates directly. |
+| “Inter-Channel Correlation Modeling and Improved Skewed Histogram Shifting for Reversible Data Hiding in Color Images,” *Mathematics* 12(9) (2024), article 1283, DOI [10.3390/math12091283](https://doi.org/10.3390/math12091283) | Plaintext colour RDH. Builds an inter-channel correlation model, chooses prediction context adaptively, and performs two-stage embedding. Evaluates USC-SIPI and Kodak image sources. | Related to cross-channel predictor context and multi-channel capacity/embedding design. | A plaintext RDH method; not a matched encrypted-domain comparison. |
+| “Reversible data hiding for color images based on channel reference mapping and adaptive pixel prediction,” *Mathematics* 12(4) (2024), article 517, DOI [10.3390/math12040517](https://doi.org/10.3390/math12040517) | Plaintext colour RDH. Uses channel-reference mapping based on RGB variation correlation and adaptive local prediction. | Related to deterministic reference-channel construction and adaptive cross-channel prediction. | Different data-hiding domain and prediction/embedding primitive. |
+| Wang et al., “Multi-predictor prediction-error expansion for reversible data hiding in color images with an actual capacity-distortion model,” *Digital Signal Processing* (1 November 2026), article 106367, DOI [10.1016/j.dsp.2026.106367](https://doi.org/10.1016/j.dsp.2026.106367) | Plaintext colour RDH. Fuses multiple predictors with adaptive weights, introduces a capacity-distortion model, and allocates payload across channels with visual sensitivity considerations. | Very recent prior art for predictor fusion and cross-channel colour RDH. It means that predictor fusion itself is not a novelty. | Abstract describes colour RDH, not necessarily encrypted-domain embedding. Compare its full prediction/weighting design, while keeping its native capacity-distortion metric separate from EDR2 signed net bpp. |
+
+### CC-EDR2-RGB novelty boundary
+
+The RGB version must not claim novelty for:
+- RGB support itself;
+- inter-channel correlation, cross-channel prediction, or per-channel prediction-error expansion;
+- predictor fusion or adaptive prediction weights in general;
+- adaptive payload allocation among channels;
+- synchronized channel histograms or histogram shifting;
+- reversible encryption of RGB images in general.
+
+The candidate mechanism is the specific geometric synchronization protocol:
+1. Assign three distinct members of the EDR2 step-2 four-phase lattice family to R, G and B.
+2. Leave the fourth lattice untouched in all channels.
+3. Use that common untouched lattice to calculate deterministic integer cross-channel regression coefficients.
+4. Recompute the same coefficients at the receiver from the marked RGB image after decryption, without transmitting per-image coefficients.
+5. Preserve the per-channel 3×3 masked CNN context and same-coordinate cross-channel reference samples after arbitrary writes to all three assigned lattices.
+6. Search/authenticate the joint channel phase tuple using a single in-band header/tag and choose the permutation that maximizes aggregate signed net capacity after one joint directory and bootstrap backup cost.
+
+This is a candidate mechanism, not a priority claim. The exact phase-staggered geometry, calibration-lattice use, regression synchronization and authenticated joint phase discovery need a targeted full-text search against the 2021 encrypted-colour paper and any later encrypted-colour RDHEI work before a novelty statement is finalized.
