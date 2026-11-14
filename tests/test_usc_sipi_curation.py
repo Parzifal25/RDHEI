@@ -126,7 +126,8 @@ def test_allowlist_curation_excludes_maps_charts_and_odd_sizes(tmp_path):
         "sequences/sequence_6_2_frame_17.tiff",
         "sequences/motion_frame.tiff"
     }
-    assert accepted["textures/sample.tiff"]["corpus_group"] == "texture_scans_and_mosaics"
+    assert accepted["textures/sample.tiff"]["corpus_group"] == "texture_scans"
+    assert accepted["textures/sample.tiff"]["correlation_cluster"] == "texture_series_1.1"
     assert accepted["textures/mosaic.tiff"]["classification"] == "constructed"
     assert accepted["textures/mosaic.tiff"]["corpus_group"] == "constructed_texture_mosaics"
     assert accepted["textures/catalogue_mosaic.tiff"]["classification"] == "constructed"
