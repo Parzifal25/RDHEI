@@ -43,6 +43,7 @@ jobs:
         run: |
           python -m py_compile \
             final_rdhei_protocol_gate_20261022/run_gate.py \
+            final_rdhei_protocol_gate_20261022/predictor.py \
             final_rdhei_protocol_gate_20261022/protocol.py \
             final_rdhei_protocol_gate_20261022/wire.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
