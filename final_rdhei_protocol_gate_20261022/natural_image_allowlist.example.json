@@ -1,0 +1,10 @@
+{
+  "images": [
+    {
+      "path": "relative/path/from/the/curated-corpus-root/example.tiff",
+      "sha256": "REPLACE_WITH_THE_EXACT_64_CHARACTER_LOWERCASE_SHA256",
+      "classification": "natural",
+      "curation_note": "Record the curator, source collection, and why this is a natural photograph rather than a synthetic test pattern, chart, rendering, or generated image."
+    }
+  ]
+}
