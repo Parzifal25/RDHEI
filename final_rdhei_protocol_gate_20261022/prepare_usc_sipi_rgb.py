@@ -53,9 +53,21 @@ def pixel_hash(array: np.ndarray) -> str:
 
 
 def parse_checksums(page: bytes) -> dict[str, int]:
+    # The publisher currently wraps filenames in HTML anchors. Remove markup
+    # before matching the visible "relative/path.tiff | cksum" text.
     text = html.unescape(page.decode("utf-8", errors="replace"))
-    pairs = re.findall(r"([A-Za-z0-9_./-]+\.tiff)\s*\|\s*(\d+)", text)
-    result = {name: int(value) for name, value in pairs}
+    text = re.sub(r"<[^>]*>", " ", text)
+    pairs = re.findall(
+        r"([A-Za-z0-9_./-]+\.tiff)\s*\|\s*(\d+)\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    result = {}
+    for name, value in pairs:
+        checksum = int(value)
+        if name in result and result[name] != checksum:
+            raise ValueError(f"conflicting published USC-SIPI checksums for {name}")
+        result[name] = checksum
     if not result:
         raise ValueError("could not parse published USC-SIPI TIFF checksum list")
     return result
