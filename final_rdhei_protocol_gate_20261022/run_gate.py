@@ -470,8 +470,10 @@ def main():
         image_modes="native 8-bit grayscale mode L only; no RGB conversion, resize, crop or recompression",
         paper_corpus_policy=(
             "Only the six fixed root-level baseline PNGs in data/kodak_gray and "
-            "byte-hash-verified files classified natural in natural_image_allowlist.json "
-            "are accepted. Synthetic controls and unreviewed files are excluded."
+            "byte-hash-verified files classified natural or constructed in "
+            "natural_image_allowlist.json are accepted. Constructed mosaics are "
+            "reported separately from natural images. Synthetic controls and "
+            "unreviewed files are excluded."
         ),
         synthetic_stems_explicitly_excluded=sorted(SYNTHETIC_STEMS),
     ))
