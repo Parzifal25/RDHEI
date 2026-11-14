@@ -96,9 +96,12 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None)
 
 
 def completion_status(capacity_rows: list[dict], inventory: list[dict],
-                      roundtrip_rows: list[dict]) -> tuple[str, list[str]]:
+                      roundtrip_rows: list[dict],
+                      input_limit: int = 0) -> tuple[str, list[str]]:
     """Fail closed when an RGB run did not evaluate or exactly verify its inputs."""
     failures = []
+    if input_limit:
+        failures.append("limited-input smoke runs are not eligible for paper analysis")
     if not inventory:
         failures.append("no native even-sized uint8 RGB images were accepted")
     if len(capacity_rows) != len(inventory):
@@ -390,7 +393,7 @@ def main():
     write_csv(output / "rgb_skipped_inputs.csv", skipped)
 
     status, failure_reasons = completion_status(
-        capacity_rows, inventory, roundtrip_rows
+        capacity_rows, inventory, roundtrip_rows, input_limit=args.limit
     )
     summary = {
         "protocol": "CC-EDR2-RGB",
@@ -416,6 +419,7 @@ def main():
             "not a deployment key-management recommendation."
         ),
         "seed": args.seed,
+        "input_limit": args.limit,
         "nonce_namespace": nonce_namespace,
         "benchmark_keys_are_public_test_material": True,
         "elapsed_seconds": elapsed,
