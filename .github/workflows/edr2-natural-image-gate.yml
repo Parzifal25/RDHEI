@@ -88,7 +88,7 @@ jobs:
       - name: Install EDR2 runtime dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy pillow pycryptodome
+          python -m pip install numpy pillow pycryptodome pandas matplotlib
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Compile EDR2 and corpus preparation scripts
@@ -98,7 +98,10 @@ jobs:
             final_rdhei_protocol_gate_20261022/protocol.py \
             final_rdhei_protocol_gate_20261022/wire.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
-            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py
+            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            final_rdhei_protocol_gate_20261022/prepare_edr2_visual_samples.py \
+            final_rdhei_protocol_gate_20261022/build_edr2_visual_gallery.py \
+            final_rdhei_protocol_gate_20261022/analyze_edr2_evidence.py
 
       - name: Download and inventory official USC-SIPI native grayscale TIFFs
         run: |
@@ -147,6 +150,14 @@ jobs:
               --output-dir "/tmp/edr2-fixed-phase-$phase"
           done
 
+      - name: Analyze fixed phases and correlation-clustered capacity
+        if: ${{ inputs.run_fixed_phase_ablation == true }}
+        run: |
+          python final_rdhei_protocol_gate_20261022/analyze_edr2_evidence.py \
+            --adaptive-dir /tmp/edr2-full-natural-corpus-evidence \
+            --fixed-phase-root /tmp \
+            --output-dir /tmp/edr2-publication-analysis
+
       - name: Prepare one representative sample per USC-SIPI stratum
         run: |
           python final_rdhei_protocol_gate_20261022/prepare_edr2_visual_samples.py \
@@ -179,6 +190,15 @@ jobs:
         with:
           name: edr2-full-natural-corpus-evidence
           path: /tmp/edr2-full-natural-corpus-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload paper-facing phase and correlation analysis
+        if: always() && inputs.run_fixed_phase_ablation == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-publication-analysis
+          path: /tmp/edr2-publication-analysis/
           if-no-files-found: warn
           retention-days: 30
 
