@@ -57,13 +57,18 @@ def main():
     phase_table = pd.DataFrame(phase_rows)
     selected = cap["selected_lattice_phase"].value_counts().sort_index()
     gain = pd.to_numeric(cap["phase_selection_gain_bits"], errors="coerce")
+    def as_bool(series):
+        return series.map(lambda value: value if isinstance(value, bool) else str(value).strip().lower() == "true")
+
+    image_exact = as_bool(rt["image_exact"])
+    payload_exact = as_bool(rt["payload_exact"])
     roundtrips = []
     for case, frame in rt.groupby("case", sort=False):
         n = len(frame)
         roundtrips.append({
             "Payload case": case, "Tests": n,
-            "Exact image": int(frame["image_exact"].astype(bool).sum()),
-            "Exact payload": int(frame["payload_exact"].astype(bool).sum()),
+            "Exact image": int(as_bool(frame["image_exact"]).sum()),
+            "Exact payload": int(as_bool(frame["payload_exact"]).sum()),
         })
     roundtrip_table = pd.DataFrame(roundtrips)
     cluster_counts = manifest.get("correlation_cluster_counts", {})
@@ -77,7 +82,7 @@ def main():
         f"- Positive signed-net images: {accepted}",
         f"- Non-positive signed-net rejections: {rejected}",
         f"- Classifications: {json.dumps(classes, sort_keys=True)}",
-        f"- Correlation clusters: {sum(cluster_counts.values()) if cluster_counts else 'not recorded'}",
+        f"- Unique correlation clusters: {len(cluster_counts) if cluster_counts else 'not recorded'}",
         f"- Frozen checkpoint SHA-256: {checkpoint}",
         f"- Retraining performed: {integrity.get('model_training_performed', False)}",
         "",
@@ -104,8 +109,8 @@ def main():
     report += ["## Exact recovery and payload extraction", "", md_table(roundtrip_table), ""]
     report += [
         f"- Total round-trip cases: {len(rt)}",
-        f"- Exact image recovery: {int(rt['image_exact'].astype(bool).sum())}/{len(rt)}",
-        f"- Exact payload extraction: {int(rt['payload_exact'].astype(bool).sum())}/{len(rt)}",
+        f"- Exact image recovery: {int(image_exact.sum())}/{len(rt)}",
+        f"- Exact payload extraction: {int(payload_exact.sum())}/{len(rt)}",
         f"- Negative/rejection ledger records: {len(negatives)}",
         f"- Mapping pairs checked: {algebra.get('pairs_checked', algebra.get('pairs', 'not recorded'))}",
         f"- Valid payload words checked: {algebra.get('payload_words_checked', algebra.get('payload_words', 'not recorded'))}",
