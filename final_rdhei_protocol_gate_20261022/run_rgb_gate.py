@@ -7,8 +7,9 @@ import csv
 import hashlib
 import json
 import shutil
+import sys
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 from PIL import Image
@@ -72,19 +73,60 @@ def payload_for(length: int, seed: int, pixel_hash: str, case: str) -> np.ndarra
     return np.random.default_rng(child_seed).integers(0, 2, length, dtype=np.uint8)
 
 
-def write_csv(path: Path, rows: list[dict]):
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return
-    fields = []
+def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None):
+    fields = list(fieldnames or [])
     for row in rows:
         for key in row:
             if key not in fields:
                 fields.append(key)
+    if not fields:
+        path.write_text("", encoding="utf-8")
+        return
     with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def completion_status(capacity_rows: list[dict], inventory: list[dict],
+                      roundtrip_rows: list[dict]) -> tuple[str, list[str]]:
+    """Fail closed when an RGB run did not evaluate or exactly verify its inputs."""
+    failures = []
+    if not inventory:
+        failures.append("no native even-sized uint8 RGB images were accepted")
+    if len(capacity_rows) != len(inventory):
+        failures.append(
+            f"capacity ledger has {len(capacity_rows)} rows for {len(inventory)} accepted inputs"
+        )
+
+    bad_rows = [
+        row for row in capacity_rows
+        if row.get("status") in {"error", "roundtrip_failed"}
+    ]
+    if bad_rows:
+        failures.append(
+            f"{len(bad_rows)} image(s) have processing or exact-recovery failures"
+        )
+
+    roundtrips_by_image = {}
+    for row in roundtrip_rows:
+        roundtrips_by_image.setdefault(row.get("image"), []).append(row)
+
+    for capacity in capacity_rows:
+        if int(capacity.get("signed_net_capacity_bits", 0) or 0) <= 0:
+            continue
+        image = capacity.get("image")
+        cases = roundtrips_by_image.get(image, [])
+        if not cases:
+            failures.append(f"{image}: positive-capacity image has no exact-recovery tests")
+            continue
+        if any(row.get("passed") is not True for row in cases):
+            failures.append(f"{image}: one or more exact-recovery cases failed")
+        capacity_bits = int(capacity["signed_net_capacity_bits"])
+        if not any(int(row.get("payload_bits", -1)) == capacity_bits for row in cases):
+            failures.append(f"{image}: full-capacity payload was not tested")
+
+    return ("completed_with_failures" if failures else "completed"), failures
 
 
 def safe_id(relative: str) -> str:
@@ -101,6 +143,8 @@ def main():
     parser.add_argument("--limit", type=int, default=0,
                         help="Optional deterministic maximum number of files; zero means all.")
     args = parser.parse_args()
+    if args.limit < 0:
+        parser.error("--limit must be zero (all inputs) or a positive integer")
 
     root = Path(args.data_dir).resolve()
     output = Path(args.output_dir).resolve()
@@ -300,16 +344,35 @@ def main():
 
     elapsed = time.perf_counter() - started
     write_csv(output / "rgb_capacity_summary.csv", capacity_rows)
-    write_csv(output / "rgb_roundtrip_summary.csv", roundtrip_rows)
-    write_csv(output / "rgb_phase_assignment_scores.csv", assignment_rows)
+    write_csv(
+        output / "rgb_roundtrip_summary.csv",
+        roundtrip_rows,
+        fieldnames=[
+            "image", "pixels_sha256", "case", "payload_bits", "net_capacity_bits",
+            "image_exact", "payload_exact", "embed_seconds", "receiver_seconds", "passed",
+        ],
+    )
+    write_csv(
+        output / "rgb_phase_assignment_scores.csv",
+        assignment_rows,
+        fieldnames=[
+            "image", "pixels_sha256", "blend_num", "blend_den", "selected_phases_rgb",
+            "calibration_phase", "assignment_search", "net_capacity_bits",
+            "net_bpp_per_rgb_pixel", "directory_bytes", "phase_assignment_scores_json",
+            "prediction_metrics_by_channel_json", "prepare_seconds",
+        ],
+    )
     write_csv(output / "rgb_input_inventory.csv", inventory)
     write_csv(output / "rgb_skipped_inputs.csv", skipped)
 
+    status, failure_reasons = completion_status(
+        capacity_rows, inventory, roundtrip_rows
+    )
     summary = {
         "protocol": "CC-EDR2-RGB",
-        "status": "completed_with_failures" if any(
-            row.get("status") in {"error", "roundtrip_failed"} for row in capacity_rows
-        ) else "completed",
+        "status": status,
+        "analysis_ready": status == "completed",
+        "failure_reasons": failure_reasons,
         "input_files_seen": len(files),
         "distinct_native_rgb_inputs": len(inventory),
         "skipped_files": len(skipped),
@@ -339,7 +402,8 @@ def main():
         encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0 if status == "completed" else 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
