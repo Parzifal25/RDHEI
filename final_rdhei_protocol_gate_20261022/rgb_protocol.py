@@ -290,10 +290,7 @@ def receive(marked_rgb: np.ndarray, master: bytes, nonce: int):
     encrypted_payload_bits = rgb_wire.readbits(
         marked_rgb, q["positions"], start=q["backup_bits"]
     )
-    plain_bits = np.unpackbits(np.frombuffer(
-        rgb_wire.crypt(np.packbits(encrypted_payload_bits).tobytes(), capability["payload"]),
-        dtype=np.uint8
-    ))[:q["net"]]
+    plain_bits = rgb_wire.crypt_bits(encrypted_payload_bits, capability["payload"])
     if np.any(plain_bits[q["payload_length"]:] != 0):
         raise ValueError("nonzero RGB payload padding")
     payload = plain_bits[:q["payload_length"]].copy()
