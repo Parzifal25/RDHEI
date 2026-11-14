@@ -154,7 +154,9 @@ The potentially distinguishing object is not simply â€œchoose one of four gridsâ
 
 ### Natural-image corpus only
 
-The paper-facing EDR2 gate must contain natural images only. The six fixed root-level grayscale baselines in `data/kodak_gray/` are the initial minimum set. Any expanded USC-SIPI subset must be manually reviewed and entered in `natural_image_allowlist.json` with a relative path, exact source-file SHA-256, classification `natural`, and curation note. Inventory presence alone does not qualify an image. RGB and 16-bit images must not be silently converted into grayscale. Exact pixel duplicates must be deduplicated and reported.
+The EDR2 evaluation uses real images only. The six fixed root-level grayscale images in `data/kodak_gray/` are a separate smoke-test set; they are not a prerequisite for the expanded USC-SIPI evaluation. The expanded corpus must be catalogue-curated and entered in `natural_image_allowlist.json` with a relative path, exact source-file SHA-256, classification `natural`, corpus group, and curation note. Inventory presence alone does not qualify an image. RGB and 16-bit images must not be silently converted into grayscale. Odd dimensions, segmentation-information maps, resolution charts, calibration wedges and pixel rulers are excluded. Exact pixel duplicates must be deduplicated and reported.
+
+The USC-SIPI corpus must be described in distinct strata: unrotated texture scans/mosaics, rotated texture series, monochrome aerial imagery, monochrome miscellaneous imagery, and grayscale sequence frames. Histogram-equalized variants, rotated copies, and adjacent frames are correlated samples; report subgroup results and avoid describing all files as independent natural-scene photographs. The official catalogue reports 155 monochrome texture-volume images (including the rotated texture series), one monochrome aerial image, 28 monochrome miscellaneous images and 69 grayscale sequence frames before catalogue exclusions, image-format filtering and pixel deduplication. The exact accepted corpus count must come from the generated manifest, not these catalogue totals. USC-SIPI warns that rights are mixed and unknown for some files; do not redistribute source images or promise publication rights based only on their availability.
 
 Synthetic constant, random, tiny, checkerboard, noise, or other generated controls are excluded from paper-facing capacity, recovery, averages, plots and claims. Historical synthetic-control experiments remain only as archived engineering history; they are not EDR2 natural-image evidence. Small generated arrays may still appear inside unit tests because they are software fixtures, not experimental samples.
 
@@ -176,12 +178,13 @@ Use per-image values and paired comparisons. Report the number of accepted and r
 
 ### Reproducible phase-selection runs
 
-From the repository root, with the original six native grayscale baseline PNGs at `data/kodak_gray/`:
+From the repository root, after preparing `data/usc_sipi_gray/` and its hash-pinned allowlist:
 
 ```bash
 # Normal protocol: evaluate all four phases and select maximum signed net payload.
 python final_rdhei_protocol_gate_20261022/run_gate.py \
-  --data-dir data/kodak_gray \
+  --data-dir data/usc_sipi_gray \
+  --allow-missing-baseline \
   --output-dir results/edr2_adaptive_phase
 
 # Matched fixed-phase baselines; use a distinct output folder for each run.
@@ -199,7 +202,7 @@ python -m pytest -q \
   tests/test_edr2_publication_hardening.py
 ```
 
-The auto run's `capacities.csv` must include each image's selected phase, all four per-phase net capacities, and the phase-selection gain relative to phase 0. The fixed-phase runs deliberately report unavailable alternative-phase scores as null; their selected-phase capacity remains directly comparable. Use identical source-image bytes, checkpoint hash, seed, thread count, payload cases and software environment in every run. Do not pool multiple copies of the same natural image as independent samples.
+The auto run's `capacity_summary.csv` must include each image's corpus group, selected phase, all four per-phase net capacities, and the phase-selection gain relative to phase 0. The group counts in `input_manifest.json` and `run_summary.json` define the accepted subgroup sizes. The fixed-phase runs deliberately report unavailable alternative-phase scores as null; their selected-phase capacity remains directly comparable. Use identical source-image bytes, checkpoint hash, seed, thread count, payload cases and software environment in every run. Do not pool multiple copies of the same natural image as independent samples.
 
 ### Matched ablations required
 
