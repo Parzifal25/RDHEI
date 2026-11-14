@@ -373,7 +373,7 @@ def receive(marked_rgb: np.ndarray, master: bytes, nonce: int):
             np.ascontiguousarray(reserved[:, :, channel]), ys, xs, predictor.model()
         )
         references = _cross_feature(reserved, channel, ys, xs)
-        fused = _fused_prediction(
+        fused, _, _ = _fused_prediction(
             spatial, references, regressions[channel],
             CROSS_BLEND_NUM, CROSS_BLEND_DEN
         )
