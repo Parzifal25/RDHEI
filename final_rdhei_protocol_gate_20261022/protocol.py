@@ -65,9 +65,15 @@ def reserve(original, master, nonce, prepared=None):
     reserved[y[:h], x[:h]] = 0
     out = np.frombuffer(wire.crypt(reserved.tobytes(), k['image']), np.uint8).copy().reshape(original.shape)
     directory = wire.crypt(q['meta'], hider_subkeys['directory'])
-    header = wire.HEADER.pack(wire.PROTOCOL_MAGIC, q['mode'], len(directory), 0)
-    out[y[:h], x[:h]] = np.frombuffer(header+directory+bytes(32), np.uint8)
-    wire.seal(out, hider_subkeys['auth'])
+    header = wire.encode_header(
+        q['mode'], len(directory), 0, hider_subkeys, header_stage='bootstrap'
+    )
+    out[y[:wire.HEADER_BYTES], x[:wire.HEADER_BYTES]] = np.frombuffer(header, np.uint8)
+    out[y[wire.HEADER_BYTES:wire.HEADER_BYTES + len(directory)],
+        x[wire.HEADER_BYTES:wire.HEADER_BYTES + len(directory)]] = np.frombuffer(directory, np.uint8)
+    out[y[wire.HEADER_BYTES + len(directory):h],
+        x[wire.HEADER_BYTES + len(directory):h]] = 0
+    wire.seal(out, hider_subkeys, header_stage='bootstrap')
     # This single derived data-hiding key is delivered to the independent hider.
     # It cannot derive the image-encryption key.
     return out, {'hider': k['hider']}
