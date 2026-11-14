@@ -117,9 +117,9 @@ The research claim should be framed as a verifiable integration of:
 5. an encrypted, compressed, self-framed class directory and complete bootstrap backup; and
 6. receiver-only exact reconstruction with explicit net-capacity acceptance.
 
-This claim is narrower than generic partitioning, embedded labels, adaptive bit-plane coding or authenticated encryption. Novelty remains conditional on full-text comparison of the four-phase net-capacity selection and implicit authenticated phase-discovery mechanism against close prior art.
+This claim must not be framed as new generic partitioning, embedded labels, adaptive bit-plane coding, authentication or choosing the highest-capacity partition. Novelty remains conditional on full-text comparison of the exact CNN-receptive-field-constrained phase family, bitwise prediction synchronization, phase-bound authenticated header self-location, and signed net-capacity optimisation against close prior art.
 
-The claim is **conditional**. The full texts of the closest partitioning and prediction-synchronization methods must be compared before saying this combination is previously unreported. Do not use “first”, “state of the art”, “superior”, “high capacity”, “universal” or “novel CNN” without direct supporting evidence.
+The claim is **highly conditional**. Generic partition selection, dynamic block partitioning, embedded compressed recovery maps and net-capacity accounting are established. Only the combination of (i) a phase family constrained by the fixed CNN receptive field, (ii) exact owner/receiver prediction identity after arbitrary candidate writes, and (iii) authenticated self-location of the selected phase may remain distinctive. The complete methods of Wang et al. (overlapping sawtooth and capacity-based partition selection), Nguyen et al. (D4 symmetry, dynamic partitioning, compressed in-image location map), and Hoang Nam & Nguyen (overlapping sub-blocks and shared-MSB encoding) must be compared before stating even this narrow gap. Do not use “first”, “state of the art”, “superior”, “high capacity”, “universal” or “novel CNN” without full-text evidence and matched experiments.
 
 ## 5. Prior-art checks that the manuscript must address
 
@@ -131,9 +131,24 @@ The following works already overlap with important EDR2 ingredients. They must b
 - Zhou, G., & Li, N. (2026). *Reversible Data Hiding in Encrypted Images Based on Bit-Plane Classification and Adaptive Group Coding*. IET Image Processing, 20(1), e70310. [https://doi.org/10.1049/ipr2.70310](https://doi.org/10.1049/ipr2.70310). It combines prediction errors, block/sequence-level bit-plane classification and adaptive group coding.
 - Peng, S., Zhang, M., Ke, Y., Jiang, C., et al. (2026). *High-capacity reversible data hiding in encrypted images using dual-stage bit-plane compression and CP-ABE-based recovery authorization*. Scientific Reports. [https://doi.org/10.1038/s41598-026-65778-w](https://doi.org/10.1038/s41598-026-65778-w). It uses predictor errors, bit-plane compression, adaptive hierarchical block variable-length coding and block rearrangement.
 - Hoang Nam, T., & Nguyen, T.-S. (2026). *Reversible data hiding in encrypted images based on overlapping block partitioning and shared-MSB encoding*. CTU Journal of Innovation and Sustainable Development, 18 (Special issue). [https://doi.org/10.22144/ctujoisd.2026.049](https://doi.org/10.22144/ctujoisd.2026.049). It uses four overlapping sub-blocks and shared-MSB encoding, and is a particularly important recent partitioning comparator.
+- Wang, X., Li, L., Wang, M., et al. (2025/2026). *High-capacity reversible data hiding in encrypted images based on MSB sharing and overlapping sawtooth partition*. Journal of King Saud University Computer and Information Sciences, 38, 24. [https://doi.org/10.1007/s44443-025-00238-5](https://doi.org/10.1007/s44443-025-00238-5). It uses overlapping sawtooth partitions, multiple partition variants and discusses partition selection for maximum capacity; it is a direct comparator for any claim about adaptive phase/partition selection.
+- Nguyen, N. H., Cao, T. L., & Pham, V. A. (2026). *High-Capacity Reversible Data Hiding in Encrypted Images Using D4-Symmetry Bidirectional Pixel Shifting and Context-Aware Recovery*. Applied Sciences, 16(20), 10343; published 19 October 2026. [https://doi.org/10.3390/app162010343](https://doi.org/10.3390/app162010343). It combines D4 symmetries, bidirectional pixel shifts, dynamic block partitioning, a compressed in-image location map, exact reconstruction and explicit net-rate accounting. Do not claim those elements individually as new.
+
 - Li, X., Zhou, X., Zhou, Q., Han, S., Liu, Z., & Kuniya, T. (2020). *High-Capacity Reversible Data Hiding in Encrypted Images by Information Preprocessing*. Complexity. [https://doi.org/10.1155/2020/6989452](https://doi.org/10.1155/2020/6989452). It is relevant to room reservation, preprocessing and in-image label-map coding.
 
 These references are a starting comparison set, not an exhaustive systematic review. In particular, the partition-grid synchronisation idea must be compared against the full methods—not just titles, abstracts or secondary summaries—before stating the exact research gap.
+
+## 5.1. Novelty boundary after the 2026 prior-art check
+
+The recent literature rules out several tempting but indefensible claims:
+
+- Four-way partition selection or selecting the partition with the highest capacity is not new by itself.
+- Dynamic block partitioning and overlapping partitions are not new by themselves.
+- Compressed recovery/location metadata embedded in the marked image is not new by itself.
+- Charging location-map and displaced-bit costs in a net-capacity calculation is not new by itself.
+- Shared-MSB encoding and block-level bit-plane compression are established, active RDHEI directions.
+
+The potentially distinguishing object is not simply “choose one of four grids”. It is a phase family whose admissibility is proven from the fixed CNN receptive field, with exact prediction equality after arbitrary candidate writes, plus phase discovery from the phase-bound authenticated header location. The hider and receiver must derive exactly the same selected candidate geometry with no sidecar. The method-level difference from existing adaptive block selection and overlapping partition methods must be established by comparing their actual selection predicates, prediction synchronization requirements, receiver inputs and accounting—not by comparing titles or rates from different protocols.
 
 ## 6. Evaluation protocol required before paper writing
 
