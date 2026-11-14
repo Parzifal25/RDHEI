@@ -57,7 +57,11 @@ def load_native_gray_images(directory: str):
             array = np.asarray(image)
         if array.dtype != np.uint8 or array.ndim != 2 or min(array.shape) < 3:
             raise ValueError(f"expected 2D uint8 grayscale image at least 3x3: {path}")
-        digest = hashlib.sha256(array.tobytes(order="C")).hexdigest()
+        digest_obj = hashlib.sha256()
+        digest_obj.update(str(tuple(array.shape)).encode("ascii"))
+        digest_obj.update(b"|uint8|")
+        digest_obj.update(array.tobytes(order="C"))
+        digest = digest_obj.hexdigest()
         records.append((path, np.ascontiguousarray(array), digest))
     if not records:
         raise FileNotFoundError(f"no native grayscale images found recursively under {root}")
