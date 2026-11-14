@@ -137,3 +137,20 @@ def test_rgb_bit_exact_ctr_roundtrip_for_partial_bytes(bit_length):
     decrypted = rgb_wire.crypt_bits(encrypted, key)
     assert len(encrypted) == bit_length
     np.testing.assert_array_equal(decrypted, bits)
+
+
+def test_rgb_writer_preserves_multiple_bit_slots_in_one_channel_byte():
+    image = np.zeros((2, 2, 3), dtype=np.uint8)
+    positions = (
+        np.asarray([0, 0, 0, 1], dtype=np.int64),
+        np.asarray([0, 0, 0, 2], dtype=np.uint8),
+        np.asarray([7, 6, 5, 7], dtype=np.uint8),
+        [],
+    )
+    bits = np.asarray([1, 0, 1, 1], dtype=np.uint8)
+    rgb_wire.writebits(image, positions, bits)
+    observed = rgb_wire.readbits(image, positions)
+    np.testing.assert_array_equal(observed, bits)
+    assert image[0, 0, 0] == 0b10100000
+    assert image[0, 0, 2] == 0
+    assert image[0, 1, 2] == 0b10000000
