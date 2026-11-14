@@ -1,0 +1,139 @@
+name: EDR2 RGB extension gate
+
+on:
+  push:
+    branches:
+      - research/edr2-rgb-extension
+    paths:
+      - ".github/workflows/edr2-rgb-extension.yml"
+      - "final_rdhei_protocol_gate_20261022/rgb_*.py"
+      - "final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py"
+      - "final_rdhei_protocol_gate_20261022/run_rgb_gate.py"
+      - "final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py"
+      - "final_rdhei_protocol_gate_20261022/predictor.py"
+      - "final_rdhei_protocol_gate_20261022/wire.py"
+      - "tests/test_edr2_rgb.py"
+      - "tests/test_edr2_rgb_dataset.py"
+      - "src/cnn_model.py"
+      - "models/v4_patch3.pth"
+  workflow_dispatch:
+    inputs:
+      run_rgb_smoke_tests:
+        description: "Run RGB protocol round-trip tests."
+        required: true
+        type: boolean
+        default: true
+      run_rgb_full_corpus:
+        description: "Download and evaluate the official USC-SIPI native RGB subset."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  rgb-protocol-tests:
+    if: ${{ inputs.run_rgb_smoke_tests == true || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out RGB extension branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install RGB protocol dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome pytest
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile grayscale and RGB protocol modules
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/predictor.py \
+            final_rdhei_protocol_gate_20261022/wire.py \
+            final_rdhei_protocol_gate_20261022/rgb_wire.py \
+            final_rdhei_protocol_gate_20261022/rgb_protocol.py \
+            final_rdhei_protocol_gate_20261022/run_rgb_gate.py \
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py \
+            final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py
+
+      - name: Run grayscale regression and RGB exact-recovery tests
+        run: |
+          python -m pytest -q \
+            tests/test_edr2_publication_hardening.py \
+            tests/test_edr2_receiver_only.py \
+            tests/test_edr2_rgb.py \
+            tests/test_edr2_rgb_dataset.py
+
+
+  rgb-full-corpus:
+    if: ${{ inputs.run_rgb_full_corpus == true }}
+    needs: rgb-protocol-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out RGB extension branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install RGB benchmark dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome pandas matplotlib tabulate
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile RGB dataset and evaluation tools
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/rgb_wire.py \
+            final_rdhei_protocol_gate_20261022/rgb_protocol.py \
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py \
+            final_rdhei_protocol_gate_20261022/run_rgb_gate.py \
+            final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py
+
+      - name: Download and verify official USC-SIPI RGB TIFFs
+        run: |
+          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py \
+            --output-dir /tmp/usc-sipi-native-rgb
+
+      - name: Run CC-EDR2-RGB full native-colour corpus evaluation
+        run: |
+          python final_rdhei_protocol_gate_20261022/run_rgb_gate.py \
+            --data-dir /tmp/usc-sipi-native-rgb \
+            --output-dir /tmp/cc-edr2-rgb-evidence
+          cp /tmp/usc-sipi-native-rgb/rgb_source_manifest.json \
+            /tmp/cc-edr2-rgb-evidence/
+
+      - name: Analyze RGB blend and phase evidence
+        run: |
+          python final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py \
+            --evidence-dir /tmp/cc-edr2-rgb-evidence \
+            --output-dir /tmp/cc-edr2-rgb-paper-analysis
+
+      - name: Upload CC-EDR2-RGB raw evidence tables and manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-edr2-rgb-full-corpus-evidence
+          path: /tmp/cc-edr2-rgb-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload CC-EDR2-RGB paper tables and charts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-edr2-rgb-paper-analysis
+          path: /tmp/cc-edr2-rgb-paper-analysis/
+          if-no-files-found: warn
+          retention-days: 30
