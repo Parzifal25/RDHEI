@@ -6,9 +6,11 @@ import argparse
 import csv
 import hashlib
 import json
+import secrets
 import shutil
+import sys
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 from PIL import Image
@@ -57,10 +59,16 @@ def load_native_rgb(path: Path) -> np.ndarray:
     return np.ascontiguousarray(array)
 
 
-def stable_ids(seed: int, pixel_hash: str):
-    digest = hashlib.sha256(f"CC-EDR2-RGB-BENCH|{seed}|{pixel_hash}".encode("ascii")).digest()
-    master = hashlib.sha256(b"EDR2RGB-MASTER|" + digest).digest()
-    nonce = int.from_bytes(hashlib.sha256(b"EDR2RGB-NONCE|" + digest).digest()[:16], "big")
+def stable_ids(seed: int, pixel_hash: str, packet_context: str = "default",
+               nonce_namespace: str = "unit-test"):
+    """Return a stable benchmark key and a namespace-/packet-specific nonce."""
+    base = hashlib.sha256(f"CC-EDR2-RGB-BENCH|{seed}|{pixel_hash}".encode("ascii")).digest()
+    master = hashlib.sha256(b"EDR2RGB-MASTER|" + base).digest()
+    nonce_input = (
+        b"EDR2RGB-NONCE|" + base + b"|" + packet_context.encode("utf-8")
+        + b"|" + nonce_namespace.encode("utf-8")
+    )
+    nonce = int.from_bytes(hashlib.sha256(nonce_input).digest()[:16], "big")
     return master, nonce
 
 
@@ -72,19 +80,63 @@ def payload_for(length: int, seed: int, pixel_hash: str, case: str) -> np.ndarra
     return np.random.default_rng(child_seed).integers(0, 2, length, dtype=np.uint8)
 
 
-def write_csv(path: Path, rows: list[dict]):
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return
-    fields = []
+def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None):
+    fields = list(fieldnames or [])
     for row in rows:
         for key in row:
             if key not in fields:
                 fields.append(key)
+    if not fields:
+        path.write_text("", encoding="utf-8")
+        return
     with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def completion_status(capacity_rows: list[dict], inventory: list[dict],
+                      roundtrip_rows: list[dict],
+                      input_limit: int = 0) -> tuple[str, list[str]]:
+    """Fail closed when an RGB run did not evaluate or exactly verify its inputs."""
+    failures = []
+    if input_limit:
+        failures.append("limited-input smoke runs are not eligible for paper analysis")
+    if not inventory:
+        failures.append("no native even-sized uint8 RGB images were accepted")
+    if len(capacity_rows) != len(inventory):
+        failures.append(
+            f"capacity ledger has {len(capacity_rows)} rows for {len(inventory)} accepted inputs"
+        )
+
+    bad_rows = [
+        row for row in capacity_rows
+        if row.get("status") in {"error", "roundtrip_failed"}
+    ]
+    if bad_rows:
+        failures.append(
+            f"{len(bad_rows)} image(s) have processing or exact-recovery failures"
+        )
+
+    roundtrips_by_image = {}
+    for row in roundtrip_rows:
+        roundtrips_by_image.setdefault(row.get("image"), []).append(row)
+
+    for capacity in capacity_rows:
+        if int(capacity.get("signed_net_capacity_bits", 0) or 0) <= 0:
+            continue
+        image = capacity.get("image")
+        cases = roundtrips_by_image.get(image, [])
+        if not cases:
+            failures.append(f"{image}: positive-capacity image has no exact-recovery tests")
+            continue
+        if any(row.get("passed") is not True for row in cases):
+            failures.append(f"{image}: one or more exact-recovery cases failed")
+        capacity_bits = int(capacity["signed_net_capacity_bits"])
+        if not any(int(row.get("payload_bits", -1)) == capacity_bits for row in cases):
+            failures.append(f"{image}: full-capacity payload was not tested")
+
+    return ("completed_with_failures" if failures else "completed"), failures
 
 
 def safe_id(relative: str) -> str:
@@ -101,6 +153,8 @@ def main():
     parser.add_argument("--limit", type=int, default=0,
                         help="Optional deterministic maximum number of files; zero means all.")
     args = parser.parse_args()
+    if args.limit < 0:
+        parser.error("--limit must be zero (all inputs) or a positive integer")
 
     root = Path(args.data_dir).resolve()
     output = Path(args.output_dir).resolve()
@@ -124,6 +178,9 @@ def main():
     skipped = []
     seen_pixel_hashes = set()
     model_identity = predictor.model_identity()
+    # A new namespace per corpus run prevents deterministic benchmark keys
+    # from reusing a CTR nonce when the same image/seed is evaluated again.
+    nonce_namespace = secrets.token_hex(16)
     started = time.perf_counter()
 
     for source in files:
@@ -154,7 +211,7 @@ def main():
             "file_bytes": int(source.stat().st_size),
         }
         inventory.append(record)
-        master, nonce = stable_ids(args.seed, pixels_hash)
+        master, _ = stable_ids(args.seed, pixels_hash, nonce_namespace=nonce_namespace)
         base_row = dict(record)
         base_row["status"] = "prepared"
         image_started = time.perf_counter()
@@ -236,15 +293,15 @@ def main():
                 capacity_rows.append(base_row)
                 continue
 
-            reserved, capability = rgb_protocol.reserve(
-                image, master, nonce, prepared=selected
-            )
             if args.keep_artifacts:
                 image_dir = artifact_root / safe_id(relative)
                 image_dir.mkdir(parents=True, exist_ok=False)
                 shutil.copy2(source, image_dir / ("original" + source.suffix.lower()))
-                Image.fromarray(reserved, mode="RGB").save(image_dir / "reserved_encrypted.png")
 
+            # Every reservation packet is single-use. Give each distinct payload
+            # trial a deterministic but different nonce so that AES-CTR keystreams
+            # are never reused under the same per-packet derived keys.
+            used_nonces = set()
             lengths = []
             for case, requested in PAYLOAD_CASES:
                 if requested >= 0:
@@ -256,6 +313,20 @@ def main():
                 length = min(int(length), int(selected["net"]))
                 if length not in lengths:
                     lengths.append(length)
+                    packet_master, packet_nonce = stable_ids(
+                        args.seed, pixels_hash, packet_context=case,
+                        nonce_namespace=nonce_namespace
+                    )
+                    if packet_master != master or packet_nonce in used_nonces:
+                        raise RuntimeError("benchmark packet key/nonce separation failed")
+                    used_nonces.add(packet_nonce)
+                    reserved, capability = rgb_protocol.reserve(
+                        image, packet_master, packet_nonce, prepared=selected
+                    )
+                    if args.keep_artifacts and len(used_nonces) == 1:
+                        Image.fromarray(reserved, mode="RGB").save(
+                            image_dir / "reserved_first_packet.png"
+                        )
                     payload = payload_for(length, args.seed, pixels_hash, case)
                     marked_started = time.perf_counter()
                     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
@@ -300,16 +371,35 @@ def main():
 
     elapsed = time.perf_counter() - started
     write_csv(output / "rgb_capacity_summary.csv", capacity_rows)
-    write_csv(output / "rgb_roundtrip_summary.csv", roundtrip_rows)
-    write_csv(output / "rgb_phase_assignment_scores.csv", assignment_rows)
+    write_csv(
+        output / "rgb_roundtrip_summary.csv",
+        roundtrip_rows,
+        fieldnames=[
+            "image", "pixels_sha256", "case", "payload_bits", "net_capacity_bits",
+            "image_exact", "payload_exact", "embed_seconds", "receiver_seconds", "passed",
+        ],
+    )
+    write_csv(
+        output / "rgb_phase_assignment_scores.csv",
+        assignment_rows,
+        fieldnames=[
+            "image", "pixels_sha256", "blend_num", "blend_den", "selected_phases_rgb",
+            "calibration_phase", "assignment_search", "net_capacity_bits",
+            "net_bpp_per_rgb_pixel", "directory_bytes", "phase_assignment_scores_json",
+            "prediction_metrics_by_channel_json", "prepare_seconds",
+        ],
+    )
     write_csv(output / "rgb_input_inventory.csv", inventory)
     write_csv(output / "rgb_skipped_inputs.csv", skipped)
 
+    status, failure_reasons = completion_status(
+        capacity_rows, inventory, roundtrip_rows, input_limit=args.limit
+    )
     summary = {
         "protocol": "CC-EDR2-RGB",
-        "status": "completed_with_failures" if any(
-            row.get("status") in {"error", "roundtrip_failed"} for row in capacity_rows
-        ) else "completed",
+        "status": status,
+        "analysis_ready": status == "completed",
+        "failure_reasons": failure_reasons,
         "input_files_seen": len(files),
         "distinct_native_rgb_inputs": len(inventory),
         "skipped_files": len(skipped),
@@ -329,17 +419,26 @@ def main():
             "not a deployment key-management recommendation."
         ),
         "seed": args.seed,
+        "input_limit": args.limit,
+        "nonce_namespace": nonce_namespace,
+        "benchmark_keys_are_public_test_material": True,
         "elapsed_seconds": elapsed,
     }
     (output / "rgb_run_summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     (output / "rgb_input_manifest.json").write_text(
-        json.dumps({"images": inventory, "skipped": skipped}, indent=2, sort_keys=True) + "\n",
+        json.dumps({
+            "images": inventory,
+            "skipped": skipped,
+            "nonce_namespace": nonce_namespace,
+            "key_policy": "Public benchmark-only keys; a random namespace is used for each run and a fresh nonce/reservation for each payload packet.",
+        }, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0 if status == "completed" else 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
