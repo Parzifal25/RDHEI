@@ -42,7 +42,7 @@ def prepare(original):
     h = 52+len(q['meta'])
     if h >= len(q['ys']):
         raise ValueError('metadata occupies all candidates')
-    positions = wire.slots(original.shape, q['labels'], h)
+    positions = wire.slots(original.shape, q['labels'], h, phase=q['phase'])
     ns = q['ns']
     gross, lost = int(ns.sum()), int(ns[:h].sum())
     stream, backup = len(positions[0]), 8*h
@@ -58,7 +58,10 @@ def prepare(original):
                  foregone_gross_slots=lost, stream_bits=stream,
                  physical_gross_bits=stream+8*h, signed_net_bits=net,
                  net_bpp=max(0, net)/original.size,
-                 payload_encryption_expansion_bits=0, accepted=net>0)
+                 payload_encryption_expansion_bits=0, accepted=net>0,
+                 selected_lattice_phase=int(q['phase']),
+                 phase_net_capacity_bits=q['phase_net_bits'],
+                 phase_selection_gain_bits=q['stats']['phase_selection_gain_bits'])
     q.update(h=h, positions=positions, backup=backup, net=net, stats=stats)
     return q
 
@@ -89,7 +92,7 @@ def reserve(original, master, nonce, prepared=None):
         x[wire.HEADER_BYTES:wire.HEADER_BYTES + len(directory)]] = np.frombuffer(directory, np.uint8)
     out[y[wire.HEADER_BYTES + len(directory):h],
         x[wire.HEADER_BYTES + len(directory):h]] = 0
-    wire.seal(out, hider_subkeys, header_stage='bootstrap')
+    wire.seal(out, hider_subkeys, header_stage='bootstrap', phase=q['phase'])
     # This single derived data-hiding key is delivered to the independent hider.
     # It cannot derive the image-encryption key.
     return out, {'hider': k['hider']}
