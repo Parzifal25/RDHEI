@@ -16,6 +16,7 @@ sys.path.insert(0, str(EDR2))
 
 import curate_usc_sipi_allowlist as curator
 import prepare_usc_sipi_gray as preparer
+import run_gate
 
 
 def _write_tiff(path: Path, pixels: np.ndarray) -> None:
@@ -97,6 +98,7 @@ def test_allowlist_curation_excludes_maps_charts_and_odd_sizes(tmp_path):
     even = np.arange(100, dtype=np.uint8).reshape(10, 10)
     odd = np.arange(99, dtype=np.uint8).reshape(9, 11)
     add("textures", "sample.tiff", "1.1.01.p512", even)
+    add("textures", "mosaic.tiff", "texmos1.p512", even + 4)
     add("textures", "map.tiff", "texmos2.s512", even + 1)
     add("misc", "chart.tiff", "5.1.13", even + 2)
     add("misc", "odd.tiff", "5.1.14", odd)
@@ -113,8 +115,12 @@ def test_allowlist_curation_excludes_maps_charts_and_odd_sizes(tmp_path):
 
     result = curator.create_allowlist(manifest_path, output_path)
     accepted = {row["path"]: row for row in result["images"]}
-    assert set(accepted) == {"textures/sample.tiff", "sequences/frame.tiff"}
+    assert set(accepted) == {
+        "textures/sample.tiff", "textures/mosaic.tiff", "sequences/frame.tiff"
+    }
     assert accepted["textures/sample.tiff"]["corpus_group"] == "texture_scans_and_mosaics"
+    assert accepted["textures/mosaic.tiff"]["classification"] == "constructed"
+    assert accepted["textures/mosaic.tiff"]["corpus_group"] == "constructed_texture_mosaics"
     assert accepted["sequences/frame.tiff"]["corpus_group"] == "monochrome_sequence_frames"
     reasons = {row["path"]: row["reason"] for row in result["excluded_catalogue_or_format_candidates"]}
     assert "segmentation-information map" in reasons["textures/map.tiff"]
@@ -144,3 +150,35 @@ def test_allowlist_curation_fails_when_source_hash_changes(tmp_path):
         assert "SHA-256 mismatch" in str(exc)
     else:
         raise AssertionError("changed source file should fail closed")
+
+
+def test_runner_loads_natural_and_constructed_corpus_groups(tmp_path):
+    root = tmp_path / "usc_sipi_gray"
+    natural_path = root / "textures" / "natural.tiff"
+    constructed_path = root / "textures" / "mosaic.tiff"
+    pixels = np.arange(100, dtype=np.uint8).reshape(10, 10)
+    _write_tiff(natural_path, pixels)
+    _write_tiff(constructed_path, pixels + 1)
+    allowlist = {
+        "images": [
+            {
+                "path": "textures/natural.tiff",
+                "sha256": hashlib.sha256(natural_path.read_bytes()).hexdigest(),
+                "classification": "natural",
+                "corpus_group": "texture_scans_and_mosaics",
+                "curation_note": "Natural grayscale texture scan.",
+            },
+            {
+                "path": "textures/mosaic.tiff",
+                "sha256": hashlib.sha256(constructed_path.read_bytes()).hexdigest(),
+                "classification": "constructed",
+                "corpus_group": "constructed_texture_mosaics",
+                "curation_note": "USC-assembled texture mosaic.",
+            },
+        ]
+    }
+    (root / run_gate.NATURAL_ALLOWLIST_NAME).write_text(json.dumps(allowlist), encoding="utf-8")
+    loaded = run_gate.load_natural_allowlist(root)
+    assert loaded["textures/natural.tiff"]["classification"] == "natural"
+    assert loaded["textures/mosaic.tiff"]["classification"] == "constructed"
+    assert loaded["textures/mosaic.tiff"]["corpus_group"] == "constructed_texture_mosaics"
