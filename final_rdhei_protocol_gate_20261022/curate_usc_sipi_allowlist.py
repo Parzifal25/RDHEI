@@ -86,7 +86,9 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             continue
         volume = parts[0].lower()
         archive_member = Path(str(row.get("archive_member", ""))).name
-        exclusion = EXCLUSIONS.get((volume, archive_member.lower()))
+        member_basename = archive_member.lower()
+        member_stem = Path(member_basename).stem.lower()
+        exclusion = EXCLUSIONS.get((volume, member_basename)) or EXCLUSIONS.get((volume, member_stem))
         if exclusion:
             excluded.append({"path": rel, "archive_member": archive_member, "reason": exclusion})
             continue
@@ -117,10 +119,19 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             raise ValueError(f"source-file SHA-256 mismatch for {rel}: {actual}")
 
         group, note = GROUPS[volume]
+        classification = "natural"
+        if volume == "textures" and member_basename.startswith("texmos") and ".s512" not in member_basename:
+            classification = "constructed"
+            group = "constructed_texture_mosaics"
+            note = (
+                "USC-SIPI describes this file as a mosaic assembled from eight Brodatz "
+                "textures. It is a real image-domain composite, but not an independent "
+                "natural-scene photograph; report separately from natural images."
+            )
         accepted.append({
             "path": Path(rel).as_posix(),
             "sha256": actual,
-            "classification": "natural",
+            "classification": classification,
             "corpus_group": group,
             "curation_note": (
                 f"{note} Source archive member: {archive_member}. "
@@ -143,8 +154,8 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             "maps, resolution charts, calibration wedges, pixel rulers, unrecognized "
             "volumes, and duplicate decoded pixels are excluded. Textures, rotated "
             "texture series, aerial imagery, miscellaneous imagery, and sequence frames "
-            "remain tagged in separate corpus groups; related variants and adjacent "
-            "frames must not be treated as independent observations. USC-SIPI's "
+            "remain tagged in separate corpus groups; USC-assembled mosaics use the "
+            "constructed classification and are not pooled with natural photographs.  USC-SIPI's "
             "copyright notes contain mixed and sometimes unknown per-image rights; "
             "this experiment manifest is not permission to redistribute source images."
         ),
