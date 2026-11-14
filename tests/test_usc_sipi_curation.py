@@ -64,7 +64,8 @@ def test_archive_inventory_skips_rgb_and_rejects_traversal(tmp_path):
         "https://sipi.usc.edu/database/textures.tar.gz", "b" * 64
     )
     assert images == []
-    assert skipped == []  # rejected RGB/non-TIFF payloads are not inventory candidates
+    assert len(skipped) == 1
+    assert "not native 8-bit grayscale" in skipped[0]["reason"]
 
     # Path validation is exercised directly for a valid TIFF member name.
     try:
