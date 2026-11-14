@@ -356,8 +356,10 @@ def main():
             test_master_hex=master.hex(),
             test_nonce_base_hex=f"{nonce_base:032x}",
             training=False,
-            protocol_algorithm_changed=False,
+            model_changed=False,
+            model_training_performed=False,
             protocol_version="EDR2",
+            protocol_changes_from_EDR1=["step-2 safe-zone grid", "encrypted staged header", "EDR2 key hierarchy"],
             receiver_semantic_inputs=["marked encrypted image", "master key", "nonce"],
             data_hider_semantic_inputs=["encrypted reserved image", "payload", "one derived data-hiding key"],
             input_directories=[str(p) for p in data_dirs],
@@ -474,6 +476,7 @@ def main():
             )
             rx = json.loads(receive_audit.read_text(encoding="utf-8"))
             emb = json.loads(embed_audit.read_text(encoding="utf-8"))
+            assert not rx["source_access"] and not rx["source_reads"]
             assert not emb["model_imported"] and not emb["image_key_received"]
             assert emb["hider_key_received"]
             evidence_reads = [p for p in rx["read_paths"] if str(D) + os.sep in p]
@@ -559,7 +562,9 @@ def main():
             state_unchanged=state_unchanged,
             training=False,
             checkpoint_sha256=sha(ROOT / "models" / "v4_patch3.pth"),
-            protocol_algorithm_changed=False,
+            model_changed=False,
+            model_training_performed=False,
+            protocol_changes_from_EDR1=["step-2 safe-zone grid", "encrypted staged header", "EDR2 key hierarchy"],
         ),
     )
     save(
