@@ -6,15 +6,18 @@ embed payloads, or decode receiver packets.
 from __future__ import annotations
 
 import zlib
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from src.cnn_model import load_model
 import wire
-
-ROOT = Path(__file__).resolve().parents[1]
 CHECKPOINT = ROOT / "models" / "v4_patch3.pth"
 SAFE_ZONE_STEP = 2
 PREDICTOR_RADIUS = 1
@@ -37,7 +40,6 @@ def model():
     global _MODEL, _MODEL_IDENTITY
     if _MODEL is None:
         torch.set_num_threads(4)
-        torch.set_grad_enabled(False)
         loaded, patch_size, residual, params = load_model(str(CHECKPOINT), device="cpu")
         if patch_size != 3 or residual is not True:
             raise ValueError(
