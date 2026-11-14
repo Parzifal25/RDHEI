@@ -21,6 +21,11 @@ on:
         required: true
         type: boolean
         default: false
+      run_fixed_phase_ablation:
+        description: "Also run matched fixed-phase 0-3 exact-recovery ablations."
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -54,6 +59,8 @@ jobs:
             final_rdhei_protocol_gate_20261022/wire.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
             final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            final_rdhei_protocol_gate_20261022/prepare_edr2_visual_samples.py \
+            final_rdhei_protocol_gate_20261022/build_edr2_visual_gallery.py \
             src/train.py
 
       - name: Test mapping, receiver contract, EDR2 protocol and corpus curation
@@ -127,6 +134,45 @@ jobs:
               --output-dir /tmp/edr2-full-natural-corpus-evidence
           fi
 
+      - name: Run matched fixed-phase ablations (phases 0-3)
+        if: ${{ inputs.run_fixed_phase_ablation == true }}
+        run: |
+          set -euo pipefail
+          for phase in 0 1 2 3; do
+            echo "Running fixed EDR2 lattice phase $phase"
+            python final_rdhei_protocol_gate_20261022/run_gate.py \
+              --data-dir data/usc_sipi_gray \
+              --allow-missing-baseline \
+              --fixed-phase "$phase" \
+              --output-dir "/tmp/edr2-fixed-phase-$phase"
+          done
+
+      - name: Prepare one representative sample per USC-SIPI stratum
+        run: |
+          python final_rdhei_protocol_gate_20261022/prepare_edr2_visual_samples.py \
+            --source-dir data/usc_sipi_gray \
+            --evidence-dir /tmp/edr2-full-natural-corpus-evidence \
+            --output-dir data/usc_sipi_visual_samples
+
+      - name: Run representative image round trips with image artifacts retained
+        run: |
+          python final_rdhei_protocol_gate_20261022/run_gate.py \
+            --data-dir data/usc_sipi_visual_samples \
+            --allow-missing-baseline \
+            --keep-artifacts \
+            --output-dir /tmp/edr2-visual-sample-evidence
+
+      - name: Build original-reserved-encrypted-recovered image gallery
+        run: |
+          python final_rdhei_protocol_gate_20261022/build_edr2_visual_gallery.py \
+            --sample-dir data/usc_sipi_visual_samples \
+            --evidence-dir /tmp/edr2-visual-sample-evidence \
+            --output-dir /tmp/edr2-visual-gallery
+
+      - name: Package hash-pinned USC-SIPI native grayscale source images
+        run: |
+          tar -czf /tmp/usc-sipi-native-grayscale-source.tar.gz -C data/usc_sipi_gray .
+
       - name: Upload full natural-image EDR2 evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -136,12 +182,38 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Upload USC-SIPI source and curation manifests
+      - name: Upload fixed-phase ablation evidence
+        if: always() && inputs.run_fixed_phase_ablation == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-fixed-phase-ablation-evidence
+          path: |
+            /tmp/edr2-fixed-phase-0/
+            /tmp/edr2-fixed-phase-1/
+            /tmp/edr2-fixed-phase-2/
+            /tmp/edr2-fixed-phase-3/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload representative image gallery and panels
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: usc-sipi-corpus-manifests
+          name: edr2-representative-image-gallery
           path: |
+            /tmp/edr2-visual-sample-evidence/
+            /tmp/edr2-visual-gallery/
+            data/usc_sipi_visual_samples/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload USC-SIPI source TIFF corpus and curation manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usc-sipi-source-images-and-manifests
+          path: |
+            /tmp/usc-sipi-native-grayscale-source.tar.gz
             data/usc_sipi_gray/dataset_manifest.json
             data/usc_sipi_gray/natural_image_allowlist.json
           if-no-files-found: warn
