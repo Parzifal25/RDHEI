@@ -51,7 +51,7 @@ AES-256-CTR uses an initial counter value of zero independently under each deriv
 
 ## 4. Predictor, safe-zone lattice, and label directory
 
-The current EDR2 implementation supports same-size two-dimensional 8-bit grayscale images (uint8, native grayscale mode L). The frozen residual CNN-3x3 checkpoint, preprocessing, CPU inference, rounding, and mapping are fixed protocol software. Owner and receiver must use the same checkpoint and numerically compatible inference behavior.
+The current EDR2 implementation supports same-size two-dimensional 8-bit grayscale images (uint8, native grayscale mode L). The four-phase maximum-density proof and the current implementation require both image dimensions to be even; odd-sized images are rejected. RGB and 16-bit images are outside this protocol version. The frozen residual CNN-3x3 checkpoint, preprocessing, CPU inference, rounding, and mapping are fixed protocol software. Owner and receiver must use the same checkpoint and numerically compatible inference behavior.
 
 EDR2 defines four maximum-density step-2 lattice phases. Let q in {0,1,2,3}, with row offset r_q = 1 + floor(q/2) and column offset c_q = 1 + (q mod 2). The candidate centres for phase q are:
 
