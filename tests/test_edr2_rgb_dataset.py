@@ -147,3 +147,20 @@ def test_rgb_runner_completion_gate_accepts_rejected_capacity_and_exact_positive
     status, failures = rgb_gate.completion_status(capacity, inventory, roundtrips)
     assert status == "completed"
     assert failures == []
+
+
+
+def test_rgb_benchmark_uses_distinct_nonce_for_each_payload_packet():
+    master_a, nonce_a = rgb_gate.stable_ids(42, "a" * 64, "empty")
+    master_b, nonce_b = rgb_gate.stable_ids(42, "a" * 64, "short_37")
+    master_repeat, nonce_repeat = rgb_gate.stable_ids(42, "a" * 64, "empty")
+    assert master_a == master_b == master_repeat
+    assert nonce_a != nonce_b
+    assert nonce_a == nonce_repeat
+
+
+def test_rgb_benchmark_nonce_changes_between_images_and_seeds():
+    _, nonce_a = rgb_gate.stable_ids(42, "a" * 64, "full")
+    _, nonce_b = rgb_gate.stable_ids(42, "b" * 64, "full")
+    _, nonce_c = rgb_gate.stable_ids(43, "a" * 64, "full")
+    assert len({nonce_a, nonce_b, nonce_c}) == 3
