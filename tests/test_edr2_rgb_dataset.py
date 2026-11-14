@@ -55,8 +55,8 @@ def test_rgb_benchmark_ids_and_payload_are_deterministic():
 
 def test_official_checksum_parser_reads_published_posix_cksum_values():
     page = (
-        b"<pre>aerials/2.1.01.tiff | 1220177504\n"
-        b"misc/4.2.03.tiff | 3944512653\n</pre>"
+        b"<pre><a href='aerials/2.1.01.tiff'>aerials/2.1.01.tiff</a>  | 1220177504\n"
+        b"<a href='misc/4.2.03.tiff'>misc/4.2.03.tiff</a> | 3944512653\n</pre>"
     )
     values = sipi_rgb.parse_checksums(page)
     assert values == {
