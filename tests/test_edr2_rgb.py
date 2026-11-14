@@ -184,5 +184,5 @@ def test_rgb_adaptive_search_evaluates_all_24_ordered_phase_assignments(monkeypa
     assert prepared["assignment_search"] == "adaptive_24"
     assert len(prepared["assignment_scores"]) == 24
     assert all(len(row["phases"]) == 3 for row in prepared["assignment_scores"])
-    assert all(len(set(row["phases"] + (row["calibration_phase"],))) == 4
+    assert all(len(set(tuple(row["phases"]) + (row["calibration_phase"],))) == 4
                for row in prepared["assignment_scores"])
