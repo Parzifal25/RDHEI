@@ -115,9 +115,30 @@ def _pack_directory(phases: tuple[int, int, int], calibration_phase: int,
     return raw, (compressed if codec else raw), codec
 
 
+def build_spatial_cache(original: np.ndarray):
+    """Run the frozen grayscale CNN once per channel and lattice phase."""
+    if (not isinstance(original, np.ndarray) or original.dtype != np.uint8
+            or original.ndim != 3 or original.shape[2] != 3):
+        raise ValueError("CC-EDR2-RGB expects native uint8 RGB HxWx3")
+    active_model = predictor.model()
+    spatial_cache = {}
+    coordinate_cache = {}
+    for channel in range(3):
+        plane = np.ascontiguousarray(original[:, :, channel])
+        for phase in range(4):
+            ys, xs = predictor.coords(plane.shape, phase=phase)
+            coordinate_cache[(channel, phase)] = (ys, xs)
+            spatial_cache[(channel, phase)] = predictor.predict(
+                plane, ys, xs, active_model
+            )
+    return spatial_cache, coordinate_cache
+
+
 def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
             blend_den: int = CROSS_BLEND_DEN,
-            assignment_override: tuple[int, int, int] | None = None):
+            assignment_override: tuple[int, int, int] | None = None,
+            spatial_cache: dict | None = None,
+            coordinate_cache: dict | None = None):
     """Jointly optimize 3-of-4 channel phase assignment and RGB net capacity."""
     if (not isinstance(original, np.ndarray) or original.dtype != np.uint8
             or original.ndim != 3 or original.shape[2] != 3):
@@ -128,15 +149,19 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
     if blend_den <= 0 or not 0 <= blend_num <= blend_den:
         raise ValueError("invalid cross-channel blend ratio")
 
-    active_model = predictor.model()
-    spatial_cache = {}
-    coordinate_cache = {}
+    if spatial_cache is None and coordinate_cache is None:
+        spatial_cache, coordinate_cache = build_spatial_cache(original)
+    elif spatial_cache is None or coordinate_cache is None:
+        raise ValueError("spatial_cache and coordinate_cache must be supplied together")
+    expected_keys = {(channel, phase) for channel in range(3) for phase in range(4)}
+    if set(spatial_cache) != expected_keys or set(coordinate_cache) != expected_keys:
+        raise ValueError("RGB spatial/coordinate cache must contain all 12 channel-phase entries")
     for channel in range(3):
-        plane = np.ascontiguousarray(original[:, :, channel])
         for phase in range(4):
-            ys, xs = predictor.coords(plane.shape, phase=phase)
-            coordinate_cache[(channel, phase)] = (ys, xs)
-            spatial_cache[(channel, phase)] = predictor.predict(plane, ys, xs, active_model)
+            ys, xs = coordinate_cache[(channel, phase)]
+            if (len(ys) != len(xs)
+                    or np.asarray(spatial_cache[(channel, phase)]).shape != (len(ys),)):
+                raise ValueError("invalid cached RGB spatial prediction or coordinate lengths")
 
     alternatives = []
     if assignment_override is None:
