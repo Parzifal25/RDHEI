@@ -23,26 +23,27 @@ import run_gate
 import wire
 
 
-def test_step_two_lattice_is_maximal_for_the_fixed_three_by_three_context():
-    y, x = wire.grid((512, 512))
-    assert len(y) == 65_025
-    assert len(x) == 65_025
-    assert (int(y.min()), int(y.max())) == (1, 509)
-    assert (int(x.min()), int(x.max())) == (1, 509)
-    assert np.all(np.diff(np.unique(y)) == 2)
-    assert np.all(np.diff(np.unique(x)) == 2)
+def test_all_four_step_two_lattices_are_maximal_and_context_safe():
+    for phase in range(wire.SAFE_ZONE_PHASES):
+        y, x = wire.grid((512, 512), phase=phase)
+        assert len(y) == 65_025
+        assert len(x) == 65_025
+        assert len(np.unique(y)) == 255
+        assert len(np.unique(x)) == 255
+        assert np.all(np.diff(np.unique(y)) == 2)
+        assert np.all(np.diff(np.unique(x)) == 2)
 
-    py, px = predictor.coords((512, 512))
-    np.testing.assert_array_equal(py, y)
-    np.testing.assert_array_equal(px, x)
+        py, px = predictor.coords((512, 512), phase=phase)
+        np.testing.assert_array_equal(py, y)
+        np.testing.assert_array_equal(px, x)
 
-    # No mutable center may occur in another center's 3x3 predictor patch.
-    candidate_set = set(zip(y.tolist(), x.tolist()))
-    for cy, cx in candidate_set:
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                if dy or dx:
-                    assert (cy + dy, cx + dx) not in candidate_set
+        # No mutable centre may occur in another centre's 3x3 predictor patch.
+        candidate_set = set(zip(y.tolist(), x.tolist()))
+        for cy, cx in candidate_set:
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dy or dx:
+                        assert (cy + dy, cx + dx) not in candidate_set
 
 
 def test_step_two_lattice_handles_small_and_invalid_shapes():
@@ -84,6 +85,33 @@ def test_encrypted_header_requires_zero_reserved_bytes():
     with pytest.raises(ValueError, match="reserved bytes"):
         wire.framing(image, capability, header_stage="bootstrap")
 
+
+
+def test_authenticated_header_location_discovers_each_of_four_lattice_phases():
+    original = np.full((128, 128), 128, dtype=np.uint8)
+    master = bytes(reversed(range(32)))
+    payload = np.asarray([1, 0, 1, 1, 0, 0, 1], dtype=np.uint8)
+
+    for phase in range(wire.SAFE_ZONE_PHASES):
+        nonce = 0x2030405060708090A0B0C0D0E0F00000 + phase
+        prepared = protocol.prepare(original, phase_override=phase)
+        assert prepared["phase"] == phase
+        assert prepared["net"] > 0
+        reserved, owner_capability = protocol.reserve(
+            original, master, nonce, prepared=prepared
+        )
+        hider_capability = wire.hider_keys(owner_capability["hider"])
+        discovered = wire.inspect(
+            reserved, hider_capability, header_stage="bootstrap"
+        )
+        assert discovered["phase"] == phase
+
+        marked = wire.embed(reserved, payload, hider_capability)
+        final = wire.inspect(marked, hider_capability, header_stage="final")
+        assert final["phase"] == phase
+        recovered, extracted = protocol.receive(marked, master, nonce)
+        np.testing.assert_array_equal(recovered, original)
+        np.testing.assert_array_equal(extracted, payload)
 
 def test_label_nibble_padding_is_canonical_and_invalid_classes_reject():
     assert predictor.packlabels(np.asarray([0, 14, 4], dtype=np.uint8)) == bytes(
