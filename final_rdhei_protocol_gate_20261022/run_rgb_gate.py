@@ -400,6 +400,39 @@ def main():
                 "image_prepare_seconds": time.perf_counter() - image_started,
             })
             base_row["all_blends_exact"] = base_row["status"] == "roundtrip_passed"
+            primary = blend_results[1]
+            base_row.update({
+                "signed_net_capacity_bits": int(primary["net"]),
+                "signed_net_bpp_per_rgb_pixel": float(
+                    primary["net"] / (image.shape[0] * image.shape[1])
+                ),
+                "selected_rgb_phases": json.dumps(list(primary["phases"])),
+                "calibration_phase": int(primary["calibration_phase"]),
+                "metadata_bytes": int(
+                    len(primary["metadata"])
+                    + rgb_protocol.rgb_wire.HEADER_BYTES
+                    + rgb_protocol.rgb_wire.TAG_BYTES
+                ),
+                "channel_prediction_metrics": json.dumps(
+                    primary["prediction_metrics"], separators=(",", ":")
+                ),
+                "phase_assignment_scores": json.dumps(
+                    primary["assignment_scores"], separators=(",", ":")
+                ),
+                "gross_slots_all_channels": int(
+                    primary["stats"]["gross_slots_all_channels"]
+                ),
+                "foregone_red_header_slots": int(
+                    primary["stats"]["foregone_red_header_slots"]
+                ),
+                "backup_bits": int(primary["stats"]["bootstrap_backup_bits"]),
+                "stream_bits": int(primary["stats"]["ordinary_stream_bits"]),
+            })
+            if all(
+                base_row.get(f"blend_{blend}_status") == "rejected_nonpositive_net_capacity"
+                for blend, _ in BLENDS
+            ):
+                base_row["status"] = "rejected_nonpositive_net_capacity"
             capacity_rows.append(base_row)
         except Exception as exc:
             base_row["status"] = "error"
