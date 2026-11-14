@@ -101,7 +101,7 @@ def test_exact_recovery_for_every_original_prediction_pair_and_payload_word():
                 tested_payload_words += 1
 
     assert tested_pairs == 65_536
-    assert tested_payload_words > 0
+    assert tested_payload_words == 396_032
 
 
 def test_embedding_preserves_the_required_low_bit_residue():
