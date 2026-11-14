@@ -31,12 +31,12 @@ def _image_identity(image):
     return digest.hexdigest()
 
 
-def prepare(original):
+def prepare(original, phase_override=None):
     old = shared()
     if original.ndim != 2 or original.dtype != np.uint8:
         raise ValueError('expected uint8 grayscale')
     # Reuse unchanged checkpoint, preprocessing, prediction, labels and compression.
-    q = old.prepare(original)
+    q = old.prepare(original, phase_override=phase_override)
     q["source_shape"] = tuple(map(int, original.shape))
     q["source_sha256"] = _image_identity(original)
     h = 52+len(q['meta'])
