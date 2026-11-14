@@ -113,15 +113,10 @@ jobs:
         run: |
           set -euo pipefail
           extra_data_args=()
-          if [ -d data/usc_sipi_gray ] && find data/usc_sipi_gray -type f \\
-            \\( -iname '*.png' -o -iname '*.pgm' -o -iname '*.bmp' -o -iname '*.tif' -o -iname '*.tiff' \\) \\
-            -print -quit | grep -q .; then
+          if [ -d data/usc_sipi_gray ] && find data/usc_sipi_gray -type f -iname '*.tiff' -print -quit | grep -q .; then
             extra_data_args+=(--data-dir data/usc_sipi_gray)
           fi
-          python final_rdhei_protocol_gate_20261022/run_gate.py \\
-            --data-dir data/kodak_gray \\
-            "${extra_data_args[@]}" \\
-            --output-dir /tmp/edr2-full-natural-corpus-evidence
+          python final_rdhei_protocol_gate_20261022/run_gate.py --data-dir data/kodak_gray "${extra_data_args[@]}" --output-dir /tmp/edr2-full-natural-corpus-evidence
 
       - name: Upload full natural-image EDR2 evidence
         if: always()
