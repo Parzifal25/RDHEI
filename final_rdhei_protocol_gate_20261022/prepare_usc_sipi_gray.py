@@ -74,7 +74,8 @@ def normalized_output_path(volume: str, member_name: str, output_root: Path) -> 
     stem = Path(original_name).stem if suffix in {".tif", ".tiff"} else original_name
     if not stem or stem in {".", ".."}:
         raise ValueError(f"invalid archive member filename: {member_name!r}")
-    relative = Path(volume, *member.parts[:-1], stem + ".tiff")
+    member_parts = member.parts[1:] if member.parts[0].lower() == volume.lower() else member.parts
+    relative = Path(volume, *member_parts[:-1], stem + ".tiff")
     destination = (output_root / relative).resolve()
     if output_root.resolve() not in destination.parents:
         raise ValueError(f"archive member escapes output directory: {member_name!r}")
