@@ -20,7 +20,7 @@ The independent data hider receives one nonce-specific derived data-hiding capab
 
 | File | Role |
 |---|---|
-| final_rdhei_protocol_gate_20261022/predictor.py | Frozen 3x3 CNN prediction, maximal step-2 safe-zone lattice, error-class labels and compressed directory |
+| final_rdhei_protocol_gate_20261022/predictor.py | Frozen 3x3 CNN prediction, four-phase maximum-density step-2 lattice, signed-net-capacity phase selection, error-class labels and compressed directory |
 | final_rdhei_protocol_gate_20261022/wire.py | EDR2 encrypted header, directory, payload, HMAC and encrypted-domain hider |
 | final_rdhei_protocol_gate_20261022/protocol.py | Owner reservation, encryption, receiver payload extraction and exact image reconstruction |
 | final_rdhei_protocol_gate_20261022/PROTOCOL_EDR2.md | Canonical current EDR2 protocol specification |
@@ -79,5 +79,5 @@ The repaired src/train.py is retained only as a future reproducibility utility. 
 - PROTOCOL_EDR2.md is the active protocol specification.
 - PROTOCOL_EDR1.md and FINAL_RDHEI_PROTOCOL_GATE.md are historical EDR1 records. Their capacity and recovery metrics must not be mixed with EDR2; the old synthetic-control observations are not part of the current publication dataset.
 - The old src/rdhei_core.py receiver requires external maps and a payload length; it is retained as a legacy baseline and is not evidence for EDR2's receiver contract.
-- CNN prediction and compressed in-band label maps are established RDHEI components. The maximum-density step-2 synchronization-safe lattice for the fixed 3×3 context, strict in-band header/directory/bootstrap accounting, and exact receiver-only reconstruction are candidate contributions. Their novelty and superiority remain conditional on full natural-image evaluation and direct comparison with current partition-based and block-based RDHEI methods.
+- CNN prediction and compressed in-band label maps are established RDHEI components. The candidate contribution is narrower: evaluate four maximum-density, context-invariant parity phases of the fixed 3×3 CNN lattice and select the phase with the greatest signed net payload after directory, header, authentication and bootstrap-backup costs. The selected phase is discovered from its phase-bound authenticated header location, not an external phase field. This adaptive phase-selection mechanism and its novelty remain conditional on full natural-image evaluation and comparison with current partitioning and adaptive-capacity RDHEI methods.
 - Do not update the manuscript with EDR2 numerical results until the full natural-image workflow has completed and its evidence has been independently reviewed.
