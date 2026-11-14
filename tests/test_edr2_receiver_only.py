@@ -55,18 +55,41 @@ def test_one_derived_hider_key_is_separate_from_image_key():
     assert keys["image"] not in hider_keys.values()
 
 
-def test_load_corpus_keeps_six_originals_and_discovers_grayscale(tmp_path):
+def test_load_corpus_keeps_six_originals_and_only_curated_grayscale(tmp_path):
+    import hashlib
+
     baseline = tmp_path / "kodak_gray"
     expanded = tmp_path / "usc_sipi_gray"
 
     for index, stem in enumerate(sorted(run_gate.BASELINE_STEMS)):
         write_gray(baseline / f"{stem}.png", index + 10)
 
-    write_gray(expanded / "duplicates" / "copy_of_airplane.tiff", 10)
-    write_gray(expanded / "textures" / "extra_texture.tiff", 99)
+    duplicate_path = expanded / "duplicates" / "copy_of_airplane.tiff"
+    extra_path = expanded / "textures" / "extra_texture.tiff"
+    write_gray(duplicate_path, 10)
+    write_gray(extra_path, 99)
     expanded.mkdir(parents=True, exist_ok=True)
     Image.fromarray(np.zeros((12, 12, 3), dtype=np.uint8), mode="RGB").save(
         expanded / "color_input.png"
+    )
+    (expanded / run_gate.NATURAL_ALLOWLIST_NAME).write_text(
+        json.dumps({
+            "images": [
+                {
+                    "path": "duplicates/copy_of_airplane.tiff",
+                    "sha256": hashlib.sha256(duplicate_path.read_bytes()).hexdigest(),
+                    "classification": "natural",
+                    "curation_note": "Duplicate source used only to test pixel deduplication.",
+                },
+                {
+                    "path": "textures/extra_texture.tiff",
+                    "sha256": hashlib.sha256(extra_path.read_bytes()).hexdigest(),
+                    "classification": "natural",
+                    "curation_note": "Human-reviewed native USC-SIPI grayscale photograph.",
+                },
+            ]
+        }),
+        encoding="utf-8",
     )
 
     corpus, skipped, duplicates, inventory, missing = run_gate.load_corpus(
@@ -80,11 +103,26 @@ def test_load_corpus_keeps_six_originals_and_discovers_grayscale(tmp_path):
     assert missing == []
     assert all("array" not in item for item in corpus)
     assert any(item["relative_path"] == "textures/extra_texture.tiff" for item in corpus)
+    assert any(item["relative_path"] == "color_input.png" for item in skipped)
 
 
 def test_load_corpus_requires_baseline_in_kodak_directory(tmp_path):
+    import hashlib
+
     expanded = tmp_path / "usc_sipi_gray"
-    write_gray(expanded / "airplane.tiff", 15)
+    candidate = expanded / "airplane.tiff"
+    write_gray(candidate, 15)
+    (expanded / run_gate.NATURAL_ALLOWLIST_NAME).write_text(
+        json.dumps({
+            "images": [{
+                "path": "airplane.tiff",
+                "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+                "classification": "natural",
+                "curation_note": "Reviewed native grayscale fixture for this unit test.",
+            }]
+        }),
+        encoding="utf-8",
+    )
 
     with pytest.raises(ValueError, match="original baseline image names are missing"):
         run_gate.load_corpus([expanded], allow_missing_baseline=False)
@@ -181,7 +219,7 @@ def test_sipi_preparer_keeps_only_native_gray_and_confines_archive_paths(tmp_pat
 
 def test_safe_zone_grid_is_synchronization_safe_and_maximally_dense():
     y, x = wire.grid((512, 512))
-    assert len(y) == 254 * 254
+    assert len(y) == 255 * 255
     assert np.all(np.diff(np.unique(y)) == 2)
     assert np.all(np.diff(np.unique(x)) == 2)
 
@@ -192,13 +230,15 @@ def test_safe_zone_grid_is_synchronization_safe_and_maximally_dense():
                 if dy or dx:
                     assert (cy + dy, cx + dx) not in coords
 
-    # A 3x3 predictor centered at each candidate has a 2x2 disjoint
-    # witness tile per center; therefore no safe lattice can exceed 1/4
-    # density. The step-2 lattice approaches that bound at image borders.
-    assert len(coords) / (512 * 512) == pytest.approx(64516 / 262144)
+    # The finite one-pixel-border candidate domain is 510x510. A 2x2
+    # witness tile can contain at most one centre, and this lattice reaches
+    # that bound: 255x255 candidates (24.81% of all pixels).
+    assert len(coords) / (512 * 512) == pytest.approx(65025 / 262144)
+    assert int(y.min()) == int(x.min()) == 1
+    assert int(y.max()) == int(x.max()) == 509
     y3, x3 = np.meshgrid(np.arange(2, 510, 3), np.arange(2, 510, 3), indexing="ij")
     assert len(y) > y3.size
-    assert len(y) / y3.size == pytest.approx(64516 / 28900)
+    assert len(y) / y3.size == pytest.approx(65025 / 28900)
 
 
 def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_header():
@@ -218,7 +258,8 @@ def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_head
         bootstrap["y"][:wire.HEADER_BYTES], bootstrap["x"][:wire.HEADER_BYTES]
     ].tobytes()
     assert header_ciphertext != wire.HEADER.pack(
-        wire.PROTOCOL_MAGIC, bootstrap["mode"], bootstrap["length"], 0
+        wire.PROTOCOL_MAGIC, bootstrap["mode"], b"\\x00\\x00\\x00",
+        bootstrap["length"], 0
     )
 
     rng = np.random.default_rng(20261114)
