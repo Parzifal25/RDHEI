@@ -1,0 +1,59 @@
+name: EDR2 RGB extension gate
+
+on:
+  push:
+    branches:
+      - research/edr2-rgb-extension
+    paths:
+      - ".github/workflows/edr2-rgb-extension.yml"
+      - "final_rdhei_protocol_gate_20261022/rgb_*.py"
+      - "final_rdhei_protocol_gate_20261022/predictor.py"
+      - "final_rdhei_protocol_gate_20261022/wire.py"
+      - "tests/test_edr2_rgb.py"
+      - "src/cnn_model.py"
+      - "models/v4_patch3.pth"
+  workflow_dispatch:
+    inputs:
+      run_rgb_smoke_tests:
+        description: "Run RGB protocol round-trip tests."
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  rgb-protocol-tests:
+    if: ${{ inputs.run_rgb_smoke_tests == true || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out RGB extension branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install RGB protocol dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome pytest
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile grayscale and RGB protocol modules
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/predictor.py \
+            final_rdhei_protocol_gate_20261022/wire.py \
+            final_rdhei_protocol_gate_20261022/rgb_wire.py \
+            final_rdhei_protocol_gate_20261022/rgb_protocol.py
+
+      - name: Run grayscale regression and RGB exact-recovery tests
+        run: |
+          python -m pytest -q \
+            tests/test_edr2_publication_hardening.py \
+            tests/test_edr2_receiver_only.py \
+            tests/test_edr2_rgb.py
