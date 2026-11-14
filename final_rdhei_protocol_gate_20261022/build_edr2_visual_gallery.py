@@ -81,7 +81,7 @@ def main() -> None:
             draw = ImageDraw.Draw(tile)
             draw.text((10, 10), title, fill="black", font=font)
             normalized.append(tile)
-        panel = Image.new("RGB", (1200, 330), "white")
+        panel = Image.new("RGB", (1200, 360), "white")
         for idx, tile in enumerate(normalized):
             panel.paste(tile, (idx * 300, 0))
         draw = ImageDraw.Draw(panel)
