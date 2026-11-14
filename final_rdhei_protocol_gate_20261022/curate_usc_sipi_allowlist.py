@@ -152,7 +152,7 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             "images from the five official archive groups. Images must have even "
             "height and width. RGB/16-bit/non-grayscale images, segmentation-information "
             "maps, resolution charts, calibration wedges, pixel rulers, unrecognized "
-            "volumes, and duplicate decoded pixels are excluded. Textures, rotated "
+            "volumes, and duplicate decoded pixels are removed by the EDR2 evaluation runner. Textures, rotated "
             "texture series, aerial imagery, miscellaneous imagery, and sequence frames "
             "remain tagged in separate corpus groups; USC-assembled mosaics use the "
             "constructed classification and are not pooled with natural photographs.  USC-SIPI's "
