@@ -268,3 +268,14 @@ def test_rgb_paper_analyzer_rejects_missing_nonbyte_payload_boundary():
     run["roundtrip_passed"] = len(roundtrip)
     with pytest.raises(ValueError, match="payload-boundary ledger mismatch"):
         rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
+
+
+def test_rgb_benchmark_nonce_namespace_prevents_cross_run_reuse():
+    master_a, nonce_a = rgb_gate.stable_ids(
+        42, "a" * 64, "empty", nonce_namespace="run-one"
+    )
+    master_b, nonce_b = rgb_gate.stable_ids(
+        42, "a" * 64, "empty", nonce_namespace="run-two"
+    )
+    assert master_a == master_b
+    assert nonce_a != nonce_b
