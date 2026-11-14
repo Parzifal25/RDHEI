@@ -125,7 +125,7 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             volume == "textures"
             and (
                 (texture_stem.startswith("texmos") and ".s512" not in member_basename)
-                or bool(__import__("re").fullmatch(r"1\\.5\\.\\d{2}", texture_stem))
+                or texture_stem.startswith("1.5.")
             )
         )
         if is_constructed_texture_mosaic:
