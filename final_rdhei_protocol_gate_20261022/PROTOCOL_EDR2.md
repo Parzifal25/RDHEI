@@ -66,7 +66,7 @@ The existing allocation function maps each absolute integer prediction error to 
 
 ## 5. In-band packet format
 
-The first 20 candidate bytes contain the fixed-width big-endian header >4sB3xIQ:
+The first 20 candidate bytes contain a fixed-width header with the big-endian structure >4sB3xIQ. **The 20 header bytes are encrypted in-band**, not transmitted as plaintext:
 
 | Field | Size | Meaning |
 |---|---:|---|
@@ -76,11 +76,13 @@ The first 20 candidate bytes contain the fixed-width big-endian header >4sB3xIQ:
 | Directory length L | 4 bytes | Encrypted directory length in bytes |
 | Payload length P | 8 bytes | User payload length in bits |
 
+The header is encrypted under one of two separate HKDF-derived header keys: a bootstrap-header key for the owner's reservation packet and a final-header key for the completed marked image. Separate keys prevent an observer who sees both packet states from cancelling a reused CTR keystream and recovering the XOR of the two header plaintexts. The hider can authenticate and decrypt the bootstrap header, then writes the final header under the final-header key. The receiver derives the final-header key from K and V.
+
 The next L candidate bytes contain the encrypted packed label directory. The next 32 candidate bytes contain the HMAC-SHA256 authentication tag. The bootstrap length is therefore:
 
     H = 52 + L
 
-The header, encrypted directory, and tag overwrite the first H candidate bytes. The receiver reads the image dimensions directly from the image and parses the bounded header. It authenticates the packet before directory decompression or CNN inference.
+The receiver knows the fixed header carrier coordinates from the installed protocol. It decrypts the fixed-size header using the final-header key, validates L against the candidate count, locates the directory and tag, and authenticates the packet before directory decompression or CNN inference. Directory length and payload length are not exposed in plaintext in the image header.
 
 The tag covers the big-endian uint64 image dimensions followed by the full row-major marked-image bytes with the tag carrier bytes set to zero. This detects unauthorized packet modification. An authorized hider holding Ka can generate a valid tag; the design therefore trusts the authorized hider and does not claim malicious-hider security.
 
@@ -118,7 +120,7 @@ The metadata has 8H physical in-band storage bits (header + encrypted directory 
 
 ## 8. Encrypted-domain data hider
 
-The hider derives Kd,Kp,Ka from its single Kh, then:
+The hider derives Kd,Kp,Ka and the bootstrap/final header keys from its single Kh, then:
 
 1. Verifies the HMAC, parses the bounded header, decrypts the directory, validates the directory length/classes/padding, and reconstructs T,B,N.
 2. Checks that the payload is a one-dimensional binary sequence and 0<=P<=N.
@@ -132,8 +134,8 @@ The hider needs no CNN, original image, image-encryption key, original predictio
 
 The receiver takes exactly the final marked encrypted image, K, and V as per-image semantic inputs.
 
-1. Derives K_img and Kh, then Kd,Kp,Ka.
-2. Parses the header and authenticates the marked image before decompressing the directory or running the CNN. It validates the decoded directory length, labels, padding and payload length.
+1. Derives K_img and Kh from K,V, then Kd,Kp,Ka and the final-header key.
+2. Decrypts the fixed-size header, checks its bounds, and authenticates the marked image before decompressing the directory or running the CNN. It validates the decoded directory length, labels, padding and payload length.
 3. Reads the encrypted payload bits from U, decrypts them under Kp, checks that all bits after P are zero padding, and returns exactly the first P bits. This includes P=0 and non-byte-aligned payload lengths.
 4. Generates the image keystream Z under K_img. Replaces U ciphertext bits with the corresponding keystream bits and restores the H bootstrap ciphertext bytes to Z. These positions were zero in the reserved plaintext R, so their ciphertext is exactly recomputable.
 5. Decrypts to the exact reserved plaintext R, reads the B backup bits, recomputes predictions from invariant contexts, and restores each ordinary candidate's original value as the unique c in [0,255] satisfying:
@@ -149,8 +151,7 @@ The receiver must not access source images, payload files, capability-key files,
 
 - EDR2 is an RDHEI/RRBE protocol design, not a certified or independently audited cryptosystem.
 - The data hider is authorized to read the label directory and holds the authentication key. A malicious authorized hider can alter the packet and recompute its tag; this threat is outside the current model.
-- The public header reveals protocol magic, codec, directory length and payload bit length.
-- Authentication does not hide the payload length or access pattern.
+- The header fields, directory length and payload bit length are encrypted in-band. The image dimensions and total file size remain observable; image-level traffic analysis and length leakage through the outer file/container are not claimed to be eliminated.
 - The fixed CNN checkpoint and arithmetic environment are shared protocol software; cross-runtime floating-point equivalence has not been established.
 - Positive net capacity is image-dependent. The algorithm rejects N<=0. No universal positive-capacity claim is made.
 - EDR2 uses a different magic and key hierarchy from EDR1. Never decode an EDR1 packet as EDR2 or mix EDR1 results with EDR2 measurements.
