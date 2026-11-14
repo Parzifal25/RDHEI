@@ -6,7 +6,7 @@
 
 ## 1. What the active system is
 
-EDR2 is a reserve-room-before-encryption (RRBE) reversible data hiding in encrypted images (RDHEI) protocol for native 8-bit grayscale images.
+EDR2 is a reserve-room-before-encryption (RRBE) reversible data hiding in encrypted images (RDHEI) protocol for native 8-bit grayscale images with even height and width. Odd dimensions are outside the present four-phase maximum-density proof and are rejected by the current implementation.
 
 The per-image semantic inputs at the receiver are:
 
