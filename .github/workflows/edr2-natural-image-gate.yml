@@ -1,0 +1,148 @@
+name: EDR2 natural-image gate
+
+on:
+  push:
+    branches:
+      - research/capacity-aware-edr1
+      - research/edr2-publication-hardening
+    paths:
+      - ".github/workflows/edr2-natural-image-gate.yml"
+      - "final_rdhei_protocol_gate_20261022/**"
+      - "tests/test_mapping.py"
+      - "tests/test_edr2_receiver_only.py"
+      - "tests/test_edr2_publication_hardening.py"
+      - "tests/test_usc_sipi_curation.py"
+      - "src/cnn_model.py"
+      - "src/rdhei_core.py"
+  workflow_dispatch:
+    inputs:
+      run_full_corpus:
+        description: "Download, curate, and run the full supported USC-SIPI grayscale evaluation corpus."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  compile-and-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test and protocol dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome pytest
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile EDR2 and USC-SIPI preparation scripts
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/run_gate.py \
+            final_rdhei_protocol_gate_20261022/predictor.py \
+            final_rdhei_protocol_gate_20261022/protocol.py \
+            final_rdhei_protocol_gate_20261022/wire.py \
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            src/train.py
+
+      - name: Test mapping, receiver contract, EDR2 protocol and corpus curation
+        run: |
+          python -m pytest -q \
+            tests/test_mapping.py \
+            tests/test_edr2_receiver_only.py \
+            tests/test_edr2_publication_hardening.py \
+            tests/test_usc_sipi_curation.py
+
+  full-natural-image-corpus:
+    if: ${{ inputs.run_full_corpus == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install EDR2 runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile EDR2 and corpus preparation scripts
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/run_gate.py \
+            final_rdhei_protocol_gate_20261022/protocol.py \
+            final_rdhei_protocol_gate_20261022/wire.py \
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py
+
+      - name: Download and inventory official USC-SIPI native grayscale TIFFs
+        run: |
+          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            --output-dir data/usc_sipi_gray \
+            --archive-dir data/usc_sipi_archives
+
+      - name: Build hash-pinned, catalogue-reviewed USC-SIPI allowlist
+        run: |
+          python final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            --manifest data/usc_sipi_gray/dataset_manifest.json \
+            --output data/usc_sipi_gray/natural_image_allowlist.json
+
+      - name: Run complete EDR2 natural-image capacity and exact-recovery evaluation
+        run: |
+          set -euo pipefail
+          BASELINE_READY=1
+          for image_name in Airplane Baboon Goldhill Jetplane Lena Peppers; do
+            if [ ! -s "data/kodak_gray/$image_name.png" ]; then
+              BASELINE_READY=0
+              break
+            fi
+          done
+          if [ "$BASELINE_READY" -eq 1 ]; then
+            python final_rdhei_protocol_gate_20261022/run_gate.py \
+              --data-dir data/kodak_gray \
+              --data-dir data/usc_sipi_gray \
+              --output-dir /tmp/edr2-full-natural-corpus-evidence
+          else
+            python final_rdhei_protocol_gate_20261022/run_gate.py \
+              --data-dir data/usc_sipi_gray \
+              --allow-missing-baseline \
+              --output-dir /tmp/edr2-full-natural-corpus-evidence
+          fi
+
+      - name: Upload full natural-image EDR2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edr2-full-natural-corpus-evidence
+          path: /tmp/edr2-full-natural-corpus-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload USC-SIPI source and curation manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usc-sipi-corpus-manifests
+          path: |
+            data/usc_sipi_gray/dataset_manifest.json
+            data/usc_sipi_gray/natural_image_allowlist.json
+          if-no-files-found: warn
+          retention-days: 30
