@@ -126,7 +126,7 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
         if volume == "textures":
             is_constructed_texture_mosaic = (
                 (texture_stem.startswith("texmos") and ".s512" not in member_basename)
-                or texture_stem.startswith("1.5.")
+                or member_basename.startswith("1.5.")
             )
             if is_constructed_texture_mosaic:
                 classification = "constructed"
