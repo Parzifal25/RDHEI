@@ -197,7 +197,15 @@ def main():
                 coordinate_cache=coordinate_cache,
             )
             best_blend = max(blend_results, key=lambda b: blend_results[b]["net"])
-            adaptive_q = blend_results[1]
+            for blend_value, result in blend_results.items():
+                base_row[f"blend_{blend_value}_net_capacity_bits"] = int(result["net"])
+                base_row[f"blend_{blend_value}_net_bpp"] = float(
+                    result["net"] / (image.shape[0] * image.shape[1])
+                )
+                base_row[f"blend_{blend_value}_phases"] = json.dumps(list(result["phases"]))
+                for channel, metric in enumerate(result["prediction_metrics"]):
+                    for metric_name, metric_value in metric.items():
+                        base_row[f"blend_{blend_value}_channel_{channel}_{metric_name}"] = float(metric_value)
             base_row.update({
                 "status": "capacity_evaluated",
                 "candidate_count_per_channel": int(selected["stats"]["candidate_count_per_channel"]),
