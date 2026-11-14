@@ -133,6 +133,9 @@ def load_natural_allowlist(directory):
         group = row.get("corpus_group", "usc_sipi_unspecified")
         if not isinstance(group, str) or not group.strip():
             raise ValueError(f"invalid corpus_group for {rel!r} in {path}")
+        cluster = row.get("correlation_cluster", f"{group.strip()}:{Path(rel).stem}")
+        if not isinstance(cluster, str) or not cluster.strip():
+            raise ValueError(f"invalid correlation_cluster for {rel!r} in {path}")
         key = Path(rel).as_posix()
         if key in allowed:
             raise ValueError(f"duplicate allowlist path {key!r} in {path}")
@@ -140,6 +143,7 @@ def load_natural_allowlist(directory):
             "sha256": digest.lower(),
             "curation_note": note.strip(),
             "corpus_group": group.strip(),
+            "correlation_cluster": cluster.strip(),
             "classification": classification,
         }
     return allowed
@@ -197,6 +201,7 @@ def load_corpus(data_dirs, allow_missing_baseline):
     for directory, path in discovered:
         label = rel_label(path, directory)
         corpus_group = "original_six_baseline" if directory.name.lower() == "kodak_gray" else None
+        correlation_cluster = f"baseline_{path.stem.lower()}" if directory.name.lower() == "kodak_gray" else None
         classification = "natural" if directory.name.lower() == "kodak_gray" else None
 
         # Synthetic controls and unreviewed files never enter paper-facing EDR2 metrics.
@@ -227,6 +232,7 @@ def load_corpus(data_dirs, allow_missing_baseline):
                 ))
                 continue
             corpus_group = allow.get("corpus_group", "usc_sipi_unspecified")
+            correlation_cluster = allow.get("correlation_cluster", f"{corpus_group}:{Path(label).stem}")
             classification = allow["classification"]
             actual_sha = file_sha256(path)
             if actual_sha != allow["sha256"]:
@@ -254,6 +260,7 @@ def load_corpus(data_dirs, allow_missing_baseline):
             dataset=str(directory),
             relative_path=label,
             corpus_group=corpus_group or "unspecified",
+            correlation_cluster=correlation_cluster or "unspecified",
             classification=classification or "unspecified",
             source_sha256=file_sha256(path),
             pixels_sha256=digest,
@@ -386,6 +393,7 @@ def capacity_row(image, q, seconds):
     return dict(
         image=image["name"],
         corpus_group=image.get("corpus_group", "unspecified"),
+        correlation_cluster=image.get("correlation_cluster", "unspecified"),
         classification=image.get("classification", "unspecified"),
         source=image["source"],
         source_sha256=image["source_sha256"],
@@ -465,6 +473,10 @@ def main():
         classification_counts={
             category: sum(1 for row in corpus if row.get("classification") == category)
             for category in sorted({row.get("classification", "unspecified") for row in corpus})
+        },
+        correlation_cluster_counts={
+            cluster: sum(1 for row in corpus if row.get("correlation_cluster") == cluster)
+            for cluster in sorted({row.get("correlation_cluster", "unspecified") for row in corpus})
         },
         skipped_nonconforming_files=len(skipped),
         duplicate_pixel_files=len(duplicates),
@@ -576,6 +588,7 @@ def main():
             elapsed = time.perf_counter() - start
             row = dict(
                 image=image["name"], corpus_group=image.get("corpus_group", "unspecified"),
+                correlation_cluster=image.get("correlation_cluster", "unspecified"),
                 classification=image.get("classification", "unspecified"),
                 source=image["source"],
                 source_sha256=image["source_sha256"], pixels_sha256=image["pixels_sha256"],
@@ -725,7 +738,7 @@ def main():
     save("negative_checks_and_rejections.json", rejected)
 
     capacity_fields = [
-        "image", "corpus_group", "classification", "source", "source_sha256", "pixels_sha256", "height", "width", "pixels",
+        "image", "corpus_group", "correlation_cluster", "classification", "source", "source_sha256", "pixels_sha256", "height", "width", "pixels",
         "candidate_count", "gross_capacity_bits", "gross_bpp",
         "bootstrap_foregone_slots_bits", "metadata_wire_storage_bits",
         "bootstrap_backup_bits", "metadata_overhead_bits", "total_overhead_bits",
@@ -784,6 +797,10 @@ def main():
             classification_counts={
                 category: sum(1 for row in capacities if row.get("classification") == category)
                 for category in sorted({row.get("classification", "unspecified") for row in capacities})
+            },
+            correlation_cluster_counts={
+                cluster: sum(1 for row in capacities if row.get("correlation_cluster") == cluster)
+                for cluster in sorted({row.get("correlation_cluster", "unspecified") for row in capacities})
             },
             synthetic_controls_included=False,
             total_capacity_rows=len(capacities),
