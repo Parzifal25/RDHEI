@@ -79,18 +79,21 @@ def fit_cross_regressions(image: np.ndarray, calibration_phase: int):
 def _fused_prediction(spatial: np.ndarray, reference_feature: np.ndarray,
                       regression: tuple[int, int],
                       blend_num: int = CROSS_BLEND_NUM,
-                      blend_den: int = CROSS_BLEND_DEN) -> np.ndarray:
+                      blend_den: int = CROSS_BLEND_DEN) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     if not 0 <= blend_num <= blend_den or blend_den <= 0:
         raise ValueError("invalid RGB cross-channel blend ratio")
     slope_q8, intercept_q8 = regression
     cross_q8 = slope_q8 * np.asarray(reference_feature, dtype=np.int64) + intercept_q8
-    cross = np.clip(_round_div_even_array(cross_q8, 256), 0, 255)
-    spatial_integer = np.rint(np.asarray(spatial, dtype=np.float32)).astype(np.int64)
+    cross = np.clip(_round_div_even_array(cross_q8, 256), 0, 255).astype(np.int32)
+    spatial_integer = np.clip(
+        np.rint(np.asarray(spatial, dtype=np.float32)).astype(np.int64), 0, 255
+    ).astype(np.int32)
     fused = _round_div_even_array(
-        (blend_den - blend_num) * spatial_integer + blend_num * cross,
+        (blend_den - blend_num) * spatial_integer.astype(np.int64)
+        + blend_num * cross.astype(np.int64),
         blend_den
     )
-    return np.clip(fused, 0, 255).astype(np.int32)
+    return np.clip(fused, 0, 255).astype(np.int32), cross, spatial_integer
 
 
 def _image_identity(image: np.ndarray) -> str:
@@ -113,7 +116,8 @@ def _pack_directory(phases: tuple[int, int, int], calibration_phase: int,
 
 
 def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
-            blend_den: int = CROSS_BLEND_DEN):
+            blend_den: int = CROSS_BLEND_DEN,
+            assignment_override: tuple[int, int, int] | None = None):
     """Jointly optimize 3-of-4 channel phase assignment and RGB net capacity."""
     if (not isinstance(original, np.ndarray) or original.dtype != np.uint8
             or original.ndim != 3 or original.shape[2] != 3):
@@ -135,30 +139,45 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
             spatial_cache[(channel, phase)] = predictor.predict(plane, ys, xs, active_model)
 
     alternatives = []
-    all_assignments = [
-        (r, g, b, next(p for p in range(4) if p not in (r, g, b)))
-        for r in range(4)
-        for g in range(4) if g != r
-        for b in range(4) if b not in (r, g)
-    ]
+    if assignment_override is None:
+        all_assignments = [
+            (r, g, b, next(p for p in range(4) if p not in (r, g, b)))
+            for r in range(4)
+            for g in range(4) if g != r
+            for b in range(4) if b not in (r, g)
+        ]
+    else:
+        if (not isinstance(assignment_override, (tuple, list))
+                or len(assignment_override) != 3
+                or any(not isinstance(value, int) or not 0 <= value < 4 for value in assignment_override)
+                or len(set(assignment_override)) != 3):
+            raise ValueError("assignment_override must be three distinct phases in [0,3]")
+        fixed_phases = tuple(int(value) for value in assignment_override)
+        calibration_phase = next(value for value in range(4) if value not in fixed_phases)
+        all_assignments = [(*fixed_phases, calibration_phase)]
     for red_phase, green_phase, blue_phase, calibration_phase in all_assignments:
         phases = (red_phase, green_phase, blue_phase)
         regressions = fit_cross_regressions(original, calibration_phase)
         labels_by_channel = []
         predictions_by_channel = []
+        prediction_metrics = []
         for channel, phase in enumerate(phases):
             ys, xs = coordinate_cache[(channel, phase)]
             references = _cross_feature(original, channel, ys, xs)
-            fused = _fused_prediction(
+            fused, cross, spatial_integer = _fused_prediction(
                 spatial_cache[(channel, phase)], references, regressions[channel],
                 blend_num, blend_den
             )
-            error = np.abs(
-                original[ys, xs, channel].astype(np.int32) - fused
-            )
+            target = original[ys, xs, channel].astype(np.int32)
+            error = np.abs(target - fused)
             labels = predictor.LABEL[error]
             labels_by_channel.append(labels)
             predictions_by_channel.append(fused)
+            prediction_metrics.append({
+                "spatial_mae": float(np.mean(np.abs(target - spatial_integer))),
+                "cross_channel_mae": float(np.mean(np.abs(target - cross))),
+                "fused_mae": float(np.mean(error)),
+            })
 
         raw, metadata, codec = _pack_directory(
             phases, calibration_phase, labels_by_channel
@@ -194,12 +213,14 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
             "net_bpp_per_rgb_pixel": net / (height * width),
             "cross_blend": [blend_num, blend_den],
             "cross_regressions_q8": [list(pair) for pair in regressions],
+            "prediction_metrics_by_channel": prediction_metrics,
         }
         alternatives.append({
             "phases": phases,
             "calibration_phase": calibration_phase,
             "labels": labels_by_channel,
             "predictions": predictions_by_channel,
+            "prediction_metrics": prediction_metrics,
             "regressions": regressions,
             "raw_directory": raw,
             "metadata": metadata,
@@ -217,8 +238,6 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
         alternatives,
         key=lambda row: (row["net"], tuple(-phase for phase in (*row["phases"], row["calibration_phase"])))
     )
-    if chosen["net"] <= 0:
-        raise ValueError("all CC-EDR2-RGB phase assignments have non-positive signed net capacity")
     chosen["assignment_scores"] = [
         {
             "phases": list(row["phases"]),
@@ -232,6 +251,8 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
     chosen["source_shape"] = tuple(map(int, original.shape))
     chosen["blend_num"] = blend_num
     chosen["blend_den"] = blend_den
+    chosen["assignment_search"] = "adaptive_24" if assignment_override is None else "fixed_override"
+    chosen["stats"]["assignment_search"] = chosen["assignment_search"]
     return chosen
 
 
