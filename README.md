@@ -55,6 +55,17 @@ For every accepted natural image, the runner records gross ordinary slots, boots
 
 The full corpus job is opt-in via GitHub Actions workflow dispatch. The exact original six baseline files must be available on this branch. The default CI path runs compile and unit tests only.
 
+### Publication-hardening artifacts
+
+- `EDR2_RESEARCH_POSITIONING.md` records the narrow contribution hypothesis, finite-domain lattice argument, prior-art checklist, experimental requirements, limitations and paper-writing gate.
+- `final_rdhei_protocol_gate_20261022/natural_image_allowlist.example.json` documents the schema for manual natural-image curation. It is a template, not a valid allowlist.
+- `tests/test_mapping.py` now uses real assertions and exhaustively checks all 65,536 original/prediction pairs and all 396,032 valid payload words under the deployed map.
+- `tests/test_edr2_publication_hardening.py` checks the maximal-density lattice, header framing, image-state binding and corpus allowlist enforcement.
+- `tests/test_edr2_receiver_only.py` checks receiver inputs, encrypted packet recovery and related protocol controls. Generated images in tests are unit fixtures only.
+- `.github/workflows/edr2-natural-image-gate.yml` runs these tests on the publication-hardening branch.
+
+Historical EDR1 synthetic-control results are preserved only as archived experiment history. They are excluded from EDR2 paper-facing results, aggregates and figures. No synthetic image may enter the paper corpus through an unreviewed directory.
+
 ### Training status and frozen-checkpoint provenance
 
 **No retraining is part of this EDR2 revision.** The existing residual CNN-3×3 checkpoint remains frozen; its SHA-256 is recorded at run time in the protocol identity and model identity files. The author confirms that the existing models were trained using 10,000 BOSSBase grayscale images. The current project does not contain the original per-checkpoint image manifest, training logs or complete split record, so the corpus and schedule are author-attested rather than independently reconstructed from the binary checkpoint.
