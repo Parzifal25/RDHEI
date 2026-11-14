@@ -69,14 +69,15 @@ def test_rgb_keys_are_domain_separated_for_each_channel():
     assert rgb_wire.keys(master, nonce) == keys
 
 
-def test_rgb_exact_roundtrip_payload_and_authenticated_phase_discovery(monkeypatch):
+@pytest.mark.parametrize("blend_num", [0, 1, 2, 3])
+def test_rgb_exact_roundtrip_payload_and_authenticated_phase_discovery(monkeypatch, blend_num):
     monkeypatch.setattr(predictor, "model", lambda: object())
     monkeypatch.setattr(predictor, "predict", fake_spatial)
     original = constant_rgb()
     master = bytes(range(32))
     nonce = 0x102030405060708090A0B0C0D0E0F123
 
-    prepared = rgb_protocol.prepare(original)
+    prepared = rgb_protocol.prepare(original, blend_num=blend_num, blend_den=4)
     assert prepared["net"] > 0
     assert len(set(prepared["phases"])) == 3
     assert prepared["calibration_phase"] not in prepared["phases"]
@@ -86,6 +87,8 @@ def test_rgb_exact_roundtrip_payload_and_authenticated_phase_discovery(monkeypat
     inspected = rgb_wire.inspect(reserved, hider, stage="bootstrap")
     assert inspected["phases"] == prepared["phases"]
     assert inspected["calibration_phase"] == prepared["calibration_phase"]
+    assert inspected["blend_num"] == blend_num
+    assert inspected["blend_den"] == 4
 
     payload = np.random.default_rng(19).integers(0, 2, 137, dtype=np.uint8)
     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
@@ -188,11 +191,12 @@ def test_rgb_adaptive_search_evaluates_all_24_ordered_phase_assignments(monkeypa
                for row in prepared["assignment_scores"])
 
 
-def test_rgb_real_frozen_checkpoint_roundtrip_on_controlled_colour_image():
+@pytest.mark.parametrize("blend_num", [0, 1, 2, 3])
+def test_rgb_real_frozen_checkpoint_roundtrip_on_controlled_colour_image(blend_num):
     # Uses the actual frozen 3x3 CNN checkpoint, not the mocked predictor used
     # by the fast protocol-isolation tests above.
     original = constant_rgb(128, 128)
-    prepared = rgb_protocol.prepare(original, blend_num=1, blend_den=4)
+    prepared = rgb_protocol.prepare(original, blend_num=blend_num, blend_den=4)
     assert prepared["net"] > 0
     assert len(prepared["prediction_metrics"]) == 3
     assert all(
@@ -203,7 +207,7 @@ def test_rgb_real_frozen_checkpoint_roundtrip_on_controlled_colour_image():
     )
 
     master = bytes(range(32))
-    nonce = 0x1234567890ABCDEF1122334455667788
+    nonce = 0x1234567890ABCDEF1122334455667788 + blend_num
     reserved, capability = rgb_protocol.reserve(
         original, master, nonce, prepared=prepared
     )
