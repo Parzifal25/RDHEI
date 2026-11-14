@@ -41,9 +41,9 @@ def test_archive_inventory_detects_legacy_filename_and_preserves_bytes(tmp_path)
     )
     assert skipped == []
     assert len(images) == 1
-    expected = output / "textures" / "textures" / "1.1.01.p512.tiff"
+    expected = output / "textures" / "1.1.01.p512.tiff"
     assert expected.read_bytes() == raw
-    assert images[0]["path"] == "textures/textures/1.1.01.p512.tiff"
+    assert images[0]["path"] == "textures/1.1.01.p512.tiff"
     assert images[0]["file_sha256"] == hashlib.sha256(raw).hexdigest()
     np.testing.assert_array_equal(np.asarray(Image.open(expected)), pixels)
 
