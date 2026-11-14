@@ -393,7 +393,10 @@ def capacity_row(image, q, seconds):
         fixed_header_bits=int(stats["fixed_header_bits"]),
         authentication_bits=int(stats["authentication_bits"]),
         selected_lattice_phase=int(q["phase"]),
-        phase_net_capacity_bits=q["phase_net_bits"],
+        phase0_net_capacity_bits=q["phase_net_bits"][0],
+        phase1_net_capacity_bits=q["phase_net_bits"][1],
+        phase2_net_capacity_bits=q["phase_net_bits"][2],
+        phase3_net_capacity_bits=q["phase_net_bits"][3],
         phase_selection_gain_bits=(
             int(q["net"]) - int(q["phase_net_bits"][0])
             if q["phase_net_bits"][0] is not None else None
@@ -697,6 +700,10 @@ def main():
         "accepted", "rejection_reason", "prepare_seconds", "codec",
         "compressed_directory_bytes", "bootstrap_candidates",
         "fixed_header_bits", "authentication_bits",
+        "selected_lattice_phase",
+        "phase0_net_capacity_bits", "phase1_net_capacity_bits",
+        "phase2_net_capacity_bits", "phase3_net_capacity_bits",
+        "phase_selection_gain_bits", "candidate_fraction",
     ]
     save_csv("capacity_summary.csv", capacities, capacity_fields)
     roundtrip_fields = [
