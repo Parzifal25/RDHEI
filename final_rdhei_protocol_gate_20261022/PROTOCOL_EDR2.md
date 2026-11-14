@@ -55,28 +55,28 @@ The current EDR2 implementation supports same-size two-dimensional 8-bit graysca
 
 Candidate centers are row-major and lie on the fixed step-2 lattice:
 
-    y in range(2, height-2, 2)
-    x in range(2, width-2, 2)
+    y in range(1, height-1, 2)
+    x in range(1, width-1, 2)
 
 Only these candidate-center bytes are mutable. A 3x3 masked predictor has Chebyshev radius one. Distinct step-2 lattice centers are separated by at least two pixels in at least one coordinate, so no other mutable candidate center can occur inside a candidate's 3x3 predictor patch. Consequently, changing any candidate center—including bootstrap carriers—does not alter the masked predictor input of any other candidate. This is the synchronization condition used by both owner and receiver.
 
-For a 512x512 image with the fixed two-pixel border, the lattice contains 254x254 = 64,516 candidate centers (24.61% of all image pixels). The previous step-3 lattice contained 170x170 = 28,900 candidates (11.02%). The step-2 lattice has asymptotic density 1/4. The 64,516 figure is a geometric candidate count, not a measured net payload capacity.
+The one-pixel border is the minimum required to extract a complete 3x3 patch without padding. The finite lattice is maximal for this square-neighbourhood constraint: each disjoint 2x2 tile of valid centre positions can contain at most one mutable centre, while the step-2 lattice attains that bound. For a 512x512 image, the valid-centre domain is 510x510 and the lattice contains 255x255 = 65,025 candidate centres (24.81% of all image pixels). The previous step-3 lattice contained 170x170 = 28,900 candidates (11.02%). This is a geometric candidate count, not a measured net payload capacity.
 
 For each candidate i, the owner predicts p_i, rounds using the fixed nearest-even rule, and computes the absolute error e_i. The existing allocation function maps e_i to a tuple (n_i, lo_i, hi_i), where n_i is the number of MSBs available for replacement and [lo_i, hi_i] is the admissible error interval used in recovery. The 15 distinct tuples are lexicographically sorted into a fixed codebook. One 4-bit class label is stored per candidate, two labels per byte, high nibble first; an unused final low nibble is zero. The packed directory is compressed with zlib level 9 only when the compressed result is strictly shorter than the raw packed directory.
 
 ## 5. In-band encrypted packet format
 
-The first 20 candidate bytes carry a fixed-width header using the big-endian structure >4sB3xIQ:
+The first 20 candidate bytes carry a fixed-width header using the big-endian structure >4sB3sIQ:
 
 | Field | Size | Meaning |
 |---|---:|---|
 | Magic | 4 bytes | EDR2 |
 | Directory codec | 1 byte | 0 raw packed labels; 1 zlib-compressed labels |
-| Reserved | 3 bytes | Must be zero |
+| Reserved | 3 bytes | Must decode to three zero bytes; otherwise reject |
 | Directory length L | 4 bytes | Encrypted directory length in bytes |
 | Payload length P | 8 bytes | User payload length in bits |
 
-The 20-byte header is encrypted in-band using AES-256-CTR. The owner uses K_header_bootstrap for its reservation packet. After verifying and decrypting the bootstrap header, the hider writes the completed header using the distinct K_header_final. The receiver derives K_header_final from K and V. The distinct header keys prevent reservation/final header keystream reuse.
+The 20-byte header is encrypted in-band using AES-256-CTR. The parser validates that all three reserved bytes are zero before using the directory length. The owner uses K_header_bootstrap for its reservation packet. After verifying and decrypting the bootstrap header, the hider writes the completed header using the distinct K_header_final. The receiver derives K_header_final from K and V. The distinct header keys prevent reservation/final header keystream reuse.
 
 The next L candidate bytes contain the encrypted packed label directory. The next 32 candidate bytes contain an HMAC-SHA256 authentication tag. Therefore the total bootstrap is:
 
