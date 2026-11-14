@@ -86,8 +86,7 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             continue
         volume = parts[0].lower()
         archive_member = Path(str(row.get("archive_member", ""))).name
-        member_stem = Path(archive_member).stem.lower()
-        exclusion = EXCLUSIONS.get((volume, member_stem))
+        exclusion = EXCLUSIONS.get((volume, archive_member.lower()))
         if exclusion:
             excluded.append({"path": rel, "archive_member": archive_member, "reason": exclusion})
             continue
@@ -145,7 +144,9 @@ def create_allowlist(manifest_path: Path, output_path: Path) -> dict:
             "volumes, and duplicate decoded pixels are excluded. Textures, rotated "
             "texture series, aerial imagery, miscellaneous imagery, and sequence frames "
             "remain tagged in separate corpus groups; related variants and adjacent "
-            "frames must not be treated as independent observations."
+            "frames must not be treated as independent observations. USC-SIPI's "
+            "copyright notes contain mixed and sometimes unknown per-image rights; "
+            "this experiment manifest is not permission to redistribute source images."
         ),
         "accepted_image_count_before_pixel_deduplication": len(accepted),
         "excluded_catalogue_or_format_candidates": excluded,
