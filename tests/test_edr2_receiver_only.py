@@ -42,9 +42,11 @@ def test_one_derived_hider_key_is_separate_from_image_key():
     assert keys["image"] != keys["hider"]
 
     hider_keys = wire.hider_keys(keys["hider"])
-    assert set(hider_keys) == {"directory", "payload", "auth"}
+    assert set(hider_keys) == {
+        "header_bootstrap", "header_final", "directory", "payload", "auth"
+    }
     assert all(len(value) == 32 for value in hider_keys.values())
-    assert len(set(hider_keys.values())) == 3
+    assert len(set(hider_keys.values())) == len(hider_keys)
     assert keys["image"] not in hider_keys.values()
 
 
@@ -169,3 +171,72 @@ def test_sipi_preparer_keeps_only_native_gray_and_confines_archive_paths(tmp_pat
     with Image.open(output_root / "fixture_volume" / "native_gray.tiff") as image:
         assert image.mode == "L"
         assert np.asarray(image).dtype == np.uint8
+
+
+
+def test_safe_zone_grid_is_synchronization_safe_and_maximally_dense():
+    y, x = wire.grid((512, 512))
+    assert len(y) == 254 * 254
+    assert np.all(np.diff(np.unique(y)) == 2)
+    assert np.all(np.diff(np.unique(x)) == 2)
+
+    coords = set(zip(y.tolist(), x.tolist()))
+    for cy, cx in list(coords)[::97]:
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy or dx:
+                    assert (cy + dy, cx + dx) not in coords
+
+    # A 3x3 predictor centered at each candidate has a 2x2 disjoint
+    # witness tile per center; therefore no safe lattice can exceed 1/4
+    # density. The step-2 lattice approaches that bound at image borders.
+    assert len(coords) / (512 * 512) == pytest.approx(64516 / 262144)
+    y3, x3 = np.meshgrid(np.arange(2, 510, 3), np.arange(2, 510, 3), indexing="ij")
+    assert len(y) > y3.size
+    assert len(y) / y3.size == pytest.approx(64516 / 28900)
+
+
+def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_header():
+    original = np.full((128, 128), 128, dtype=np.uint8)
+    master = bytes(range(32))
+    nonce = 0x102030405060708090A0B0C0D0E0F001
+    prepared = protocol.prepare(original)
+    assert prepared["net"] > 0
+
+    reserved, owner_capability = protocol.reserve(
+        original, master, nonce, prepared=prepared
+    )
+    hider_capability = wire.hider_keys(owner_capability["hider"])
+
+    bootstrap = wire.inspect(reserved, hider_capability, header_stage="bootstrap")
+    header_ciphertext = reserved[
+        bootstrap["y"][:wire.HEADER_BYTES], bootstrap["x"][:wire.HEADER_BYTES]
+    ].tobytes()
+    assert header_ciphertext != wire.HEADER.pack(
+        wire.PROTOCOL_MAGIC, bootstrap["mode"], bootstrap["length"], 0
+    )
+
+    rng = np.random.default_rng(20261114)
+    payload = rng.integers(0, 2, 37, dtype=np.uint8)
+    marked = wire.embed(reserved, payload, hider_capability)
+    final_packet = wire.inspect(marked, hider_capability, header_stage="final")
+    assert final_packet["plen"] == len(payload)
+    final_header_ciphertext = marked[
+        final_packet["y"][:wire.HEADER_BYTES],
+        final_packet["x"][:wire.HEADER_BYTES],
+    ].tobytes()
+    assert final_header_ciphertext != header_ciphertext
+
+    recovered, extracted = protocol.receive(marked, master, nonce)
+    assert np.array_equal(recovered, original)
+    assert np.array_equal(extracted, payload)
+
+    # Wrong K, wrong V, and any marked-image modification must fail closed.
+    with pytest.raises(ValueError):
+        protocol.receive(marked, bytes(32), nonce)
+    with pytest.raises(ValueError):
+        protocol.receive(marked, master, nonce + 1)
+    tampered = marked.copy()
+    tampered[0, 0] ^= 1
+    with pytest.raises(ValueError):
+        protocol.receive(tampered, master, nonce)
