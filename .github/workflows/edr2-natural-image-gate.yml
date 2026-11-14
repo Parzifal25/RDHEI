@@ -5,6 +5,7 @@ on:
     branches:
       - research/capacity-aware-edr1
       - research/edr2-publication-hardening
+      - research/edr2-full-corpus-execution
     paths:
       - ".github/workflows/edr2-natural-image-gate.yml"
       - "final_rdhei_protocol_gate_20261022/**"
@@ -77,7 +78,7 @@ jobs:
             tests/test_edr2_paper_report.py
 
   full-natural-image-corpus:
-    if: ${{ inputs.run_full_corpus == true }}
+    if: ${{ github.event_name == 'push' || inputs.run_full_corpus == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -143,7 +144,7 @@ jobs:
           fi
 
       - name: Run matched fixed-phase ablations (phases 0-3)
-        if: ${{ inputs.run_fixed_phase_ablation == true }}
+        if: ${{ github.event_name == 'push' || inputs.run_fixed_phase_ablation == true }}
         run: |
           set -euo pipefail
           BASELINE_READY=1
@@ -172,7 +173,7 @@ jobs:
           done
 
       - name: Analyze fixed phases and correlation-clustered capacity
-        if: ${{ inputs.run_fixed_phase_ablation == true }}
+        if: ${{ github.event_name == 'push' || inputs.run_fixed_phase_ablation == true }}
         run: |
           python final_rdhei_protocol_gate_20261022/analyze_edr2_evidence.py \
             --adaptive-dir /tmp/edr2-full-natural-corpus-evidence \
@@ -180,7 +181,7 @@ jobs:
             --output-dir /tmp/edr2-publication-analysis
 
       - name: Build paper-facing experimental report from run ledgers
-        if: ${{ inputs.run_fixed_phase_ablation == true }}
+        if: ${{ github.event_name == 'push' || inputs.run_fixed_phase_ablation == true }}
         run: |
           mkdir -p /tmp/edr2-paper-report
           python final_rdhei_protocol_gate_20261022/build_edr2_paper_report.py \
@@ -228,7 +229,7 @@ jobs:
           retention-days: 30
 
       - name: Upload paper-facing phase and correlation analysis
-        if: always() && inputs.run_fixed_phase_ablation == true
+        if: always() && (github.event_name == 'push' || inputs.run_fixed_phase_ablation == true)
         uses: actions/upload-artifact@v4
         with:
           name: edr2-publication-analysis
@@ -237,7 +238,7 @@ jobs:
           retention-days: 30
 
       - name: Upload fixed-phase ablation evidence
-        if: always() && inputs.run_fixed_phase_ablation == true
+        if: always() && (github.event_name == 'push' || inputs.run_fixed_phase_ablation == true)
         uses: actions/upload-artifact@v4
         with:
           name: edr2-fixed-phase-ablation-evidence
@@ -263,7 +264,7 @@ jobs:
           retention-days: 30
 
       - name: Upload final report and literature evidence
-        if: always() && inputs.run_fixed_phase_ablation == true
+        if: always() && (github.event_name == 'push' || inputs.run_fixed_phase_ablation == true)
         uses: actions/upload-artifact@v4
         with:
           name: edr2-final-paper-writing-report
