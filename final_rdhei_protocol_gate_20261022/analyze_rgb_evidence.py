@@ -31,8 +31,8 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
         "image", "pixels_sha256", "status", "signed_net_capacity_bits",
     }
     roundtrip_required = {
-        "image", "pixels_sha256", "case", "payload_bits", "net_capacity_bits",
-        "image_exact", "payload_exact", "passed",
+        "image", "pixels_sha256", "blend_num", "blend_den", "case",
+        "payload_bits", "net_capacity_bits", "image_exact", "payload_exact", "passed",
     }
     assignment_required = {
         "image", "pixels_sha256", "blend_num", "blend_den",
@@ -84,28 +84,43 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
         raise ValueError("run summary successful round-trip count does not match the ledger")
 
     for image, row in capacity_by_image.iterrows():
-        net = int(row["signed_net_capacity_bits"])
-        cases = roundtrip[roundtrip["image"].astype(str) == str(image)]
-        if net <= 0:
-            if row["status"] != "rejected_nonpositive_net_capacity" or not cases.empty:
-                raise ValueError(f"{image}: invalid handling of non-positive net capacity")
-            continue
-        if row["status"] != "roundtrip_passed" or cases.empty:
-            raise ValueError(f"{image}: positive-capacity input lacks a passing round-trip ledger")
-        lengths = set(pd.to_numeric(cases["payload_bits"], errors="raise").astype(int))
-        expected_lengths = {
-            min(requested, net) for requested in (0, 1, 7, 8, 9, 37, 137)
-        }
-        expected_lengths.update({max(0, net - 1), net})
-        if lengths != expected_lengths:
-            raise ValueError(
-                f"{image}: payload-boundary ledger mismatch; "
-                f"expected {sorted(expected_lengths)}, observed {sorted(lengths)}"
-            )
-        if not (pd.to_numeric(cases["net_capacity_bits"], errors="raise").astype(int) == net).all():
-            raise ValueError(f"{image}: round-trip capacity differs from the capacity ledger")
-        if (pd.to_numeric(cases["payload_bits"], errors="raise") > net).any():
-            raise ValueError(f"{image}: round-trip payload exceeds signed net capacity")
+        for blend in BLENDS:
+            blend_net = int(row[f"blend_{blend}_net_capacity_bits"])
+            blend_status = row.get(f"blend_{blend}_status")
+            cases = roundtrip[
+                (roundtrip["image"].astype(str) == str(image))
+                & (pd.to_numeric(roundtrip["blend_num"], errors="raise").astype(int) == blend)
+            ]
+            if blend_net <= 0:
+                if blend_status != "rejected_nonpositive_net_capacity" or not cases.empty:
+                    raise ValueError(
+                        f"{image}: invalid rejection ledger for blend {blend}/4"
+                    )
+                continue
+            if blend_status != "roundtrip_passed" or cases.empty:
+                raise ValueError(
+                    f"{image}: positive-capacity blend {blend}/4 lacks exact-recovery tests"
+                )
+            lengths = set(pd.to_numeric(cases["payload_bits"], errors="raise").astype(int))
+            expected_lengths = {
+                min(requested, blend_net) for requested in (0, 1, 7, 8, 9, 37, 137)
+            }
+            expected_lengths.update({max(0, blend_net - 1), blend_net})
+            if lengths != expected_lengths:
+                raise ValueError(
+                    f"{image}: blend {blend}/4 payload-boundary ledger mismatch; "
+                    f"expected {sorted(expected_lengths)}, observed {sorted(lengths)}"
+                )
+            if not cases["passed_bool"].all() if "passed_bool" in cases else not (
+                cases["passed"].astype(str).str.lower().eq("true").all()
+            ):
+                raise ValueError(f"{image}: failed image/payload exact recovery for blend {blend}/4")
+            if not (pd.to_numeric(cases["net_capacity_bits"], errors="raise").astype(int) == blend_net).all():
+                raise ValueError(
+                    f"{image}: blend {blend}/4 round-trip capacity differs from capacity ledger"
+                )
+            if set(pd.to_numeric(cases["blend_den"], errors="raise").astype(int)) != {4}:
+                raise ValueError(f"{image}: unexpected blend denominator in round-trip ledger")
 
     # Each accepted image must have all four predeclared blend settings, and
     # every setting must expose all 24 ordered phase assignments.
@@ -231,12 +246,15 @@ def main():
     assignment_details = pd.DataFrame(detailed_assignment_rows)
 
     roundtrip["passed_bool"] = roundtrip["passed"].astype(str).str.lower().eq("true")
-    rt_summary = roundtrip.groupby("case", sort=False).agg(
+    rt_summary = roundtrip.groupby(["blend_num", "case"], sort=False).agg(
         tests=("image", "count"),
         passed=("passed_bool", "sum"),
         payload_bits_min=("payload_bits", "min"),
         payload_bits_max=("payload_bits", "max"),
     ).reset_index()
+    rt_summary["cross_blend"] = rt_summary["blend_num"].map(
+        lambda value: f"{int(value)}/4"
+    )
     rt_summary["failed"] = rt_summary["tests"] - rt_summary["passed"]
 
     capacity.to_csv(output / "rgb_per_image_capacity_and_prediction.csv", index=False)
@@ -317,7 +335,7 @@ def main():
         "",
         "The four lattice phases are assigned to R/G/B in all 24 ordered permutations; the remaining phase is an untouched common calibration lattice. The fixed assignment (0,1,2) is compared with adaptive selection. The frozen grayscale 3×3 CNN checkpoint is reused independently in each channel; no RGB retraining is performed.",
         "",
-        "The 0/4 blend is the independent spatial-CNN baseline. The 1/4, 2/4 and 3/4 blends test deterministic cross-channel regression fusion. Report both per-channel MAE and aggregate signed net capacity. A lower MAE alone is not proof of higher net capacity.",
+        "The 0/4 blend is the independent spatial-CNN baseline. The 1/4, 2/4 and 3/4 blends test deterministic cross-channel regression fusion. Every positive-capacity blend was independently reserved, embedded and received with fresh packet nonces; the exact-recovery table is stratified by blend and payload boundary. Report both per-channel MAE and aggregate signed net capacity. A lower MAE alone is not proof of higher net capacity.",
         "",
         "Only images with positive signed net capacity can carry payload. Rejections remain in the denominator. Net bpp is measured per RGB pixel, not per channel sample.",
         "",
