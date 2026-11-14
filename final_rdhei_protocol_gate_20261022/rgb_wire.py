@@ -57,6 +57,26 @@ def crypt(data: bytes, key: bytes) -> bytes:
     return AES.new(key, AES.MODE_CTR, nonce=b"", initial_value=0).encrypt(data)
 
 
+def crypt_bits(bits: np.ndarray, key: bytes) -> np.ndarray:
+    """AES-CTR XOR over an exact bit length, including a partial final byte.
+
+    Encrypting packed plaintext bytes and then discarding ciphertext padding
+    bits is not reversible. Instead, generate the byte-aligned CTR keystream
+    and XOR only the requested number of bits. CTR encryption and decryption
+    are the same operation.
+    """
+    values = np.asarray(bits, dtype=np.uint8)
+    if values.ndim != 1 or np.any((values != 0) & (values != 1)):
+        raise ValueError("crypt_bits requires a one-dimensional binary sequence")
+    if not len(values):
+        return values.copy()
+    stream_bytes = (len(values) + 7) // 8
+    keystream = np.unpackbits(
+        np.frombuffer(crypt(bytes(stream_bytes), key), dtype=np.uint8)
+    )[:len(values)]
+    return np.bitwise_xor(values, keystream).astype(np.uint8, copy=False)
+
+
 def _header_key(capability: dict, stage: str) -> bytes:
     if stage == "bootstrap":
         return capability["header_bootstrap"]
@@ -278,9 +298,7 @@ def embed(reserved: np.ndarray, payload: np.ndarray, capability: dict) -> np.nda
     if len(payload) > q["net"]:
         raise ValueError("RGB payload exceeds aggregate net capacity")
     plain = np.pad(payload.astype(np.uint8), (0, q["net"] - len(payload)))
-    cipher = np.unpackbits(np.frombuffer(
-        crypt(np.packbits(plain).tobytes(), capability["payload"]), dtype=np.uint8
-    ))[:q["net"]]
+    cipher = crypt_bits(plain, capability["payload"])
     out = reserved.copy()
     writebits(out, q["positions"], cipher, start=q["backup_bits"])
     header = encode_header(q["codec"], q["directory_length"], len(payload), capability, "final")
