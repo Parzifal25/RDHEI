@@ -240,7 +240,7 @@ Paper writing should begin only after all of the following are complete:
 
 1. `pytest -q` passes, including the assert-based exhaustive mapping and new EDR2 tests.
 2. The 6-image natural baseline gate completes with all accepted and rejected records.
-3. The manually curated expanded natural-image corpus gate completes, if that corpus is used.
+3. The catalogue-curated expanded USC-SIPI corpus gate completes, if that corpus is used.
 4. The step-2 versus step-3 matched ablation is measured.
 5. The receiver-only input audit, payload-boundary tests and all negative security tests pass.
 6. Per-image net capacity and all aggregates are recomputed from raw result files.
