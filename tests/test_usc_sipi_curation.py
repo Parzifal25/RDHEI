@@ -104,6 +104,9 @@ def test_allowlist_curation_excludes_maps_charts_and_odd_sizes(tmp_path):
     add("misc", "chart.tiff", "5.1.13", even + 2)
     add("misc", "odd.tiff", "5.1.14", odd)
     add("sequences", "frame.tiff", "6.1.01", even + 3)
+    add("sequences", "sequence_6_2_frame_16.tiff", "6.2.16", even + 6)
+    add("sequences", "sequence_6_2_frame_17.tiff", "6.2.17", even + 7)
+    add("sequences", "motion_frame.tiff", "motion01.512", even + 8)
 
     manifest = {
         "dataset": "USC-SIPI Image Database",
@@ -118,14 +121,23 @@ def test_allowlist_curation_excludes_maps_charts_and_odd_sizes(tmp_path):
     accepted = {row["path"]: row for row in result["images"]}
     assert set(accepted) == {
         "textures/sample.tiff", "textures/mosaic.tiff",
-        "textures/catalogue_mosaic.tiff", "sequences/frame.tiff"
+        "textures/catalogue_mosaic.tiff", "sequences/frame.tiff",
+        "sequences/sequence_6_2_frame_16.tiff",
+        "sequences/sequence_6_2_frame_17.tiff",
+        "sequences/motion_frame.tiff"
     }
     assert accepted["textures/sample.tiff"]["corpus_group"] == "texture_scans_and_mosaics"
     assert accepted["textures/mosaic.tiff"]["classification"] == "constructed"
     assert accepted["textures/mosaic.tiff"]["corpus_group"] == "constructed_texture_mosaics"
     assert accepted["textures/catalogue_mosaic.tiff"]["classification"] == "constructed"
     assert accepted["textures/catalogue_mosaic.tiff"]["corpus_group"] == "constructed_texture_mosaics"
-    assert accepted["sequences/frame.tiff"]["corpus_group"] == "monochrome_sequence_frames"
+    assert accepted["sequences/frame.tiff"]["corpus_group"] == "sequence_6_1_walter_cronkite"
+    assert accepted["sequences/frame.tiff"]["correlation_cluster"] == "sequence_6.1"
+    assert accepted["sequences/sequence_6_2_frame_16.tiff"]["corpus_group"] == "sequence_6_2_true_motion_frames_01_16"
+    assert accepted["sequences/sequence_6_2_frame_17.tiff"]["corpus_group"] == "sequence_6_2_undirected_frames_17_32"
+    assert accepted["sequences/sequence_6_2_frame_16.tiff"]["correlation_cluster"] == "sequence_6.2"
+    assert accepted["sequences/sequence_6_2_frame_17.tiff"]["correlation_cluster"] == "sequence_6.2"
+    assert accepted["sequences/motion_frame.tiff"]["corpus_group"] == "sequence_motion_toy_vehicles"
     reasons = {row["path"]: row["reason"] for row in result["excluded_catalogue_or_format_candidates"]}
     assert "segmentation-information map" in reasons["textures/map.tiff"]
     assert "resolution/calibration chart" in reasons["misc/chart.tiff"]
