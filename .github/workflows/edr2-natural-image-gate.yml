@@ -65,7 +65,7 @@ jobs:
             tests/test_usc_sipi_curation.py
 
   full-natural-image-corpus:
-    if: \${{ inputs.run_full_corpus == true }}
+    if: ${{ inputs.run_full_corpus == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
