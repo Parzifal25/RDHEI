@@ -242,3 +242,48 @@ def test_capacity_row_derives_candidate_fraction_from_counts():
     assert row["pixels"] == 100
     assert row["candidate_fraction"] == pytest.approx(0.25)
     assert row["net_capacity_bits"] == 340
+
+
+def test_edr2_allocation_is_pixel_unique_for_every_original_prediction_pair_and_payload_word():
+    """Exhaust the active EDR2 map, not the separate legacy src/rdhei_core map."""
+    tested_pairs = 0
+    tested_payload_words = 0
+
+    for prediction in range(256):
+        for original in range(256):
+            error = abs(original - prediction)
+            n, low, high = wire.allocation(error)
+            label = int(predictor.LABEL[error])
+            assert tuple(map(int, wire.BOOK[label])) == (n, low, high)
+            tested_pairs += 1
+
+            if n == 0:
+                continue
+
+            modulus = 1 << (8 - n)
+            residue = original & (modulus - 1)
+            candidates = [
+                candidate for candidate in range(residue, 256, modulus)
+                if low <= abs(candidate - prediction) <= high
+            ]
+            assert candidates == [original], (
+                f"EDR2 mapping is not unique: original={original}, "
+                f"prediction={prediction}, error={error}, label={(n, low, high)}, "
+                f"candidates={candidates}"
+            )
+
+            # Exhaust every possible n-bit payload word. The lower residue is
+            # preserved by MSB replacement and the decoder must still identify x.
+            for payload_word in range(1 << n):
+                marked = residue | (payload_word << (8 - n))
+                assert marked >> (8 - n) == payload_word
+                marked_residue = marked & (modulus - 1)
+                recovered_candidates = [
+                    candidate for candidate in range(marked_residue, 256, modulus)
+                    if low <= abs(candidate - prediction) <= high
+                ]
+                assert recovered_candidates == [original]
+                tested_payload_words += 1
+
+    assert tested_pairs == 65_536
+    assert tested_payload_words == 379_136
