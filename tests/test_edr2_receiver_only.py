@@ -17,6 +17,8 @@ import protocol  # noqa: E402
 import run_gate  # noqa: E402
 import wire  # noqa: E402
 import prepare_usc_sipi_gray as prepare_sipi  # noqa: E402
+from src.cnn_model import build_model  # noqa: E402
+from src.train import LazyPatchDataset, load_native_gray_images, split_by_source_image  # noqa: E402
 
 
 def write_gray(path: Path, value: int, shape=(12, 12)):
@@ -240,3 +242,30 @@ def test_edr2_roundtrip_uses_only_receiver_image_master_nonce_and_encrypted_head
     tampered[0, 0] ^= 1
     with pytest.raises(ValueError):
         protocol.receive(tampered, master, nonce)
+
+
+
+def test_training_uses_image_level_split_and_lazy_patch_extraction(tmp_path):
+    records = []
+    for index in range(10):
+        path = tmp_path / f"training_{index:02d}.png"
+        pixels = np.full((16, 16), index * 17, dtype=np.uint8)
+        Image.fromarray(pixels, mode="L").save(path)
+    records = load_native_gray_images(str(tmp_path))
+    train_records, val_records = split_by_source_image(records, 0.2, seed=123)
+    train_paths = {str(record[0]) for record in train_records}
+    val_paths = {str(record[0]) for record in val_records}
+    assert train_paths.isdisjoint(val_paths)
+    assert len(train_paths) + len(val_paths) == 10
+
+    dataset = LazyPatchDataset([train_records[0][1]], patch_size=3, stride=4, augment=False)
+    patch, target = dataset[0]
+    assert tuple(patch.shape) == (1, 3, 3)
+    assert float(patch[0, 1, 1]) == 0.0
+    assert 0.0 <= float(target) <= 255.0
+
+
+def test_cnn_builder_accepts_explicit_three_by_three_cpu_configuration():
+    model = build_model(patch_size=3, residual=True, device="cpu")
+    assert model.patch_size == 3
+    assert sum(parameter.numel() for parameter in model.parameters()) == 46881
