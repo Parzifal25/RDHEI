@@ -66,6 +66,8 @@ The evidence ledger must report gross slots, red bootstrap opportunity cost, met
 
 A new EDR2RGB HKDF context is used. R, G and B image planes receive three independent AES-256-CTR keys derived from the master key and nonce with channel-specific context strings. This avoids reusing one CTR key/keystream across three planes.
 
+Each reservation packet is single-use. A fresh 128-bit nonce is required for every payload insertion under a given master key, including empty and non-byte-aligned payload packets. The corpus runner derives distinct packet nonces from a run-specific random namespace and the image/payload-case identity, and creates a fresh reservation for every distinct payload length. Reusing a reserved packet for multiple payloads is prohibited because it would repeat the payload/header/image CTR keystream domains. Benchmark keys are public test material and are not deployment credentials.
+
 The RGB data-hiding capability and its header-bootstrap, header-final, directory, payload and authentication keys are separately derived under the EDR2RGB context. The grayscale EDR2 key domains are not reused.
 
 The HMAC covers the full marked RGB array, image dimensions and four-phase tuple. The tag is stored in the red bootstrap lattice. The receiver first tests the red header location, then authenticates all six ordered G/B phase assignments possible for that red phase. It must find exactly one valid assignment before decrypting or decompressing the directory. The decrypted directory phase tuple must match the authenticated tuple.
