@@ -47,7 +47,8 @@ def prepare(original, phase_override=None):
     gross, lost = int(ns.sum()), int(ns[:h].sum())
     stream, backup = len(positions[0]), 8*h
     net = stream-backup
-    stats = dict(pixels=original.size, candidates=len(ns), gross_slots=gross,
+    stats = dict(pixels=original.size, candidates=len(ns),
+                 candidate_fraction=float(len(ns) / original.size), gross_slots=gross,
                  gross_bpp=gross/original.size, raw_label_bits=4*len(ns),
                  packed_label_bits=8*((len(ns)+1)//2),
                  compressed_label_bytes=q['stats']['compressed_label_bytes'],
