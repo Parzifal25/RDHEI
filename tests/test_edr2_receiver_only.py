@@ -151,6 +151,14 @@ def test_capacity_ledger_separates_metadata_carrier_opportunity_cost_and_backup(
     }
     q = {
         "net": 340,
+        "phase": 0,
+        "phase_net_bits": [340, 335, 320, 330],
+        "phase_scores": [
+            {"phase": 0, "net_payload_bits": 340},
+            {"phase": 1, "net_payload_bits": 335},
+            {"phase": 2, "net_payload_bits": 320},
+            {"phase": 3, "net_payload_bits": 330},
+        ],
         "stats": {
             "gross_slots": 420,
             "foregone_gross_slots": 40,
@@ -158,6 +166,7 @@ def test_capacity_ledger_separates_metadata_carrier_opportunity_cost_and_backup(
             "metadata_total_bits": 40,
             "pixels": 100,
             "candidates": 10,
+            "candidate_fraction": 0.25,
             "compressed_label_bytes": 4,
             "bootstrap_pixels": 5,
             "fixed_header_bits": 160,
