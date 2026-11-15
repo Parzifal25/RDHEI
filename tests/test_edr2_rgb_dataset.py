@@ -64,6 +64,14 @@ def test_official_checksum_parser_reads_published_posix_cksum_values():
     }
 
 
+def test_official_checksum_parser_uses_embedded_volume_snapshot_when_page_is_unavailable():
+    values = sipi_rgb.parse_checksums(b"<html>temporary access page</html>")
+    assert len(values) == 77
+    assert values["aerials/2.1.01.tiff"] == 1220177504
+    assert values["misc/4.2.03.tiff"] == 3944512653
+    assert "misc/ruler.512.tiff" in values
+
+
 def test_rgb_archive_extraction_confines_member_paths(tmp_path):
     archive_path = tmp_path / "fixture.tar.gz"
     payload = b"native TIFF fixture"
