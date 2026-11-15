@@ -186,6 +186,47 @@ def test_rgb_runner_completion_gate_accepts_bootstrap_infeasible_rejections():
     assert status == "completed"
     assert failures == []
 
+
+@pytest.mark.parametrize(
+    ("statuses", "expected"),
+    [
+        (
+            ["rejected_bootstrap_infeasible"] * 4,
+            "rejected_bootstrap_infeasible",
+        ),
+        (
+            [
+                "rejected_bootstrap_infeasible",
+                "rejected_bootstrap_infeasible",
+                "rejected_nonpositive_net_capacity",
+                "rejected_nonpositive_net_capacity",
+            ],
+            "rejected_nonpositive_net_capacity",
+        ),
+        (
+            [
+                "rejected_bootstrap_infeasible",
+                "roundtrip_passed",
+                "rejected_nonpositive_net_capacity",
+                "rejected_bootstrap_infeasible",
+            ],
+            "roundtrip_passed",
+        ),
+        (
+            [
+                "rejected_bootstrap_infeasible",
+                "roundtrip_failed",
+                "rejected_nonpositive_net_capacity",
+                "rejected_bootstrap_infeasible",
+            ],
+            "blend_roundtrip_failed",
+        ),
+    ],
+)
+def test_rgb_overall_image_status_summarizes_mixed_blend_outcomes(statuses, expected):
+    result = rgb_gate.overall_image_status(dict(enumerate(statuses)))
+    assert result == expected
+
 def test_rgb_runner_completion_gate_rejects_limited_smoke_runs():
     inventory = [{"image": "aerials/a.tiff"}]
     capacity = [_capacity_row_for_gate("aerials/a.tiff", (2, 2, 2, 2))]
