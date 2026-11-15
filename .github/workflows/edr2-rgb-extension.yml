@@ -167,8 +167,8 @@ jobs:
           retention-days: 30
 
   rgb-full-corpus:
-    # The full corpus benchmark is opt-in on manual dispatch.
-    if: ${{ inputs.run_rgb_full_corpus == true }}
+    # Explicit one-time push marker launches the requested full native RGB and blend/phase analysis.
+    if: ${{ inputs.run_rgb_full_corpus == true || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-rgb-full]')) }}
     needs: rgb-protocol-tests
     runs-on: ubuntu-latest
     timeout-minutes: 360
