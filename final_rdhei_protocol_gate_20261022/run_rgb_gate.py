@@ -95,6 +95,23 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None)
         writer.writerows(rows)
 
 
+
+def overall_image_status(blend_statuses: dict[int, str]) -> str:
+    """Summarize per-blend outcomes without treating an all-rejected image as accepted."""
+    permitted = {
+        "roundtrip_passed",
+        "rejected_nonpositive_net_capacity",
+        "rejected_bootstrap_infeasible",
+    }
+    values = list(blend_statuses.values())
+    if len(values) != len(BLENDS) or any(value not in permitted for value in values):
+        return "blend_roundtrip_failed"
+    if "roundtrip_passed" in values:
+        return "roundtrip_passed"
+    if all(value == "rejected_bootstrap_infeasible" for value in values):
+        return "rejected_bootstrap_infeasible"
+    return "rejected_nonpositive_net_capacity"
+
 def completion_status(capacity_rows: list[dict], inventory: list[dict],
                       roundtrip_rows: list[dict],
                       input_limit: int = 0) -> tuple[str, list[str]]:
@@ -420,14 +437,7 @@ def main():
             }
             row_complete = all(value in permitted_statuses for value in blend_statuses.values())
             has_processing_failure = any(value == "roundtrip_failed" for value in blend_statuses.values())
-            if not row_complete or has_processing_failure:
-                row_status = "blend_roundtrip_failed"
-            elif all(value == "rejected_bootstrap_infeasible" for value in blend_statuses.values()):
-                row_status = "rejected_bootstrap_infeasible"
-            elif all(value == "rejected_nonpositive_net_capacity" for value in blend_statuses.values()):
-                row_status = "rejected_nonpositive_net_capacity"
-            else:
-                row_status = "roundtrip_passed"
+            row_status = overall_image_status(blend_statuses)
 
             base_row.update({
                 "status": row_status,
