@@ -65,7 +65,7 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
         raise ValueError("run summary image count does not match the input manifest")
 
     statuses = set(capacity["status"].fillna("unknown").astype(str))
-    allowed_statuses = {"roundtrip_passed", "rejected_nonpositive_net_capacity"}
+    allowed_statuses = {"roundtrip_passed", "rejected_nonpositive_net_capacity", "rejected_bootstrap_infeasible"}
     if statuses - allowed_statuses:
         raise ValueError(f"capacity ledger contains failed/unknown statuses: {sorted(statuses - allowed_statuses)}")
 
@@ -92,9 +92,11 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
                 & (pd.to_numeric(roundtrip["blend_num"], errors="raise").astype(int) == blend)
             ]
             if blend_net <= 0:
-                if blend_status != "rejected_nonpositive_net_capacity" or not cases.empty:
+                if blend_status not in {
+                    "rejected_nonpositive_net_capacity", "rejected_bootstrap_infeasible"
+                } or not cases.empty:
                     raise ValueError(
-                        f"{image}: invalid rejection ledger for blend {blend}/4"
+                        f"{image}: invalid non-positive/bootstrap rejection ledger for blend {blend}/4"
                     )
                 continue
             if blend_status != "roundtrip_passed" or cases.empty:
@@ -149,6 +151,14 @@ def validate_evidence(capacity: pd.DataFrame, roundtrip: pd.DataFrame,
                 raise ValueError(
                     f"{image}: expected every one of the 24 distinct ordered phase assignments"
                 )
+            for score in scores:
+                score_status = score.get("capacity_status")
+                if score_status not in {"capacity_scored", "bootstrap_infeasible"}:
+                    raise ValueError(f"{image}: invalid status in phase assignment score")
+                if score_status == "bootstrap_infeasible" and score.get("net_capacity_bits") is not None:
+                    raise ValueError(f"{image}: bootstrap-infeasible assignment must not report a signed net capacity")
+                if score_status == "capacity_scored" and score.get("net_capacity_bits") is None:
+                    raise ValueError(f"{image}: capacity-scored assignment is missing its signed net capacity")
 
 
 def main():
@@ -192,6 +202,7 @@ def main():
             "images_with_capacity": int(usable.notna().sum()),
             "positive_net_images": int((usable > 0).sum()),
             "nonpositive_net_images": int((usable <= 0).sum()),
+            "bootstrap_infeasible_images": int(capacity[blend_status_col].eq("rejected_bootstrap_infeasible").sum()),
             "mean_signed_net_bits": float(usable.mean()) if len(usable) else np.nan,
             "median_signed_net_bits": float(usable.median()) if len(usable) else np.nan,
             "mean_signed_net_bpp_per_rgb_pixel": float(pd.to_numeric(capacity[bpp_col], errors="coerce").mean()),
@@ -219,7 +230,8 @@ def main():
 
         subset = assignments[assignments["blend_num"] == blend]
         if len(subset):
-            tuples = subset["selected_phases_rgb"].astype(str).value_counts()
+            selected_subset = subset[subset["selected_phases_rgb"].fillna("").astype(str).ne("")]
+            tuples = selected_subset["selected_phases_rgb"].astype(str).value_counts()
             for assignment, count in tuples.items():
                 assignment_frequency_rows.append({
                     "cross_blend": f"{blend}/4",
