@@ -160,61 +160,135 @@ def main():
         image_started = time.perf_counter()
 
         try:
-            # Compute the 12 channel/phase CNN outputs only once per source image.
+            # Build the frozen CNN outputs once, then independently evaluate all
+            # four blend settings. A metadata overflow in one blend must never
+            # short-circuit the other blend or phase-assignment measurements.
             spatial_cache, coordinate_cache = rgb_protocol.build_spatial_cache(image)
             blend_results = {}
+            blend_diagnostics = {}
+            blend_errors = {}
+
+            def mean_metrics_over_assignments(scores):
+                means = []
+                for channel in range(3):
+                    row = {}
+                    for metric_name in ("spatial_mae", "cross_channel_mae", "fused_mae"):
+                        values = [
+                            float(score["prediction_metrics"][channel][metric_name])
+                            for score in scores
+                            if score.get("prediction_metrics")
+                            and len(score["prediction_metrics"]) == 3
+                        ]
+                        row[metric_name] = float(np.mean(values)) if values else float("nan")
+                    means.append(row)
+                return means
+
             for blend_num, blend_den in BLENDS:
                 blend_started = time.perf_counter()
-                q = rgb_protocol.prepare(
-                    image,
-                    blend_num=blend_num,
-                    blend_den=blend_den,
-                    spatial_cache=spatial_cache,
-                    coordinate_cache=coordinate_cache,
+                try:
+                    q = rgb_protocol.prepare(
+                        image,
+                        blend_num=blend_num,
+                        blend_den=blend_den,
+                        spatial_cache=spatial_cache,
+                        coordinate_cache=coordinate_cache,
+                    )
+                    blend_results[blend_num] = q
+                    scores = q["assignment_scores"]
+                    selected_phases = json.dumps(list(q["phases"]))
+                    calibration_phase = int(q["calibration_phase"])
+                    net_capacity = int(q["net"])
+                    net_bpp = float(q["net"] / (image.shape[0] * image.shape[1]))
+                    directory_bytes = int(len(q["metadata"]))
+                    selected_metrics = q["prediction_metrics"]
+                except rgb_protocol.RGBCapacityError as exc:
+                    scores = exc.diagnostics
+                    blend_errors[blend_num] = str(exc)
+                    blend_diagnostics[blend_num] = scores
+                    selected_phases = ""
+                    calibration_phase = None
+                    net_capacity = None
+                    net_bpp = None
+                    directory_bytes = min(
+                        (int(score["directory_bytes"]) for score in scores),
+                        default=None,
+                    )
+                    selected_metrics = mean_metrics_over_assignments(scores)
+
+                feasible_assignments = sum(
+                    bool(score.get("directory_fits")) for score in scores
                 )
-                blend_results[blend_num] = q
                 assignment_rows.append({
                     "image": relative,
                     "pixels_sha256": pixels_hash,
                     "blend_num": blend_num,
                     "blend_den": blend_den,
-                    "selected_phases_rgb": json.dumps(list(q["phases"])),
-                    "calibration_phase": q["calibration_phase"],
-                    "assignment_search": q["assignment_search"],
-                    "net_capacity_bits": int(q["net"]),
-                    "net_bpp_per_rgb_pixel": float(q["net"] / (image.shape[0] * image.shape[1])),
-                    "directory_bytes": len(q["metadata"]),
-                    "phase_assignment_scores_json": json.dumps(q["assignment_scores"], separators=(",", ":")),
-                    "prediction_metrics_by_channel_json": json.dumps(q["prediction_metrics"], separators=(",", ":")),
+                    "selected_phases_rgb": selected_phases,
+                    "calibration_phase": calibration_phase,
+                    "assignment_search": "adaptive_24",
+                    "net_capacity_bits": net_capacity,
+                    "net_bpp_per_rgb_pixel": net_bpp,
+                    "directory_bytes": directory_bytes,
+                    "phase_assignment_count": len(scores),
+                    "directory_fit_assignment_count": feasible_assignments,
+                    "phase_assignment_scores_json": json.dumps(scores, separators=(",", ":")),
+                    "prediction_metrics_by_channel_json": json.dumps(selected_metrics, separators=(",", ":")),
+                    "blend_error": blend_errors.get(blend_num, ""),
                     "prepare_seconds": time.perf_counter() - blend_started,
                 })
 
-            selected = blend_results[1]
-            fixed = rgb_protocol.prepare(
-                image,
-                blend_num=1,
-                blend_den=4,
-                assignment_override=FIXED_ASSIGNMENT,
-                spatial_cache=spatial_cache,
-                coordinate_cache=coordinate_cache,
-            )
-            best_blend = max(blend_results, key=lambda b: blend_results[b]["net"])
-            for blend_value, result in blend_results.items():
-                base_row[f"blend_{blend_value}_net_capacity_bits"] = int(result["net"])
-                base_row[f"blend_{blend_value}_net_bpp"] = float(
-                    result["net"] / (image.shape[0] * image.shape[1])
-                )
-                base_row[f"blend_{blend_value}_phases"] = json.dumps(list(result["phases"]))
-                for channel, metric in enumerate(result["prediction_metrics"]):
+                base_row[f"blend_{blend_num}_net_capacity_bits"] = net_capacity
+                base_row[f"blend_{blend_num}_net_bpp"] = net_bpp
+                base_row[f"blend_{blend_num}_phases"] = selected_phases
+                base_row[f"blend_{blend_num}_directory_bytes"] = directory_bytes
+                base_row[f"blend_{blend_num}_directory_fit_assignments"] = feasible_assignments
+                base_row[f"blend_{blend_num}_error"] = blend_errors.get(blend_num, "")
+                for channel, metric in enumerate(selected_metrics):
                     for metric_name, metric_value in metric.items():
-                        base_row[f"blend_{blend_value}_channel_{channel}_{metric_name}"] = float(metric_value)
+                        base_row[f"blend_{blend_num}_channel_{channel}_{metric_name}"] = float(metric_value)
+
+            if blend_results:
+                best_blend = max(blend_results, key=lambda b: blend_results[b]["net"])
+                best_result = blend_results[best_blend]
+                base_row["best_blend_num_by_capacity"] = int(best_blend)
+                base_row["best_blend_net_capacity_bits"] = int(best_result["net"])
+            else:
+                best_blend = None
+                base_row["best_blend_num_by_capacity"] = None
+                base_row["best_blend_net_capacity_bits"] = None
+
+            selected = blend_results.get(1)
+            if selected is None:
+                base_row.update({
+                    "status": "rejected_no_feasible_assignment_at_1_4_blend",
+                    "error": blend_errors.get(1, "no feasible 1/4 blend assignment"),
+                    "blend_feasible_count": len(blend_results),
+                    "image_prepare_seconds": time.perf_counter() - image_started,
+                })
+                capacity_rows.append(base_row)
+                continue
+
+            fixed_assignment_error = ""
+            try:
+                fixed = rgb_protocol.prepare(
+                    image,
+                    blend_num=1,
+                    blend_den=4,
+                    assignment_override=FIXED_ASSIGNMENT,
+                    spatial_cache=spatial_cache,
+                    coordinate_cache=coordinate_cache,
+                )
+            except rgb_protocol.RGBCapacityError as exc:
+                fixed = None
+                fixed_assignment_error = str(exc)
+
+            selected["stats"]["blend_feasible_count"] = len(blend_results)
             base_row.update({
                 "status": "capacity_evaluated",
                 "candidate_count_per_channel": int(selected["stats"]["candidate_count_per_channel"]),
                 "gross_slots_all_channels": int(selected["stats"]["gross_slots_all_channels"]),
                 "foregone_red_header_slots": int(selected["stats"]["foregone_red_header_slots"]),
-                "metadata_bytes": int(selected["stats"]["directory_stored_bytes"] + rgb_protocol.rgb_wire.HEADER_BYTES + rgb_protocol.rgb_wire.TAG_BYTES)
-                    if hasattr(rgb_protocol, "rgb_wire") else int(selected["stats"]["directory_stored_bytes"]),
+                "metadata_bytes": int(selected["stats"]["directory_stored_bytes"] + rgb_protocol.rgb_wire.HEADER_BYTES + rgb_protocol.rgb_wire.TAG_BYTES),
                 "bootstrap_candidates": int(selected["stats"]["bootstrap_candidates"]),
                 "backup_bits": int(selected["stats"]["bootstrap_backup_bits"]),
                 "stream_bits": int(selected["stats"]["ordinary_stream_bits"]),
@@ -222,12 +296,12 @@ def main():
                 "signed_net_bpp_per_rgb_pixel": float(selected["net"] / (image.shape[0] * image.shape[1])),
                 "selected_rgb_phases": json.dumps(list(selected["phases"])),
                 "calibration_phase": int(selected["calibration_phase"]),
-                "best_blend_num_by_capacity": int(best_blend),
-                "best_blend_net_capacity_bits": int(blend_results[best_blend]["net"]),
-                "fixed_assignment_012_net_capacity_bits": int(fixed["net"]),
-                "adaptive_assignment_gain_bits": int(selected["net"] - fixed["net"]),
+                "fixed_assignment_012_net_capacity_bits": int(fixed["net"]) if fixed is not None else None,
+                "fixed_assignment_error": fixed_assignment_error,
+                "adaptive_assignment_gain_bits": int(selected["net"] - fixed["net"]) if fixed is not None else None,
                 "channel_prediction_metrics": json.dumps(selected["prediction_metrics"], separators=(",", ":")),
                 "phase_assignment_scores": json.dumps(selected["assignment_scores"], separators=(",", ":")),
+                "blend_feasible_count": len(blend_results),
                 "image_prepare_seconds": time.perf_counter() - image_started,
             })
 
@@ -268,27 +342,26 @@ def main():
                     roundtrip_rows.append({
                         "image": relative,
                         "pixels_sha256": pixels_hash,
+                        "blend_num": 1,
+                        "blend_den": 4,
                         "case": case,
                         "payload_bits": int(length),
                         "net_capacity_bits": int(selected["net"]),
                         "image_exact": image_exact,
                         "payload_exact": payload_exact,
+                        "passed": image_exact and payload_exact,
                         "embed_seconds": embed_seconds,
                         "receiver_seconds": receiver_seconds,
-                        "passed": image_exact and payload_exact,
                     })
                     if args.keep_artifacts:
                         Image.fromarray(marked, mode="RGB").save(image_dir / f"marked_{case}.png")
                         Image.fromarray(recovered, mode="RGB").save(image_dir / f"recovered_{case}.png")
                         np.save(image_dir / f"payload_{case}.npy", payload, allow_pickle=False)
                         np.save(image_dir / f"extracted_{case}.npy", extracted, allow_pickle=False)
-                # Payload lengths are deduplicated per image; no duplicate row is
-                # added, so a skipped repeated length cannot be counted as a failure.
 
             all_passed = all(
                 row["passed"] is True
                 for row in roundtrip_rows if row["image"] == relative
-                and row["passed"] != "duplicate_payload_length_not_retested"
             )
             base_row["status"] = "roundtrip_passed" if all_passed else "roundtrip_failed"
             base_row["all_roundtrips_passed"] = all_passed
