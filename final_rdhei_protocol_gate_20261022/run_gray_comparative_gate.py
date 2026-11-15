@@ -1007,10 +1007,10 @@ def self_test():
     # Case B: bins 0..99 are occupied while 100 remains the peak, making 101
     # the nearest empty bin and exercising direction=+1.
     hs_positive = np.full((512, 512), 100, np.uint8)
-    hs_positive[:100, :] = np.tile(np.arange(100, dtype=np.uint8), (100, 1))
-    hs_positive[100:200, :] = np.tile(
-        np.arange(102, 202, dtype=np.uint8), (100, 1)
-    )
+    positive_row = (np.arange(hs_positive.shape[1], dtype=np.uint16) % 100).astype(np.uint8)
+    hs_positive[:100, :] = np.tile(positive_row, (100, 1))
+    positive_shift_row = (102 + np.arange(hs_positive.shape[1], dtype=np.uint16) % 100).astype(np.uint8)
+    hs_positive[100:200, :] = np.tile(positive_shift_row, (100, 1))
     for case_index, hs in enumerate((hs_negative, hs_positive)):
         choice = histogram_choice(hs)
         if choice is None or choice["net"] <= 0:
