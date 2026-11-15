@@ -8,7 +8,7 @@ import hashlib
 import json
 import shutil
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 from PIL import Image
