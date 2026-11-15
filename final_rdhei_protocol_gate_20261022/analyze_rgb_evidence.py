@@ -36,6 +36,16 @@ def main():
     manifest = json.loads((evidence / "rgb_input_manifest.json").read_text(encoding="utf-8"))
 
     capacity["status"] = capacity["status"].fillna("unknown")
+    status_counts = capacity["status"].value_counts(dropna=False).to_dict()
+    error_rows = capacity.loc[capacity["status"] == "error"].copy()
+    error_summary = (
+        error_rows["error"].fillna("unspecified error").value_counts()
+        .rename_axis("error_reason").reset_index(name="image_count")
+        if "error" in error_rows else pd.DataFrame(columns=["error_reason", "image_count"])
+    )
+    image_outcomes = capacity[["image", "status"]].copy()
+    if "error" in capacity:
+        image_outcomes["error_reason"] = capacity["error"]
     rows = []
     mae_rows = []
     assignment_frequency_rows = []
@@ -53,9 +63,11 @@ def main():
         )
         rows.append({
             "cross_blend": f"{blend}/4",
+            "corpus_images": int(len(capacity)),
             "images_with_capacity": int(usable.notna().sum()),
             "positive_net_images": int((usable > 0).sum()),
             "nonpositive_net_images": int((usable <= 0).sum()),
+            "images_failed_before_capacity": int((capacity["status"] == "error").sum()),
             "mean_signed_net_bits": float(usable.mean()) if len(usable) else np.nan,
             "median_signed_net_bits": float(usable.median()) if len(usable) else np.nan,
             "mean_signed_net_bpp_per_rgb_pixel": float(pd.to_numeric(capacity[bpp_col], errors="coerce").mean()),
@@ -118,6 +130,8 @@ def main():
     rt_summary["failed"] = rt_summary["tests"] - rt_summary["passed"]
 
     capacity.to_csv(output / "rgb_per_image_capacity_and_prediction.csv", index=False)
+    image_outcomes.to_csv(output / "rgb_protocol_image_outcomes.csv", index=False)
+    error_summary.to_csv(output / "rgb_protocol_failure_reasons.csv", index=False)
     blend_summary.to_csv(output / "rgb_blend_ablation_summary.csv", index=False)
     mae_summary.to_csv(output / "rgb_prediction_mae_summary.csv", index=False)
     assignment_frequency.to_csv(output / "rgb_selected_phase_frequency.csv", index=False)
@@ -139,7 +153,12 @@ def main():
         plt.close()
 
     if len(mae_summary):
-        pivot = mae_summary.pivot(index="cross_blend", columns="predictor", values="mean_mae")
+        # There are three channel rows (R/G/B) for each blend/predictor.
+        # Average those channels for the aggregate figure; retain per-channel
+        # results unchanged in rgb_prediction_mae_summary.csv.
+        pivot = mae_summary.pivot_table(
+            index="cross_blend", columns="predictor", values="mean_mae", aggfunc="mean"
+        )
         plt.figure(figsize=(9, 5))
         for predictor_name in ("spatial_mae", "cross_channel_mae", "fused_mae"):
             if predictor_name in pivot:
@@ -175,6 +194,17 @@ def main():
         f"- Model retraining: {run.get('training_performed')}",
         f"- Benchmark seed: {run.get('seed')}",
         "",
+        "## Corpus feasibility",
+        "",
+        f"- Images evaluated: {len(capacity)}",
+        f"- Images with a valid positive-net packet: {int((capacity['status'] == 'roundtrip_passed').sum()) + int((capacity['status'] == 'roundtrip_failed').sum())}",
+        f"- Images rejected before capacity calculation: {int((capacity['status'] == 'error').sum())}",
+        f"- Status counts: {json.dumps({str(k): int(v) for k, v in status_counts.items()}, sort_keys=True)}",
+        "",
+        error_summary.to_markdown(index=False) if len(error_summary) else "_No per-image protocol errors._",
+        "",
+        "Images rejected because the current single-directory bootstrap could not fit are not treated as zero-capacity samples. They are counted as protocol feasibility failures and retained in the corpus denominator.",
+        "",
         "## Blend ablation",
         "",
         blend_summary.to_markdown(index=False) if len(blend_summary) else "_No blend rows._",
@@ -190,6 +220,8 @@ def main():
         f"- Total tested payload cases: {len(roundtrip)}",
         f"- Exact image/payload round trips passed: {int(roundtrip['passed_bool'].sum())}",
         f"- Round-trip failures: {int((~roundtrip['passed_bool']).sum())}",
+        f"- Images receiving round-trip tests: {int(roundtrip['image'].nunique()) if len(roundtrip) else 0}",
+        "- Exact-recovery tests use the configured 1/4 cross-channel blend; the alternative blend settings are capacity/MAE ablations and are not separately packet-round-trip tested in this run.",
         "",
         "## Method and interpretation",
         "",
