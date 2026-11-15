@@ -69,6 +69,7 @@ def test_official_checksum_parser_uses_embedded_volume_snapshot_when_page_is_una
     assert len(values) == 77
     assert values["aerials/2.1.01.tiff"] == 1220177504
     assert values["misc/4.2.03.tiff"] == 3944512653
+    assert values["misc/4.1.07.tiff"] == 2545388887
     assert "misc/ruler.512.tiff" in values
 
 
