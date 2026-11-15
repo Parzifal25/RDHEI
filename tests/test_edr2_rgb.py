@@ -29,6 +29,23 @@ def constant_rgb(height=128, width=128):
     return image
 
 
+
+
+def test_rgb_vectorized_round_even_matches_scalar_for_signed_ties_and_boundaries():
+    values = np.concatenate([
+        np.arange(-4097, 4098, dtype=np.int64),
+        np.array([-1000001, -65537, -513, -257, -129, -3, -1, 0, 1, 3, 129, 257, 513, 65537, 1000001], dtype=np.int64),
+    ])
+    for denominator in range(1, 18):
+        expected = np.fromiter(
+            (rgb_protocol._round_div_even(int(value), denominator) for value in values),
+            dtype=np.int64,
+            count=len(values),
+        )
+        observed = rgb_protocol._round_div_even_array(values, denominator)
+        assert observed.dtype == np.int64
+        assert np.array_equal(observed, expected)
+
 def test_rgb_phase_staggering_leaves_one_common_calibration_lattice():
     shape = (128, 128)
     phase_sets = []
