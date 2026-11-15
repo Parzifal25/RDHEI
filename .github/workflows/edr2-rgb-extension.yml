@@ -74,7 +74,7 @@ jobs:
 
   rgb-full-corpus:
     # The full corpus benchmark is opt-in on manual dispatch.
-    if: ${{ inputs.run_rgb_full_corpus == true }}
+    if: ${{ inputs.run_rgb_full_corpus == true || github.event_name == 'push' }}
     needs: rgb-protocol-tests
     runs-on: ubuntu-latest
     timeout-minutes: 360
