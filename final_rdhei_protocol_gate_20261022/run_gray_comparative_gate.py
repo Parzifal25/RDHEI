@@ -486,7 +486,12 @@ def histogram_shift_encrypt(image, payload, master, nonce, choice=None):
     else:
         mask = (tail < peak) & (tail > zero)
         tail[mask] -= 1
-    shifted[carriers] = peak + direction * bits
+    # Keep arithmetic signed until the target values are range-checked.
+    # NumPy 2.x rejects Python negative scalars applied directly to uint8 arrays.
+    adjacent = peak + direction
+    if not 0 <= adjacent <= 255:
+        raise ValueError("histogram-shift adjacent bin lies outside uint8 range")
+    shifted[carriers] = np.where(bits.astype(bool), adjacent, peak).astype(np.uint8)
     base = HIST_HEADER_BASE.pack(HIST_MAGIC, peak, zero, len(payload), h)
     k = derive_keys(master, nonce)
     auth_key = hider_keys(k["hider"])["auth"]
@@ -993,21 +998,47 @@ def self_test():
         recovered, extracted = receive_predictor_packet(final, key, nonce, {})
         if not np.array_equal(recovered, image) or not np.array_equal(extracted, payload):
             raise AssertionError(f"self-test exact recovery failed for {method_name}")
-    # Exercise the independent peak/zero histogram-shifting reference.
-    hs = np.full((512, 512), 100, np.uint8)
-    hs[100:220, 100:220] = (101 + ((x[100:220, 100:220] + y[100:220, 100:220]) % 100)).astype(np.uint8)
-    choice = histogram_choice(hs)
-    if choice is None or choice["net"] <= 0:
-        raise AssertionError("histogram-shift self-test has no positive capacity")
-    payload = np.random.default_rng(991).integers(0, 2, choice["net"], np.uint8)
-    master, nonce = bytes(range(32)), 909090
-    cipher = histogram_shift_encrypt(hs, payload, master, nonce, choice)
-    k = derive_keys(master, nonce)
-    plain = np.frombuffer(crypt(cipher.tobytes(), k["image"]), np.uint8).copy().reshape(hs.shape)
-    recovered, extracted = receive_histogram_shift(plain, hider_keys(k["hider"])["auth"])
-    if not np.array_equal(recovered, hs) or not np.array_equal(extracted, payload):
-        raise AssertionError("histogram-shift self-test exact recovery failed")
-    print("SELF-TEST PASS: MED, GAP, simplified CALIC and histogram shifting exact round trips")
+    # Exercise both directions of the independent peak/zero histogram-shifting reference.
+    # Case A: the closest empty bin is below the occupied peak (direction=-1).
+    hs_negative = np.full((512, 512), 100, np.uint8)
+    hs_negative[100:220, 100:220] = (
+        101 + ((x[100:220, 100:220] + y[100:220, 100:220]) % 100)
+    ).astype(np.uint8)
+    # Case B: bins 0..99 are occupied while 100 remains the peak, making 101
+    # the nearest empty bin and exercising direction=+1.
+    hs_positive = np.full((512, 512), 100, np.uint8)
+    hs_positive[:100, :] = np.tile(np.arange(100, dtype=np.uint8), (100, 1))
+    hs_positive[100:200, :] = np.tile(
+        np.arange(102, 202, dtype=np.uint8), (100, 1)
+    )
+    for case_index, hs in enumerate((hs_negative, hs_positive)):
+        choice = histogram_choice(hs)
+        if choice is None or choice["net"] <= 0:
+            raise AssertionError("histogram-shift self-test has no positive capacity")
+        expected_direction = -1 if case_index == 0 else 1
+        if choice["direction"] != expected_direction:
+            raise AssertionError(
+                f"histogram-shift self-test selected direction {choice['direction']}, "
+                f"expected {expected_direction}"
+            )
+        payload = np.random.default_rng(991 + case_index).integers(0, 2, choice["net"], np.uint8)
+        master, nonce = bytes(range(32)), 909090 + case_index
+        cipher = histogram_shift_encrypt(hs, payload, master, nonce, choice)
+        k = derive_keys(master, nonce)
+        plain = np.frombuffer(
+            crypt(cipher.tobytes(), k["image"]), np.uint8
+        ).copy().reshape(hs.shape)
+        recovered, extracted = receive_histogram_shift(
+            plain, hider_keys(k["hider"])["auth"]
+        )
+        if not np.array_equal(recovered, hs) or not np.array_equal(extracted, payload):
+            raise AssertionError(
+                f"histogram-shift direction={expected_direction} exact recovery failed"
+            )
+    print(
+        "SELF-TEST PASS: MED, GAP, simplified CALIC, and histogram shifting "
+        "exact round trips in both peak-shift directions"
+    )
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "embed-batch":
