@@ -147,7 +147,10 @@ def hider_keys(hider_key: bytes):
     if not isinstance(hider_key, (bytes, bytearray)) or len(hider_key) != 32:
         raise ValueError("expected a 32-byte data-hiding capability key")
     return {
-        name: HKDF(bytes(hider_key), 32, b"", SHA256, context=MAGIC + b"/hider/" + name.encode("ascii"))
+        name.replace("-", "_"): HKDF(
+            bytes(hider_key), 32, b"", SHA256,
+            context=MAGIC + b"/hider/" + name.encode("ascii")
+        )
         for name in ("header-bootstrap", "header-final", "directory", "payload", "auth")
     }
 
