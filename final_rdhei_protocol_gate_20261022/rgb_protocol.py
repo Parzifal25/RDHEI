@@ -145,7 +145,7 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
             assignment_override: tuple[int, int, int] | None = None,
             spatial_cache: dict | None = None,
             coordinate_cache: dict | None = None):
-    """Jointly optimize 3-of-4 channel phase assignment and RGB net capacity."""
+    """Jointly optimize RGB phase assignment, retaining bootstrap-infeasible scores."""
     if (not isinstance(original, np.ndarray) or original.dtype != np.uint8
             or original.ndim != 3 or original.shape[2] != 3):
         raise ValueError("CC-EDR2-RGB expects native uint8 RGB HxWx3")
@@ -169,7 +169,6 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
                     or np.asarray(spatial_cache[(channel, phase)]).shape != (len(ys),)):
                 raise ValueError("invalid cached RGB spatial prediction or coordinate lengths")
 
-    alternatives = []
     if assignment_override is None:
         all_assignments = [
             (r, g, b, next(p for p in range(4) if p not in (r, g, b)))
@@ -186,6 +185,10 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
         fixed_phases = tuple(int(value) for value in assignment_override)
         calibration_phase = next(value for value in range(4) if value not in fixed_phases)
         all_assignments = [(*fixed_phases, calibration_phase)]
+
+    alternatives = []
+    assignment_score_rows = []
+    metrics_by_assignment = []
     for red_phase, green_phase, blue_phase, calibration_phase in all_assignments:
         phases = (red_phase, green_phase, blue_phase)
         regressions = fit_cross_regressions(original, calibration_phase)
@@ -209,6 +212,7 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
                 "cross_channel_mae": float(np.mean(np.abs(target - cross))),
                 "fused_mae": float(np.mean(error)),
             })
+        metrics_by_assignment.append(prediction_metrics)
 
         raw, metadata, codec = _pack_directory(
             phases, calibration_phase, labels_by_channel, blend_num, blend_den
@@ -216,6 +220,15 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
         bootstrap = rgb_wire.HEADER_BYTES + len(metadata) + rgb_wire.TAG_BYTES
         candidate_count = len(coordinate_cache[(0, red_phase)][0])
         if bootstrap >= candidate_count:
+            assignment_score_rows.append({
+                "phases": list(phases),
+                "calibration_phase": int(calibration_phase),
+                "directory_bytes": int(len(metadata)),
+                "bootstrap_candidates_required": int(bootstrap),
+                "candidate_count_per_channel": int(candidate_count),
+                "capacity_status": "bootstrap_infeasible",
+                "net_capacity_bits": None,
+            })
             continue
 
         positions = rgb_wire.enumerate_slots(
@@ -245,6 +258,7 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
             "cross_blend": [blend_num, blend_den],
             "cross_regressions_q8": [list(pair) for pair in regressions],
             "prediction_metrics_by_channel": prediction_metrics,
+            "capacity_status": "capacity_scored",
         }
         alternatives.append({
             "phases": phases,
@@ -262,30 +276,82 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
             "net": net,
             "stats": stats,
         })
+        assignment_score_rows.append({
+            "phases": list(phases),
+            "calibration_phase": int(calibration_phase),
+            "directory_bytes": int(len(metadata)),
+            "bootstrap_candidates_required": int(bootstrap),
+            "candidate_count_per_channel": int(candidate_count),
+            "capacity_status": "capacity_scored",
+            "net_capacity_bits": int(net),
+        })
+
+    assignment_search = "adaptive_24" if assignment_override is None else "fixed_override"
+    source_sha = _image_identity(original)
+    source_shape = tuple(map(int, original.shape))
 
     if not alternatives:
-        raise ValueError("no RGB phase assignment has enough bootstrap candidates")
+        # No header/tag/directory can be represented in the red lattice for
+        # any attempted assignment. This is a structural bootstrap rejection,
+        # not a processing error and not a measured negative signed capacity.
+        metric_summary = []
+        for channel in range(3):
+            metric_summary.append({
+                key: float(np.mean([row[channel][key] for row in metrics_by_assignment]))
+                for key in ("spatial_mae", "cross_channel_mae", "fused_mae")
+            })
+        candidate_count = len(coordinate_cache[(0, 0)][0])
+        chosen_phases = tuple(int(v) for v in assignment_override) if assignment_override is not None else None
+        chosen_calibration = next(p for p in range(4) if p not in chosen_phases) if chosen_phases is not None else None
+        required = [row["bootstrap_candidates_required"] for row in assignment_score_rows]
+        directories = [row["directory_bytes"] for row in assignment_score_rows]
+        return {
+            "phases": chosen_phases,
+            "calibration_phase": chosen_calibration,
+            "labels": None,
+            "predictions": None,
+            "prediction_metrics": metric_summary,
+            "regressions": None,
+            "raw_directory": None,
+            "metadata": None,
+            "codec": None,
+            "bootstrap": None,
+            "backup_bits": None,
+            "positions": None,
+            "net": 0,
+            "stats": {
+                "candidate_count_per_channel": int(candidate_count),
+                "bootstrap_candidates_required_min": int(min(required)),
+                "bootstrap_candidates_required_max": int(max(required)),
+                "directory_bytes_min": int(min(directories)),
+                "directory_bytes_max": int(max(directories)),
+                "capacity_status": "bootstrap_infeasible",
+                "cross_blend": [blend_num, blend_den],
+                "prediction_metrics_by_channel": metric_summary,
+            },
+            "assignment_scores": assignment_score_rows,
+            "source_sha256": source_sha,
+            "source_shape": source_shape,
+            "blend_num": blend_num,
+            "blend_den": blend_den,
+            "assignment_search": assignment_search,
+            "capacity_status": "bootstrap_infeasible",
+        }
+
     chosen = max(
         alternatives,
         key=lambda row: (row["net"], tuple(-phase for phase in (*row["phases"], row["calibration_phase"])))
     )
-    chosen["assignment_scores"] = [
-        {
-            "phases": list(row["phases"]),
-            "calibration_phase": row["calibration_phase"],
-            "directory_bytes": len(row["metadata"]),
-            "net_capacity_bits": row["net"],
-        }
-        for row in alternatives
-    ]
-    chosen["source_sha256"] = _image_identity(original)
-    chosen["source_shape"] = tuple(map(int, original.shape))
+    chosen["assignment_scores"] = assignment_score_rows
+    chosen["source_sha256"] = source_sha
+    chosen["source_shape"] = source_shape
     chosen["blend_num"] = blend_num
     chosen["blend_den"] = blend_den
-    chosen["assignment_search"] = "adaptive_24" if assignment_override is None else "fixed_override"
-    chosen["stats"]["assignment_search"] = chosen["assignment_search"]
+    chosen["assignment_search"] = assignment_search
+    chosen["capacity_status"] = "capacity_scored"
+    chosen["stats"]["assignment_search"] = assignment_search
+    chosen["stats"]["capacity_status"] = "capacity_scored"
     return chosen
-
 
 def reserve(original: np.ndarray, master: bytes, nonce: int, prepared=None):
     """Reserve room and encrypt all three channels with independent AES-CTR keys."""
