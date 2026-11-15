@@ -226,9 +226,10 @@ def inspect_packet(array, capability, stage="final"):
             if len(raw_directory) != expected_length:
                 raise ValueError("EDC3 directory length mismatch")
             packed = np.frombuffer(raw_directory, np.uint8)
-            labels = np.stack((packed >> 4, packed & 15), axis=1).ravel()[:len(yy)]
-            if len(yy) % 2 and labels[-1] != 0:
+            unpacked_labels = np.stack((packed >> 4, packed & 15), axis=1).ravel()
+            if len(yy) % 2 and int(unpacked_labels[len(yy)]) != 0:
                 raise ValueError("nonzero EDC3 directory padding")
+            labels = unpacked_labels[:len(yy)]
             if np.any(labels >= len(BOOK)):
                 raise ValueError("invalid EDC3 label identifier")
             positions = slots(array.shape, labels, h, phase)
