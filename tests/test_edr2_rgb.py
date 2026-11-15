@@ -191,9 +191,6 @@ def test_rgb_adaptive_search_evaluates_all_24_ordered_phase_assignments(monkeypa
                for row in prepared["assignment_scores"])
 
 
-@pytest.mark.parametrize("blend_num", [0, 1, 2, 3])
-
-
 def test_rgb_adaptive_prepare_records_all_24_bootstrap_infeasible_assignments(monkeypatch):
     image = np.random.default_rng(17).integers(0, 256, (128, 128, 3), dtype=np.uint8)
 
@@ -221,6 +218,7 @@ def test_rgb_adaptive_prepare_records_all_24_bootstrap_infeasible_assignments(mo
     }
     assert all(row["net_capacity_bits"] is None for row in prepared["assignment_scores"])
 
+@pytest.mark.parametrize("blend_num", [0, 1, 2, 3])
 def test_rgb_real_frozen_checkpoint_roundtrip_on_controlled_colour_image(blend_num):
     # Uses the actual frozen 3x3 CNN checkpoint, not the mocked predictor used
     # by the fast protocol-isolation tests above.
