@@ -137,7 +137,7 @@ def pixel_hash(array: np.ndarray) -> str:
 
 
 def parse_checksum_text(text: str) -> dict[str, int]:
-    pairs = re.findall(r"([A-Za-z0-9_./-]+\\.tiff)\\s*\\|\\s*(\\d+)", text)
+    pairs = re.findall(r"([A-Za-z0-9_./-]+\.tiff)\s*\|\s*(\d+)", text)
     return {name: int(value) for name, value in pairs}
 
 
