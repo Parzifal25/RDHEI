@@ -193,13 +193,14 @@ def main():
             continue
         values = pd.to_numeric(capacity[cap_col], errors="coerce")
         usable = values.dropna()
+        positive_capacity = values > 0
         blend_status_col = f"blend_{blend}_status"
         success_images = int(
             ((values > 0) & capacity[blend_status_col].eq("roundtrip_passed")).sum()
         )
         rows.append({
             "cross_blend": f"{blend}/4",
-            "images_with_capacity": int(usable.notna().sum()),
+            "images_evaluated": int(len(capacity)),
             "positive_net_images": int((usable > 0).sum()),
             "nonpositive_net_images": int((usable <= 0).sum()),
             "bootstrap_infeasible_images": int(capacity[blend_status_col].eq("rejected_bootstrap_infeasible").sum()),
@@ -217,7 +218,13 @@ def main():
                 col = f"blend_{blend}_channel_{channel}_{metric}"
                 if col not in capacity:
                     continue
-                v = pd.to_numeric(capacity[col], errors="coerce").dropna()
+                # Bootstrap-infeasible rows store averages over all 24 candidate
+                # assignments, whereas a feasible row stores the adaptive-selected
+                # assignment. Keep the MAE estimand consistent by summarising only
+                # images with positive signed net capacity for this blend.
+                v = pd.to_numeric(
+                    capacity.loc[positive_capacity, col], errors="coerce"
+                ).dropna()
                 mae_rows.append({
                     "cross_blend": f"{blend}/4",
                     "channel": ("R", "G", "B")[channel],
@@ -226,6 +233,7 @@ def main():
                     "mean_mae": float(v.mean()) if len(v) else np.nan,
                     "median_mae": float(v.median()) if len(v) else np.nan,
                     "std_mae": float(v.std(ddof=1)) if len(v) > 1 else np.nan,
+                    "mae_population": "positive_capacity_images_only",
                 })
 
         subset = assignments[assignments["blend_num"] == blend]
@@ -248,6 +256,7 @@ def main():
                         "rgb_phases": json.dumps(score["phases"]),
                         "calibration_phase": score["calibration_phase"],
                         "directory_bytes": score["directory_bytes"],
+                        "capacity_status": score.get("capacity_status", "capacity_scored"),
                         "net_capacity_bits": score["net_capacity_bits"],
                     })
 
@@ -290,18 +299,29 @@ def main():
         plt.close()
 
     if len(mae_summary):
-        pivot = mae_summary.pivot(index="cross_blend", columns="predictor", values="mean_mae")
-        plt.figure(figsize=(9, 5))
-        for predictor_name in ("spatial_mae", "cross_channel_mae", "fused_mae"):
-            if predictor_name in pivot:
-                plt.plot(pivot.index, pivot[predictor_name], marker="o", label=predictor_name)
-        plt.ylabel("Mean prediction MAE")
-        plt.xlabel("Cross-channel blend weight")
-        plt.title("Per-channel predictor error by blend setting")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(output / "fig_rgb_02_prediction_mae.png", dpi=220)
-        plt.close()
+        # Plot one channel per panel. A pivot keyed only by blend/predictor is
+        # ambiguous because the MAE table has separate R, G and B rows.
+        fig, axes = plt.subplots(1, 3, figsize=(14, 4.8), sharey=True)
+        for ax, channel_name in zip(axes, ("R", "G", "B")):
+            channel_rows = mae_summary[mae_summary["channel"] == channel_name]
+            pivot = channel_rows.pivot(
+                index="cross_blend", columns="predictor", values="mean_mae"
+            )
+            for predictor_name in ("spatial_mae", "cross_channel_mae", "fused_mae"):
+                if predictor_name in pivot:
+                    ax.plot(
+                        pivot.index, pivot[predictor_name], marker="o",
+                        label=predictor_name
+                    )
+            ax.set_title(f"{channel_name} channel")
+            ax.set_xlabel("Cross-channel blend weight")
+            ax.grid(axis="y", alpha=0.25)
+        axes[0].set_ylabel("Mean prediction MAE (positive-capacity images only)")
+        axes[-1].legend(fontsize=8)
+        fig.suptitle("Per-channel predictor error by blend setting")
+        fig.tight_layout()
+        fig.savefig(output / "fig_rgb_02_prediction_mae.png", dpi=220)
+        plt.close(fig)
 
     if len(capacity) and "adaptive_assignment_gain_bits" in capacity:
         gains = pd.to_numeric(capacity["adaptive_assignment_gain_bits"], errors="coerce").dropna()
