@@ -37,15 +37,33 @@ def main():
 
     capacity["status"] = capacity["status"].fillna("unknown")
     status_counts = capacity["status"].value_counts(dropna=False).to_dict()
-    error_rows = capacity.loc[capacity["status"] == "error"].copy()
-    error_summary = (
-        error_rows["error"].fillna("unspecified error").value_counts()
-        .rename_axis("error_reason").reset_index(name="image_count")
-        if "error" in error_rows else pd.DataFrame(columns=["error_reason", "image_count"])
+    error_records = []
+    for blend in BLENDS:
+        error_col = f"blend_{blend}_error"
+        if error_col not in capacity:
+            continue
+        for reason, count in capacity.loc[
+            capacity[error_col].fillna("").astype(str).str.len() > 0, error_col
+        ].value_counts().items():
+            error_records.append({
+                "cross_blend": f"{blend}/4",
+                "error_reason": str(reason),
+                "image_count": int(count),
+            })
+    error_summary = pd.DataFrame(
+        error_records, columns=["cross_blend", "error_reason", "image_count"]
     )
-    image_outcomes = capacity[["image", "status"]].copy()
-    if "error" in capacity:
-        image_outcomes["error_reason"] = capacity["error"]
+    outcome_columns = [
+        "image", "status", "signed_net_capacity_bits",
+        "signed_net_bpp_per_rgb_pixel", "best_blend_num_by_capacity",
+        "selected_rgb_phases", "all_roundtrips_passed",
+    ]
+    image_outcomes = capacity[[col for col in outcome_columns if col in capacity]].copy()
+    for blend in BLENDS:
+        for suffix in ("net_capacity_bits", "net_bpp", "directory_fit_assignments", "error"):
+            col = f"blend_{blend}_{suffix}"
+            if col in capacity:
+                image_outcomes[col] = capacity[col]
     rows = []
     mae_rows = []
     assignment_frequency_rows = []
@@ -67,7 +85,13 @@ def main():
             "images_with_capacity": int(usable.notna().sum()),
             "positive_net_images": int((usable > 0).sum()),
             "nonpositive_net_images": int((usable <= 0).sum()),
-            "images_failed_before_capacity": int((capacity["status"] == "error").sum()),
+            "images_without_any_directory_fit": int(
+                (pd.to_numeric(capacity.get(f"blend_{blend}_directory_fit_assignments", 0), errors="coerce").fillna(0) == 0).sum()
+            ) if f"blend_{blend}_directory_fit_assignments" in capacity else int(len(capacity) - usable.notna().sum()),
+            "images_with_roundtrip": int(roundtrip.loc[
+                (roundtrip.get("blend_num", pd.Series(1, index=roundtrip.index)) == blend),
+                "image"
+            ].nunique()) if len(roundtrip) and blend == 1 else 0,
             "mean_signed_net_bits": float(usable.mean()) if len(usable) else np.nan,
             "median_signed_net_bits": float(usable.median()) if len(usable) else np.nan,
             "mean_signed_net_bpp_per_rgb_pixel": float(pd.to_numeric(capacity[bpp_col], errors="coerce").mean()),
@@ -91,11 +115,20 @@ def main():
                     "mean_mae": float(v.mean()) if len(v) else np.nan,
                     "median_mae": float(v.median()) if len(v) else np.nan,
                     "std_mae": float(v.std(ddof=1)) if len(v) > 1 else np.nan,
+                    "aggregation_scope_counts": json.dumps(
+                        capacity.get(
+                            f"blend_{blend}_prediction_metric_scope",
+                            pd.Series(["unspecified"] * len(capacity), index=capacity.index),
+                        ).fillna("unspecified").value_counts().to_dict(),
+                        sort_keys=True,
+                    ),
                 })
 
         subset = assignments[assignments["blend_num"] == blend]
         if len(subset):
-            tuples = subset["selected_phases_rgb"].astype(str).value_counts()
+            tuples = subset["selected_phases_rgb"].fillna("").astype(str).replace(
+                "", "no_feasible_assignment"
+            ).value_counts()
             for assignment, count in tuples.items():
                 assignment_frequency_rows.append({
                     "cross_blend": f"{blend}/4",
@@ -112,7 +145,13 @@ def main():
                         "rgb_phases": json.dumps(score["phases"]),
                         "calibration_phase": score["calibration_phase"],
                         "directory_bytes": score["directory_bytes"],
-                        "net_capacity_bits": score["net_capacity_bits"],
+                        "directory_fits": bool(score.get("directory_fits", False)),
+                        "candidate_count_per_channel": score.get("candidate_count_per_channel"),
+                        "bootstrap_candidates": score.get("bootstrap_candidates"),
+                        "net_capacity_bits": score.get("net_capacity_bits"),
+                        "prediction_metrics_by_channel_json": json.dumps(
+                            score.get("prediction_metrics", []), separators=(",", ":")
+                        ),
                     })
 
     blend_summary = pd.DataFrame(rows)
@@ -201,7 +240,9 @@ def main():
         f"- Images rejected before capacity calculation: {int((capacity['status'] == 'error').sum())}",
         f"- Status counts: {json.dumps({str(k): int(v) for k, v in status_counts.items()}, sort_keys=True)}",
         "",
-        error_summary.to_markdown(index=False) if len(error_summary) else "_No per-image protocol errors._",
+        "### Blend-specific directory failures",
+        "",
+        error_summary.to_markdown(index=False) if len(error_summary) else "_No blend-specific directory failures._",
         "",
         "Images rejected because the current single-directory bootstrap could not fit are not treated as zero-capacity samples. They are counted as protocol feasibility failures and retained in the corpus denominator.",
         "",
@@ -221,7 +262,7 @@ def main():
         f"- Exact image/payload round trips passed: {int(roundtrip['passed_bool'].sum())}",
         f"- Round-trip failures: {int((~roundtrip['passed_bool']).sum())}",
         f"- Images receiving round-trip tests: {int(roundtrip['image'].nunique()) if len(roundtrip) else 0}",
-        "- Exact-recovery tests use the configured 1/4 cross-channel blend; the alternative blend settings are capacity/MAE ablations and are not separately packet-round-trip tested in this run.",
+        "- Exact-recovery tests use the configured 1/4 cross-channel blend; alternative blend weights are evaluated for prediction/phase/capacity, but are not separately packet-round-trip tested in this run.",
         "",
         "## Method and interpretation",
         "",
