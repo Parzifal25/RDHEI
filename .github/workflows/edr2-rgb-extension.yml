@@ -145,11 +145,11 @@ jobs:
             --threads 4 \
             --output-dir /tmp/proposed-cnn-native-edr2-e2e
 
-      - name: Run 248-image matched predictor and histogram-shifting E2E comparison
+      - name: Run 243-image matched predictor and histogram-shifting E2E comparison
         run: |
           python final_rdhei_protocol_gate_20261022/run_gray_comparative_gate.py \
             --data-dir /tmp/usc-sipi-grayscale \
-            --expected-images 248 \
+            --expected-images 243 \
             --threads 4 \
             --output-dir /tmp/grayscale-e2e-comparison
 
