@@ -243,6 +243,10 @@ def main():
                 base_row[f"blend_{blend_num}_directory_bytes"] = directory_bytes
                 base_row[f"blend_{blend_num}_directory_fit_assignments"] = feasible_assignments
                 base_row[f"blend_{blend_num}_error"] = blend_errors.get(blend_num, "")
+                base_row[f"blend_{blend_num}_prediction_metric_scope"] = (
+                    "selected_net_best_assignment" if blend_num in blend_results
+                    else "mean_over_24_assignments_no_directory_fit"
+                )
                 for channel, metric in enumerate(selected_metrics):
                     for metric_name, metric_value in metric.items():
                         base_row[f"blend_{blend_num}_channel_{channel}_{metric_name}"] = float(metric_value)
@@ -378,22 +382,51 @@ def main():
     write_csv(output / "rgb_input_inventory.csv", inventory)
     write_csv(output / "rgb_skipped_inputs.csv", skipped)
 
+    blend_positive_counts = {
+        str(blend): sum(
+            float(row.get(f"blend_{blend}_net_capacity_bits") or 0) > 0
+            for row in capacity_rows
+        )
+        for blend, _ in BLENDS
+    }
+    blend_fit_counts = {
+        str(blend): sum(
+            int(row.get(f"blend_{blend}_directory_fit_assignments") or 0) > 0
+            for row in capacity_rows
+        )
+        for blend, _ in BLENDS
+    }
     summary = {
         "protocol": "CC-EDR2-RGB",
         "status": "completed_with_failures" if any(
-            row.get("status") in {"error", "roundtrip_failed"} for row in capacity_rows
+            row.get("status") in {
+                "error", "roundtrip_failed",
+                "rejected_nonpositive_net_capacity",
+                "rejected_no_feasible_assignment_at_1_4_blend",
+            } for row in capacity_rows
         ) else "completed",
         "input_files_seen": len(files),
         "distinct_native_rgb_inputs": len(inventory),
         "skipped_files": len(skipped),
         "capacity_rows": len(capacity_rows),
-        "positive_net_images": sum(int(row.get("signed_net_capacity_bits", 0)) > 0 for row in capacity_rows),
-        "nonpositive_net_images": sum(row.get("status") == "rejected_nonpositive_net_capacity" for row in capacity_rows),
+        "positive_net_images": sum(
+            float(row.get("signed_net_capacity_bits") or 0) > 0 for row in capacity_rows
+        ),
+        "positive_net_images_by_blend": blend_positive_counts,
+        "images_with_at_least_one_directory_fit_by_blend": blend_fit_counts,
+        "nonpositive_net_images": sum(
+            row.get("status") == "rejected_nonpositive_net_capacity" for row in capacity_rows
+        ),
+        "no_feasible_1_4_images": sum(
+            row.get("status") == "rejected_no_feasible_assignment_at_1_4_blend"
+            for row in capacity_rows
+        ),
+        "roundtrip_images": len({row["image"] for row in roundtrip_rows}),
         "roundtrip_cases": len(roundtrip_rows),
         "roundtrip_passed": sum(row.get("passed") is True for row in roundtrip_rows),
         "roundtrip_failed": sum(row.get("passed") is False for row in roundtrip_rows),
         "blend_settings": [{"num": n, "den": d} for n, d in BLENDS],
-        "fixed_assignment_ablation": list(FIXED_ASSIGNMENT),
+        "phase_assignments_per_blend": 24,
         "checkpoint_sha256": model_identity["checkpoint_sha256"],
         "checkpoint": model_identity,
         "training_performed": False,
