@@ -38,11 +38,18 @@ def _round_div_even(numerator: int, denominator: int) -> int:
 
 
 def _round_div_even_array(numerators: np.ndarray, denominator: int) -> np.ndarray:
+    """Vectorized signed round-to-nearest, ties-to-even using exact integers."""
+    if denominator <= 0:
+        raise ValueError("denominator must be positive")
     values = np.asarray(numerators, dtype=np.int64)
-    return np.fromiter(
-        (_round_div_even(int(value), denominator) for value in values.flat),
-        dtype=np.int64, count=values.size
-    ).reshape(values.shape)
+    magnitude = np.abs(values)
+    quotient, remainder = np.divmod(magnitude, int(denominator))
+    twice_remainder = remainder * 2
+    increment = (twice_remainder > denominator) | (
+        (twice_remainder == denominator) & ((quotient & 1) == 1)
+    )
+    rounded = quotient + increment.astype(np.int64)
+    return np.where(values < 0, -rounded, rounded).astype(np.int64, copy=False)
 
 
 def _cross_feature(image: np.ndarray, target: int, ys: np.ndarray, xs: np.ndarray) -> np.ndarray:
