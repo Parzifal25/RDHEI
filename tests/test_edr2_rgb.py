@@ -192,6 +192,35 @@ def test_rgb_adaptive_search_evaluates_all_24_ordered_phase_assignments(monkeypa
 
 
 @pytest.mark.parametrize("blend_num", [0, 1, 2, 3])
+
+
+def test_rgb_adaptive_prepare_records_all_24_bootstrap_infeasible_assignments(monkeypatch):
+    image = np.random.default_rng(17).integers(0, 256, (128, 128, 3), dtype=np.uint8)
+
+    def noisy_spatial_cache(original):
+        spatial = {}
+        coordinates = {}
+        for channel in range(3):
+            for phase in range(4):
+                ys, xs = wire.grid(original.shape[:2], phase=phase)
+                coordinates[(channel, phase)] = (ys, xs)
+                seed = 1000 + channel * 10 + phase
+                spatial[(channel, phase)] = np.random.default_rng(seed).uniform(
+                    0, 255, len(ys)
+                ).astype(np.float32)
+        return spatial, coordinates
+
+    monkeypatch.setattr(rgb_protocol, "build_spatial_cache", noisy_spatial_cache)
+    prepared = rgb_protocol.prepare(image, blend_num=1, blend_den=4)
+
+    assert prepared["capacity_status"] == "bootstrap_infeasible"
+    assert prepared["net"] == 0
+    assert len(prepared["assignment_scores"]) == 24
+    assert {row["capacity_status"] for row in prepared["assignment_scores"]} == {
+        "bootstrap_infeasible"
+    }
+    assert all(row["net_capacity_bits"] is None for row in prepared["assignment_scores"])
+
 def test_rgb_real_frozen_checkpoint_roundtrip_on_controlled_colour_image(blend_num):
     # Uses the actual frozen 3x3 CNN checkpoint, not the mocked predictor used
     # by the fast protocol-isolation tests above.
