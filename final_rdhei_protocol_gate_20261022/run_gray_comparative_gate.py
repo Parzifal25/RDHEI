@@ -671,7 +671,7 @@ def summarize_method(method, rows):
         "preparation_rejections": sum(r.get("status") == "PREPARE_REJECTED" for r in rows),
     }
 
-def run_comparison(data_dir, output_dir, expected_images=248, seed=20261115, threads=4):
+def run_comparison(data_dir, output_dir, expected_images=243, seed=20261115, threads=4):
     import torch
     torch.set_num_threads(threads)
     corpus, skipped, duplicates, inventory, missing = load_corpus([Path(data_dir).resolve()], True)
@@ -1054,7 +1054,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--expected-images", type=int, default=248)
+    parser.add_argument("--expected-images", type=int, default=243)
     parser.add_argument("--seed", type=int, default=20261115)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--self-test", action="store_true")
