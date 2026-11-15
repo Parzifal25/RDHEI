@@ -9,6 +9,14 @@ on:
       - "final_rdhei_protocol_gate_20261022/rgb_*.py"
       - "final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py"
       - "final_rdhei_protocol_gate_20261022/run_rgb_gate.py"
+      - "final_rdhei_protocol_gate_20261022/run_gray_comparative_gate.py"
+      - "final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py"
+      - "final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py"
+      - "src/baselines.py"
+      - "models/v1_full.pth"
+      - "models/v2_no_residual.pth"
+      - "models/v3_no_weighted_loss.pth"
+      - "models/v5_patch7.pth"
       - "final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py"
       - "final_rdhei_protocol_gate_20261022/predictor.py"
       - "final_rdhei_protocol_gate_20261022/wire.py"
@@ -25,6 +33,11 @@ on:
         default: true
       run_rgb_full_corpus:
         description: "Download and evaluate the official USC-SIPI native RGB subset."
+        required: true
+        type: boolean
+        default: false
+      run_grayscale_comparison:
+        description: "Download and run the full-corpus grayscale predictor/CNN-ablation/histogram-shifting end-to-end comparison."
         required: true
         type: boolean
         default: false
@@ -61,7 +74,8 @@ jobs:
             final_rdhei_protocol_gate_20261022/rgb_protocol.py \
             final_rdhei_protocol_gate_20261022/run_rgb_gate.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py \
-            final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py
+            final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py \
+            final_rdhei_protocol_gate_20261022/run_gray_comparative_gate.py
 
       - name: Run grayscale regression and RGB exact-recovery tests
         run: |
@@ -71,6 +85,77 @@ jobs:
             tests/test_edr2_rgb.py \
             tests/test_edr2_rgb_dataset.py
 
+
+
+  grayscale-comparative-evaluation:
+    # A one-time explicit commit marker launches this requested full-corpus job;
+    # later pushes do not repeat it. Manual dispatch is also supported.
+    if: ${{ inputs.run_grayscale_comparison == true || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-grayscale-e2e]')) }}
+    needs: rgb-protocol-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install grayscale comparison dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome pandas matplotlib tabulate
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile comparative runner and existing EDR2 modules
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/run_gray_comparative_gate.py \
+            final_rdhei_protocol_gate_20261022/run_gate.py \
+            final_rdhei_protocol_gate_20261022/predictor.py \
+            final_rdhei_protocol_gate_20261022/protocol.py \
+            final_rdhei_protocol_gate_20261022/wire.py \
+            final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py
+
+      - name: Run predictor, all CNN-ablation and histogram-shifting exact-recovery self-tests
+        run: |
+          python final_rdhei_protocol_gate_20261022/run_gray_comparative_gate.py \
+            --self-test --data-dir . --output-dir /tmp/grayscale-self-test-placeholder
+
+      - name: Download and inventory official native USC-SIPI grayscale TIFFs
+        run: |
+          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
+            --output-dir /tmp/usc-sipi-grayscale \
+            --archive-dir /tmp/usc-sipi-archives
+
+      - name: Build reviewed and hash-pinned USC-SIPI allowlist
+        run: |
+          python final_rdhei_protocol_gate_20261022/curate_usc_sipi_allowlist.py \
+            --manifest /tmp/usc-sipi-grayscale/dataset_manifest.json \
+            --output /tmp/usc-sipi-grayscale/natural_image_allowlist.json
+
+      - name: Run 248-image grayscale end-to-end comparison
+        run: |
+          python final_rdhei_protocol_gate_20261022/run_gray_comparative_gate.py \
+            --data-dir /tmp/usc-sipi-grayscale \
+            --expected-images 248 \
+            --threads 4 \
+            --output-dir /tmp/grayscale-e2e-comparison
+
+      - name: Upload per-image evidence, exact-recovery records and comparative report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grayscale-full-corpus-e2e-comparison
+          path: |
+            /tmp/grayscale-e2e-comparison/
+            /tmp/usc-sipi-grayscale/dataset_manifest.json
+            /tmp/usc-sipi-grayscale/natural_image_allowlist.json
+          if-no-files-found: warn
+          retention-days: 30
 
   rgb-full-corpus:
     # The full corpus benchmark is opt-in on manual dispatch.
