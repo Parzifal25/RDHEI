@@ -561,6 +561,10 @@ def cmd_receiver_batch(manifest_path):
     manifest_path = Path(manifest_path).resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     denied_root = (ROOT / "data").resolve()
+    source_paths = {
+        os.path.realpath(os.fspath(path))
+        for path in manifest.get("source_paths", [])
+    }
     reads = []
 
     def audit(event, args):
@@ -573,7 +577,7 @@ def cmd_receiver_batch(manifest_path):
         mode = args[1] if len(args) > 1 else None
         if mode is None or "r" in str(mode) or isinstance(mode, int):
             reads.append(path)
-            if path.startswith(str(denied_root) + os.sep):
+            if path in source_paths or path.startswith(str(denied_root) + os.sep):
                 raise RuntimeError("receiver attempted to read an original/source data file")
 
     sys.addaudithook(audit)
@@ -599,7 +603,10 @@ def cmd_receiver_batch(manifest_path):
     output = Path(manifest["result_path"])
     output.write_text(json.dumps({
         "items": results,
-        "source_access": any(str(denied_root) + os.sep in item for item in reads),
+        "source_access": any(
+            item in source_paths or item.startswith(str(denied_root) + os.sep)
+            for item in reads
+        ),
         "read_paths": sorted(set(reads)),
         "checkpoint_sha256": {name: info["sha256"] for name, info in model_cache.items()},
         "training_performed": False,
@@ -610,6 +617,31 @@ def cmd_receiver_batch(manifest_path):
         "receiver_items": len(results), "passed": len(results),
         "source_access": False, "training_performed": False,
     }))
+
+def persist_progress(out: Path, all_rows: list[dict], summaries: list[dict]) -> None:
+    """Atomically persist completed-method evidence so interrupted CI retains results."""
+    if all_rows:
+        fields = sorted({key for row in all_rows for key in row})
+        temporary = out / "per_image_comparison.csv.tmp"
+        with temporary.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(all_rows)
+        temporary.replace(out / "per_image_comparison.csv")
+    if summaries:
+        fields = sorted({key for row in summaries for key in row})
+        temporary = out / "method_summary.csv.tmp"
+        with temporary.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(summaries)
+        temporary.replace(out / "method_summary.csv")
+    (out / "progress.json").write_text(json.dumps({
+        "completed_methods": [row["method"] for row in summaries],
+        "method_summaries": summaries,
+        "training_performed": False,
+    }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
 
 def summarize_method(method, rows):
     attempted = [r for r in rows if r.get("roundtrip_attempted")]
@@ -799,7 +831,9 @@ def run_comparison(data_dir, output_dir, expected_images=248, seed=20261115, thr
             })
         if receiver_items:
             receiver_manifest = {
-                "items": receiver_items, "result_path": str(method_dir / "receiver_results.json"),
+                "items": receiver_items,
+                "source_paths": [record["source"] for record in corpus],
+                "result_path": str(method_dir / "receiver_results.json"),
             }
             receiver_manifest_path = method_dir / "receiver_manifest.json"
             receiver_manifest_path.write_text(json.dumps(receiver_manifest, indent=2), encoding="utf-8")
@@ -850,6 +884,7 @@ def run_comparison(data_dir, output_dir, expected_images=248, seed=20261115, thr
         summary["total_method_wall_seconds"] = elapsed
         method_summaries.append(summary)
         all_rows.extend(rows)
+        persist_progress(out, all_rows, method_summaries)
         print(json.dumps(summary, sort_keys=True), flush=True)
 
         # Keep only CSV/JSON evidence; temporary encrypted packets are removed
