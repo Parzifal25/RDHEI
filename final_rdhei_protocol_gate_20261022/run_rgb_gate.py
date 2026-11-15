@@ -98,7 +98,7 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None)
 def completion_status(capacity_rows: list[dict], inventory: list[dict],
                       roundtrip_rows: list[dict],
                       input_limit: int = 0) -> tuple[str, list[str]]:
-    """Require complete exact-recovery evidence for every positive-capacity blend."""
+    """Require complete ledgers while treating explicit capacity rejection as valid evidence."""
     failures = []
     if input_limit:
         failures.append("limited-input smoke runs are not eligible for paper analysis")
@@ -108,7 +108,6 @@ def completion_status(capacity_rows: list[dict], inventory: list[dict],
         failures.append(
             f"capacity ledger has {len(capacity_rows)} rows for {len(inventory)} accepted inputs"
         )
-
     if any(row.get("status") in {"error", "blend_roundtrip_failed"} for row in capacity_rows):
         failures.append("one or more RGB inputs have processing or exact-recovery failures")
 
@@ -117,16 +116,26 @@ def completion_status(capacity_rows: list[dict], inventory: list[dict],
         key = (row.get("image"), int(row.get("blend_num", -1)))
         by_image_blend.setdefault(key, []).append(row)
 
+    valid_blend_statuses = {
+        "roundtrip_passed",
+        "rejected_nonpositive_net_capacity",
+        "rejected_bootstrap_infeasible",
+    }
     for capacity in capacity_rows:
         image = capacity.get("image")
         for blend_num, _ in BLENDS:
             net = int(capacity.get(f"blend_{blend_num}_net_capacity_bits", 0) or 0)
             blend_status = capacity.get(f"blend_{blend_num}_status")
             cases = by_image_blend.get((image, blend_num), [])
+            if blend_status not in valid_blend_statuses:
+                failures.append(f"{image}: blend {blend_num}/4 has invalid status {blend_status!r}")
+                continue
             if net <= 0:
-                if blend_status != "rejected_nonpositive_net_capacity" or cases:
+                if blend_status not in {
+                    "rejected_nonpositive_net_capacity", "rejected_bootstrap_infeasible"
+                } or cases:
                     failures.append(
-                        f"{image}: blend {blend_num}/4 has invalid non-positive-capacity handling"
+                        f"{image}: blend {blend_num}/4 has invalid non-positive/bootstrap rejection handling"
                     )
                 continue
             if blend_status != "roundtrip_passed" or not cases:
@@ -151,9 +160,7 @@ def completion_status(capacity_rows: list[dict], inventory: list[dict],
                 failures.append(
                     f"{image}: blend {blend_num}/4 round-trip capacity mismatch"
                 )
-
     return ("completed_with_failures" if failures else "completed"), failures
-
 
 def safe_id(relative: str) -> str:
     return hashlib.sha256(relative.encode("utf-8")).hexdigest()[:16]
@@ -246,17 +253,22 @@ def main():
                     coordinate_cache=coordinate_cache,
                 )
                 blend_results[blend_num] = q
+                phase_tuple = q.get("phases")
                 assignment_rows.append({
                     "image": relative,
                     "pixels_sha256": pixels_hash,
                     "blend_num": blend_num,
                     "blend_den": blend_den,
-                    "selected_phases_rgb": json.dumps(list(q["phases"])),
-                    "calibration_phase": q["calibration_phase"],
+                    "selected_phases_rgb": json.dumps(list(phase_tuple)) if phase_tuple is not None else "",
+                    "calibration_phase": q.get("calibration_phase"),
                     "assignment_search": q["assignment_search"],
-                    "net_capacity_bits": int(q["net"]),
-                    "net_bpp_per_rgb_pixel": float(q["net"] / (image.shape[0] * image.shape[1])),
-                    "directory_bytes": len(q["metadata"]),
+                    "capacity_status": q.get("capacity_status", q["stats"].get("capacity_status", "capacity_scored")),
+                    "net_capacity_bits": int(q["net"]) if q.get("capacity_status") == "capacity_scored" else None,
+                    "net_bpp_per_rgb_pixel": (
+                        float(q["net"] / (image.shape[0] * image.shape[1]))
+                        if q.get("capacity_status") == "capacity_scored" else None
+                    ),
+                    "directory_bytes": len(q["metadata"]) if q.get("metadata") is not None else None,
                     "phase_assignment_scores_json": json.dumps(q["assignment_scores"], separators=(",", ":")),
                     "prediction_metrics_by_channel_json": json.dumps(q["prediction_metrics"], separators=(",", ":")),
                     "prepare_seconds": time.perf_counter() - blend_started,
@@ -270,30 +282,43 @@ def main():
                 spatial_cache=spatial_cache,
                 coordinate_cache=coordinate_cache,
             )
-            best_blend = max(blend_results, key=lambda b: blend_results[b]["net"])
-            if args.keep_artifacts:
+            scored_blends = {
+                blend: result for blend, result in blend_results.items()
+                if result.get("capacity_status") == "capacity_scored"
+            }
+            best_blend = (
+                max(scored_blends, key=lambda blend: scored_blends[blend]["net"])
+                if scored_blends else None
+            )
+            if args.keep_artifacts and scored_blends:
                 image_dir = artifact_root / safe_id(relative)
                 image_dir.mkdir(parents=True, exist_ok=False)
                 shutil.copy2(source, image_dir / ("original" + source.suffix.lower()))
 
+            blend_statuses = {}
             for blend_value, result in blend_results.items():
-                blend_net = int(result["net"])
                 prefix = f"blend_{blend_value}"
+                capacity_status = result.get("capacity_status", result["stats"].get("capacity_status", "capacity_scored"))
+                blend_net = int(result["net"]) if capacity_status == "capacity_scored" else 0
                 base_row[f"{prefix}_net_capacity_bits"] = blend_net
-                base_row[f"{prefix}_net_bpp"] = float(
-                    blend_net / (image.shape[0] * image.shape[1])
+                base_row[f"{prefix}_net_bpp"] = (
+                    float(blend_net / (image.shape[0] * image.shape[1]))
+                    if capacity_status == "capacity_scored" else 0.0
                 )
-                base_row[f"{prefix}_phases"] = json.dumps(list(result["phases"]))
-                base_row[f"{prefix}_status"] = (
-                    "rejected_nonpositive_net_capacity" if blend_net <= 0 else "pending_roundtrip"
+                base_row[f"{prefix}_phases"] = (
+                    json.dumps(list(result["phases"])) if result.get("phases") is not None else ""
                 )
                 for channel, metric in enumerate(result["prediction_metrics"]):
                     for metric_name, metric_value in metric.items():
-                        base_row[
-                            f"{prefix}_channel_{channel}_{metric_name}"
-                        ] = float(metric_value)
+                        base_row[f"{prefix}_channel_{channel}_{metric_name}"] = float(metric_value)
 
+                if capacity_status == "bootstrap_infeasible":
+                    blend_statuses[blend_value] = "rejected_bootstrap_infeasible"
+                    base_row[f"{prefix}_status"] = blend_statuses[blend_value]
+                    continue
                 if blend_net <= 0:
+                    blend_statuses[blend_value] = "rejected_nonpositive_net_capacity"
+                    base_row[f"{prefix}_status"] = blend_statuses[blend_value]
                     continue
 
                 used_nonces = set()
@@ -376,63 +401,91 @@ def main():
                     and any(row["payload_bits"] == blend_net for row in blend_rows)
                     and any(row["payload_bits"] == 0 for row in blend_rows)
                 )
-                base_row[f"{prefix}_status"] = (
+                blend_statuses[blend_value] = (
                     "roundtrip_passed" if blend_passed else "roundtrip_failed"
                 )
+                base_row[f"{prefix}_status"] = blend_statuses[blend_value]
+
+            primary = blend_results[1]
+            primary_capacity_status = primary.get(
+                "capacity_status", primary["stats"].get("capacity_status", "capacity_scored")
+            )
+            fixed_capacity_status = fixed.get(
+                "capacity_status", fixed["stats"].get("capacity_status", "capacity_scored")
+            )
+            permitted_statuses = {
+                "roundtrip_passed",
+                "rejected_nonpositive_net_capacity",
+                "rejected_bootstrap_infeasible",
+            }
+            row_complete = all(value in permitted_statuses for value in blend_statuses.values())
+            has_processing_failure = any(value == "roundtrip_failed" for value in blend_statuses.values())
+            if not row_complete or has_processing_failure:
+                row_status = "blend_roundtrip_failed"
+            elif all(value == "rejected_bootstrap_infeasible" for value in blend_statuses.values()):
+                row_status = "rejected_bootstrap_infeasible"
+            elif all(value == "rejected_nonpositive_net_capacity" for value in blend_statuses.values()):
+                row_status = "rejected_nonpositive_net_capacity"
+            else:
+                row_status = "roundtrip_passed"
 
             base_row.update({
-                "status": (
-                    "roundtrip_passed"
-                    if all(base_row.get(f"blend_{blend}_status") in {
-                        "roundtrip_passed", "rejected_nonpositive_net_capacity"
-                    } for blend, _ in BLENDS)
-                    else "blend_roundtrip_failed"
-                ),
+                "status": row_status,
+                "capacity_status": primary_capacity_status,
                 "candidate_count_per_channel": int(
-                    blend_results[1]["stats"]["candidate_count_per_channel"]
+                    primary["stats"]["candidate_count_per_channel"]
+                    if "candidate_count_per_channel" in primary["stats"]
+                    else len(coordinate_cache[(0, 0)][0])
                 ),
-                "best_blend_num_by_capacity": int(best_blend),
-                "best_blend_net_capacity_bits": int(blend_results[best_blend]["net"]),
-                "fixed_assignment_012_net_capacity_bits": int(fixed["net"]),
-                "adaptive_assignment_gain_bits": int(
-                    blend_results[1]["net"] - fixed["net"]
+                "best_blend_num_by_capacity": best_blend,
+                "best_blend_net_capacity_bits": (
+                    int(scored_blends[best_blend]["net"]) if best_blend is not None else None
+                ),
+                "fixed_assignment_012_net_capacity_bits": (
+                    int(fixed["net"]) if fixed_capacity_status == "capacity_scored" else 0
+                ),
+                "adaptive_assignment_gain_bits": (
+                    int(primary["net"] - (fixed["net"] if fixed_capacity_status == "capacity_scored" else 0))
+                    if primary_capacity_status == "capacity_scored" else None
                 ),
                 "image_prepare_seconds": time.perf_counter() - image_started,
+                "all_blends_exact": bool(row_complete and not has_processing_failure and any(
+                    value == "roundtrip_passed" for value in blend_statuses.values()
+                )),
             })
-            base_row["all_blends_exact"] = base_row["status"] == "roundtrip_passed"
-            primary = blend_results[1]
             base_row.update({
-                "signed_net_capacity_bits": int(primary["net"]),
-                "signed_net_bpp_per_rgb_pixel": float(
-                    primary["net"] / (image.shape[0] * image.shape[1])
+                "signed_net_capacity_bits": int(primary["net"]) if primary_capacity_status == "capacity_scored" else 0,
+                "signed_net_bpp_per_rgb_pixel": (
+                    float(primary["net"] / (image.shape[0] * image.shape[1]))
+                    if primary_capacity_status == "capacity_scored" else 0.0
                 ),
-                "selected_rgb_phases": json.dumps(list(primary["phases"])),
-                "calibration_phase": int(primary["calibration_phase"]),
-                "metadata_bytes": int(
-                    len(primary["metadata"])
-                    + rgb_protocol.rgb_wire.HEADER_BYTES
-                    + rgb_protocol.rgb_wire.TAG_BYTES
+                "selected_rgb_phases": (
+                    json.dumps(list(primary["phases"])) if primary.get("phases") is not None else ""
                 ),
-                "channel_prediction_metrics": json.dumps(
-                    primary["prediction_metrics"], separators=(",", ":")
+                "calibration_phase": primary.get("calibration_phase"),
+                "metadata_bytes": (
+                    int(len(primary["metadata"]) + rgb_protocol.rgb_wire.HEADER_BYTES + rgb_protocol.rgb_wire.TAG_BYTES)
+                    if primary.get("metadata") is not None else None
                 ),
-                "phase_assignment_scores": json.dumps(
-                    primary["assignment_scores"], separators=(",", ":")
+                "channel_prediction_metrics": json.dumps(primary["prediction_metrics"], separators=(",", ":")),
+                "phase_assignment_scores": json.dumps(primary["assignment_scores"], separators=(",", ":")),
+                "gross_slots_all_channels": (
+                    int(primary["stats"]["gross_slots_all_channels"])
+                    if "gross_slots_all_channels" in primary["stats"] else None
                 ),
-                "gross_slots_all_channels": int(
-                    primary["stats"]["gross_slots_all_channels"]
+                "foregone_red_header_slots": (
+                    int(primary["stats"]["foregone_red_header_slots"])
+                    if "foregone_red_header_slots" in primary["stats"] else None
                 ),
-                "foregone_red_header_slots": int(
-                    primary["stats"]["foregone_red_header_slots"]
+                "backup_bits": (
+                    int(primary["stats"]["bootstrap_backup_bits"])
+                    if "bootstrap_backup_bits" in primary["stats"] else None
                 ),
-                "backup_bits": int(primary["stats"]["bootstrap_backup_bits"]),
-                "stream_bits": int(primary["stats"]["ordinary_stream_bits"]),
+                "stream_bits": (
+                    int(primary["stats"]["ordinary_stream_bits"])
+                    if "ordinary_stream_bits" in primary["stats"] else None
+                ),
             })
-            if all(
-                base_row.get(f"blend_{blend}_status") == "rejected_nonpositive_net_capacity"
-                for blend, _ in BLENDS
-            ):
-                base_row["status"] = "rejected_nonpositive_net_capacity"
             capacity_rows.append(base_row)
         except Exception as exc:
             base_row["status"] = "error"
@@ -445,7 +498,7 @@ def main():
         output / "rgb_roundtrip_summary.csv",
         roundtrip_rows,
         fieldnames=[
-            "image", "pixels_sha256", "case", "payload_bits", "net_capacity_bits",
+            "image", "pixels_sha256", "blend_num", "blend_den", "case", "payload_bits", "net_capacity_bits",
             "image_exact", "payload_exact", "embed_seconds", "receiver_seconds", "passed",
         ],
     )
