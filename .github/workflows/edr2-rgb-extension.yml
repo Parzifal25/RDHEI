@@ -1,5 +1,9 @@
 name: EDR2 RGB extension gate
 
+concurrency:
+  group: cc-edr2-rgb-full-corpus-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
