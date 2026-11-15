@@ -25,6 +25,14 @@ CROSS_BLEND_DEN = 4
 RGB_VERSION = b"R3D1"
 
 
+class RGBCapacityError(ValueError):
+    """All phase assignments were evaluated, but none fit the RGB bootstrap directory."""
+
+    def __init__(self, message: str, diagnostics: list[dict]):
+        super().__init__(message)
+        self.diagnostics = diagnostics
+
+
 def _round_div_even(numerator: int, denominator: int) -> int:
     if denominator <= 0:
         raise ValueError("denominator must be positive")
@@ -164,6 +172,7 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
                 raise ValueError("invalid cached RGB spatial prediction or coordinate lengths")
 
     alternatives = []
+    assignment_diagnostics = []
     if assignment_override is None:
         all_assignments = [
             (r, g, b, next(p for p in range(4) if p not in (r, g, b)))
@@ -209,10 +218,22 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
         )
         bootstrap = rgb_wire.HEADER_BYTES + len(metadata) + rgb_wire.TAG_BYTES
         candidate_count = len(coordinate_cache[(0, red_phase)][0])
+        diagnostic = {
+            "phases": list(phases),
+            "calibration_phase": int(calibration_phase),
+            "directory_bytes": int(len(metadata)),
+            "bootstrap_candidates": int(bootstrap),
+            "candidate_count_per_channel": int(candidate_count),
+            "directory_fits": bool(bootstrap < candidate_count),
+            "prediction_metrics": prediction_metrics,
+            "net_capacity_bits": None,
+            "net_bpp_per_rgb_pixel": None,
+        }
+        assignment_diagnostics.append(diagnostic)
         if bootstrap >= candidate_count:
             continue
 
-        positions = rgb_wire.enumerate_slots(
+        positions = rgb_protocol_slots = rgb_wire.enumerate_slots(
             (height, width), labels_by_channel, phases, bootstrap
         )
         gross = int(sum(wire.BOOK[row, 0].sum() for row in labels_by_channel))
@@ -220,6 +241,14 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
         stream = gross - foregone
         backup = 8 * bootstrap
         net = stream - backup
+        diagnostic.update({
+            "net_capacity_bits": int(net),
+            "net_bpp_per_rgb_pixel": float(net / (height * width)),
+            "gross_slots_all_channels": int(gross),
+            "foregone_slots": int(foregone),
+            "backup_bits": int(backup),
+            "ordinary_stream_bits": int(stream),
+        })
         if len(positions[0]) != stream:
             raise AssertionError("RGB slot enumeration and net accounting disagree")
         stats = {
@@ -258,20 +287,15 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
         })
 
     if not alternatives:
-        raise ValueError("no RGB phase assignment has enough bootstrap candidates")
+        raise RGBCapacityError(
+            "no RGB phase assignment has enough bootstrap candidates",
+            assignment_diagnostics,
+        )
     chosen = max(
         alternatives,
         key=lambda row: (row["net"], tuple(-phase for phase in (*row["phases"], row["calibration_phase"])))
     )
-    chosen["assignment_scores"] = [
-        {
-            "phases": list(row["phases"]),
-            "calibration_phase": row["calibration_phase"],
-            "directory_bytes": len(row["metadata"]),
-            "net_capacity_bits": row["net"],
-        }
-        for row in alternatives
-    ]
+    chosen["assignment_scores"] = assignment_diagnostics
     chosen["source_sha256"] = _image_identity(original)
     chosen["source_shape"] = tuple(map(int, original.shape))
     chosen["blend_num"] = blend_num
