@@ -73,7 +73,9 @@ jobs:
 
 
   rgb-full-corpus:
-    if: ${{ inputs.run_rgb_full_corpus == true }}
+    # The full corpus benchmark runs automatically on this evaluation branch push.
+    # Manual dispatch still uses the explicit boolean input.
+    if: ${{ inputs.run_rgb_full_corpus == true || github.event_name == 'push' }}
     needs: rgb-protocol-tests
     runs-on: ubuntu-latest
     timeout-minutes: 360
