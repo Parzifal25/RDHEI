@@ -173,6 +173,19 @@ def test_rgb_runner_completion_gate_accepts_rejected_capacity_and_exact_blend_ca
     assert failures == []
 
 
+
+
+def test_rgb_runner_completion_gate_accepts_bootstrap_infeasible_rejections():
+    inventory = [{"image": "aerials/low-capacity.tiff"}]
+    row = _capacity_row_for_gate("aerials/low-capacity.tiff", (0, 0, 0, 0))
+    row["status"] = "rejected_bootstrap_infeasible"
+    row["capacity_status"] = "bootstrap_infeasible"
+    for blend in range(4):
+        row[f"blend_{blend}_status"] = "rejected_bootstrap_infeasible"
+    status, failures = rgb_gate.completion_status([row], inventory, [])
+    assert status == "completed"
+    assert failures == []
+
 def test_rgb_runner_completion_gate_rejects_limited_smoke_runs():
     inventory = [{"image": "aerials/a.tiff"}]
     capacity = [_capacity_row_for_gate("aerials/a.tiff", (2, 2, 2, 2))]
@@ -243,6 +256,7 @@ def _valid_rgb_evidence_frames():
         "calibration_phase": next(p for p in range(4) if p not in (r, g, b)),
         "net_capacity_bits": 10,
         "directory_bytes": 5,
+        "capacity_status": "capacity_scored",
     } for r in range(4) for g in range(4) if g != r
       for b in range(4) if b not in (r, g)]
     for image, pixel_hash in (("aerials/a.tiff", "a" * 64), ("misc/b.tiff", "b" * 64)):
@@ -269,6 +283,24 @@ def test_rgb_paper_analyzer_accepts_only_complete_evidence():
     capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
     rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
 
+
+
+
+def test_rgb_paper_analyzer_accepts_bootstrap_infeasible_images():
+    capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
+    for blend in (0, 1, 2, 3):
+        capacity.loc[1, f"blend_{blend}_net_capacity_bits"] = 0
+        capacity.loc[1, f"blend_{blend}_status"] = "rejected_bootstrap_infeasible"
+    capacity.loc[1, "status"] = "rejected_bootstrap_infeasible"
+    capacity.loc[1, "signed_net_capacity_bits"] = 0
+    for index, row in assignments.iterrows():
+        if row["image"] == "misc/b.tiff":
+            scores = __import__("json").loads(row["phase_assignment_scores_json"])
+            for score in scores:
+                score["capacity_status"] = "bootstrap_infeasible"
+                score["net_capacity_bits"] = None
+            assignments.loc[index, "phase_assignment_scores_json"] = __import__("json").dumps(scores)
+    rgb_analyzer.validate_evidence(capacity, roundtrip, assignments, run, manifest)
 
 def test_rgb_paper_analyzer_rejects_failed_run_even_when_csvs_exist():
     capacity, roundtrip, assignments, run, manifest = _valid_rgb_evidence_frames()
