@@ -54,5 +54,10 @@ The exact protocol and active code are in:
 
 Do not use legacy `src/encryption.py` as evidence for the active authenticated EDR2 packet protocol.
 
+- `final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py`: complete in-memory prepare, reserve/encrypt, encrypted-domain embedding, authentication, extraction and reconstruction timing with sampled process RSS.
+- `tests/test_edr2_adversarial_packets.py`: deterministic malformed-header, authenticated malformed-compression, wrong-key/nonce and tamper mutation regression tests.
+
+The end-to-end timing workflow uses a deterministic synthetic 512×512 fixture with full-net payload insertion. It is reported separately from natural-image throughput, predictor-only timing, process startup and deployment I/O. Its benchmark artifact is produced by the dedicated EDR2 Actions job.
+
 
 The nine committed SVGs include the adaptive 24-phase assignment-gain figure. Compact per-image phase-gain records are saved as CSV. The full 4,896 assignment-score ledger and the full per-case receiver evidence remain in the linked Run #79 raw evidence archive; the original Action artifact is preserved without editing.
