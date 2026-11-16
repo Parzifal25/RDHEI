@@ -330,15 +330,15 @@ jobs:
 
       - name: Compile active EDR2 benchmark
         run: |
-          python -m py_compile \\
-            final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py \\
-            final_rdhei_protocol_gate_20261022/protocol.py \\
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py \
+            final_rdhei_protocol_gate_20261022/protocol.py \
             final_rdhei_protocol_gate_20261022/wire.py
 
       - name: Run full active EDR2 pipeline runtime and memory benchmark
         run: |
-          python final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py \\
-            --output-dir /tmp/rdhei-e2e-runtime-memory \\
+          python final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py \
+            --output-dir /tmp/rdhei-e2e-runtime-memory \
             --repeats 3 --warmups 1 --size 512
 
       - name: Upload end-to-end runtime and memory evidence
