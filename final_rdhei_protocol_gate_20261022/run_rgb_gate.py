@@ -74,6 +74,18 @@ def payload_for(length: int, seed: int, pixel_hash: str, case: str) -> np.ndarra
     return np.random.default_rng(child_seed).integers(0, 2, length, dtype=np.uint8)
 
 
+def _json_array_nonempty(value) -> bool:
+    """Interpret serialized JSON arrays before checking whether they contain reads."""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return bool(value.strip())
+    return bool(value)
+
+
 def write_csv(path: Path, rows: list[dict]):
     if not rows:
         path.write_text("", encoding="utf-8")
@@ -611,7 +623,8 @@ def main():
         for blend, _ in BLENDS
     }
     source_access_violations = sum(
-        bool(row.get("source_access")) or bool(row.get("source_reads"))
+        bool(row.get("source_access"))
+        or _json_array_nonempty(row.get("source_reads"))
         or bool(row.get("receiver_source_access_violation"))
         for row in receiver_audit_rows
     )
