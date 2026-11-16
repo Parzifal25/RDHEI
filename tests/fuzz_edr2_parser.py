@@ -20,8 +20,12 @@ from pathlib import Path
 import numpy as np
 import atheris
 
+EDR2_ROOT = Path(__file__).resolve().parents[1] / "final_rdhei_protocol_gate_20261022"
+sys.path.insert(0, str(EDR2_ROOT))
+
 with atheris.instrument_imports():
-    from final_rdhei_protocol_gate_20261022 import protocol, wire
+    import protocol
+    import wire
 
 ORIGINAL = np.full((128, 128), 128, dtype=np.uint8)
 MASTER = bytes(range(32))
