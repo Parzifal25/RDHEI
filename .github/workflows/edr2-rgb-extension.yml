@@ -169,7 +169,7 @@ jobs:
           retention-days: 30
 
   rgb-full-corpus:
-    # Explicit one-time push marker launches the requested full native RGB and blend/phase analysis.
+    # Final all-positive-blend independent receiver sweep and reproducible complexity benchmark.
     if: ${{ inputs.run_rgb_full_corpus == true || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-rgb-full]')) }}
     needs: rgb-protocol-tests
     runs-on: ubuntu-latest
