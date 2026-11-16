@@ -1,0 +1,12 @@
+stratifier,stratum,images,positive_net_images,positive_rate,mean_candidate_mae,mean_signed_net_bpp
+classification,constructed,4,0,0.000000,16.727824,-0.053614
+classification,natural,239,133,0.556485,4.613628,0.022862
+corpus_group,constructed_texture_mosaics,4,0,0.000000,16.727824,-0.053614
+corpus_group,miscellaneous_monochrome,22,14,0.636364,4.333460,0.009681
+corpus_group,monochrome_aerial,1,0,0.000000,6.238351,-0.017888
+corpus_group,monochrome_sequence_frames,67,26,0.388060,3.292405,0.048552
+corpus_group,rotated_texture_series,91,78,0.857143,3.210745,0.033632
+corpus_group,texture_scans_and_mosaics,58,15,0.258621,8.419203,-0.018010
+resolution,1024x1024,29,10,0.344828,6.141471,-0.005787
+resolution,256x256,62,18,0.290323,3.746200,0.026177
+resolution,512x512,152,105,0.690789,4.994746,0.024963
