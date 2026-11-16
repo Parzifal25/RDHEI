@@ -21,7 +21,9 @@ Prediction-based approaches exploit spatial correlation: a predictor estimates a
 This paper studies a context-invariance construction for a masked 3×3 predictor. Only candidate centres on one of four step-2 lattices may be altered, and the candidate centre is masked during prediction. Since all distinct mutable centres in the selected lattice are Chebyshev-separated by at least two, no other mutable centre enters a candidate's 3×3 masked patch. Under fixed checkpoint weights, inference mode, preprocessing and rounding, the prediction input at each candidate is therefore unchanged by modifications to candidate-centre values.
 
 
-Recent work has expanded the design space beyond the early RRBE and MSB-prediction foundations. Puteaux and Puech developed high-capacity MSB-prediction schemes [3]. Wang et al. combine MSB sharing with overlapping sawtooth partitions [4], while Zhou et al. examine prediction-error bit-plane classification and adaptive group coding [5]. More recent studies investigate D4-symmetry bidirectional pixel shifting with context-aware recovery [6] and overlapping sub-blocks with shared-MSB encoding [7]. These papers establish that MSB prediction, bit-plane classification, adaptive partitioning, overlap/reuse, and in-band recovery metadata are active prior-art areas. The present work must therefore be positioned around the specific context-invariant CNN candidate geometry, four-phase net-capacity selection, receiver contract, and audited empirical scope—not around broad claims to these established mechanisms.
+Prior art substantially constrains the novelty claim. Yi and Zhou's adaptive checkerboard-based prediction (ACBP) already predicts three-quarters of pixels from a one-quarter reference set and combines this with adaptive bit-level embedding; exact recovery is reported at \(\varepsilon=1\), while the reported maximum of 4.5 bpp occurs at \(\varepsilon=255\), with nonzero recovered-image distortion [11]. Ping et al. subsequently introduced an asymmetric CNN predictor and adaptive-mean second stage for RDHEI [12]. Cheng et al. used a pixel-level masked autoencoder and polar coding in a VRAE design [13]. Thus checkerboard occupancy, bit replacement, CNN prediction for RDHEI and masked-pixel prediction are not claimed as new. More recent work includes MSB sharing with overlapping sawtooth partitions [4], adaptive bit-plane classification/group coding [5], D4-symmetry pixel shifting with context-aware recovery [6], and overlapping-block/shared-MSB encoding [7].
+
+The candidate contribution here is narrower: a deterministic local input-invariance condition for a frozen, centre-masked 3×3 CNN under a step-2 separated candidate-centre phase, coupled to an overhead-aware four-phase signed-net selection rule. The project also provides an authenticated in-band packet and an evaluated RGB variant. These are candidate contributions to defend with direct comparison; they are not evidence that the general checkerboard, CNN, masking or bit-replacement ideas are first-of-kind.
 
 The second design concern is accounting. Gross replaceable bits are not payload capacity. The protocol charges the ordinary slots lost to the in-band header/directory/tag carriers and the additional bits required to preserve the original bootstrap candidate bytes. We therefore use signed net capacity and explicitly report the terms in its accounting identity.
 
@@ -194,7 +196,7 @@ The active EDR2 code combines HKDF-derived key domains, AES-256-CTR and HMAC-SHA
 
 The RGB receiver's file-access test patches Python open functions. It is not an OS sandbox. Run #79's top-level source-read count was corrected after identifying a serialized-empty-array aggregation bug: all 162 per-case records contain empty source-read arrays and false source-access flags. No independent cryptographic audit or side-channel assessment has been completed.
 
-The RGB capacity coverage is sparse. The matched predictor baseline includes a simplified CALIC-style implementation. The grayscale corpus includes correlated sequences/texture groups. Complexity timings are CPU- and implementation-specific, and the sampled RSS method may miss transients. The present work has no GPU timing or fully measured active-protocol end-to-end throughput benchmark.
+The RGB capacity coverage is sparse. The matched predictor baseline includes a simplified CALIC-style implementation. The work has not been directly compared against the closest checkerboard ACBP, asymmetric-CNN RDHEI, PLMAE or BCAGC methods; published rates use different protocols and accounting. The novelty and capacity positioning therefore remain provisional until controlled comparisons are completed. The grayscale corpus includes correlated sequences/texture groups. Complexity timings are CPU- and implementation-specific, and the sampled RSS method may miss transients. The present work has no GPU timing or fully measured active-protocol end-to-end throughput benchmark.
 
 ## 7. Conclusion
 
@@ -208,9 +210,9 @@ The native grayscale EDR2 implementation demonstrates positive net payload for a
 
 [3] P. Puteaux and W. Puech, “An efficient MSB prediction-based method for high-capacity reversible data hiding in encrypted images,” *IEEE Transactions on Information Forensics and Security*, vol. 13, no. 7, pp. 1670–1681, 2018, doi: [10.1109/TIFS.2018.2799381](https://doi.org/10.1109/TIFS.2018.2799381).
 
-[4] X. Wang, L. Li, M. Wang and C.-C. Chang, “High-capacity reversible data hiding in encrypted images based on MSB sharing and overlapping sawtooth partition,” *Journal of King Saud University Computer and Information Sciences*, vol. 38, article 24, 2026 (first published online 12 Dec. 2025), doi: [10.1007/s44443-025-00238-5](https://doi.org/10.1007/s44443-025-00238-5).
+[4] X. Wang et al., “High-capacity reversible data hiding in encrypted images based on MSB sharing and overlapping sawtooth partition,” *Journal of King Saud University Computer and Information Sciences*, vol. 38, article 24, 2026 (first published online 12 Dec. 2025), doi: [10.1007/s44443-025-00238-5](https://doi.org/10.1007/s44443-025-00238-5).
 
-[5] G. Zhou, N. Li, C. Yu, X. Zhang and Z. Tang, “Reversible data hiding in encrypted images based on bit-plane classification and adaptive group coding,” *IET Image Processing*, vol. 20, no. 1, e70310, 2026, doi: [10.1049/ipr2.70310](https://doi.org/10.1049/ipr2.70310).
+[5] G. Zhou et al., “Reversible data hiding in encrypted images based on bit-plane classification and adaptive group coding,” *IET Image Processing*, vol. 20, no. 1, e70310, 2026, doi: [10.1049/ipr2.70310](https://doi.org/10.1049/ipr2.70310).
 
 [6] N. N. Hung, T. L. Cao and V. A. Pham, “High-capacity reversible data hiding in encrypted images using D4-symmetry bidirectional pixel shifting and context-aware recovery,” *Applied Sciences*, vol. 16, no. 20, article 10343, 2026, doi: [10.3390/app162010343](https://doi.org/10.3390/app162010343).
 
@@ -221,6 +223,13 @@ The native grayscale EDR2 implementation demonstrates positive net payload for a
 [9] H. Krawczyk, M. Bellare and R. Canetti, “HMAC: Keyed-Hashing for Message Authentication,” RFC 2104, IETF, 1997, [https://www.rfc-editor.org/rfc/rfc2104](https://www.rfc-editor.org/rfc/rfc2104).
 
 [10] H. Krawczyk and P. Eronen, “HMAC-based Extract-and-Expand Key Derivation Function (HKDF),” RFC 5869, IETF, 2010, [https://www.rfc-editor.org/rfc/rfc5869](https://www.rfc-editor.org/rfc/rfc5869).
+
+
+[11] S. Yi and Y. Zhou, “Parametric reversible data hiding in encrypted images using adaptive bit-level data embedding and checkerboard based prediction,” *Signal Processing*, vol. 150, pp. 171–182, 2018, doi: [10.1016/j.sigpro.2018.04.016](https://doi.org/10.1016/j.sigpro.2018.04.016).
+
+[12] P. Ping, J. Huo and B. Guo, “Novel asymmetric CNN-based and adaptive mean predictors for reversible data hiding in encrypted images,” *Expert Systems with Applications*, vol. 246, article 123270, 2024, doi: [10.1016/j.eswa.2024.123270](https://doi.org/10.1016/j.eswa.2024.123270).
+
+[13] Z. Cheng, K. Chen and Q. Guan, “Reversible data hiding in encrypted images based on pixel-level masked autoencoder and polar code,” *Signal Processing*, vol. 226, article 109664, 2025, doi: [10.1016/j.sigpro.2024.109664](https://doi.org/10.1016/j.sigpro.2024.109664).
 
 ## Figure captions and source files
 

@@ -202,7 +202,15 @@ Evidence supports the following carefully scoped statements:
 6. The benchmark exposes a major CPU-runtime cost for CNN inference relative to the classical methods.
 7. The implementation includes authenticated packet checks and domain-separated key derivation, but the project does not yet possess an independent cryptographic security audit or formal proof.
 
-## 8. Remaining experimental work before submission
+## 8. External literature comparison gap
+
+The current predictor comparison is limited to MED, GAP, a simplified CALIC-style implementation and five CNN checkpoints. It omits the closest checkerboard ACBP, asymmetric-CNN/adaptive-mean RDHEI, pixel-level masked-autoencoder RDHEI and BCAGC methods. This is a material gap.
+
+Yi and Zhou's 2018 ACBP predicts three-quarters of pixels from a one-quarter reference set and uses adaptive bit-level embedding; the 4.5 bpp point is at ε=255, whereas exact reversibility is reported at ε=1. Ping et al. (2024) already use an asymmetric CNN predictor for RDHEI. Cheng et al. (2025) use a pixel-level masked autoencoder in VRAE RDHEI. Zhou et al. (2026) report 4.1472, 4.0565 and 3.4465 bpp on BOSSbase, BOWS-2 and UCID for BCAGC. These rates cannot be directly compared with our signed-net measurements without reconciling datasets, embedding/encryption order and every header, directory, backup and authentication cost. The large numerical gap makes normalized replication a high-priority requirement.
+
+The narrow novelty candidate is deterministic local inference-input invariance of the frozen centre-masked 3×3 CNN under a separated step-2 phase, together with explicit four-phase net-overhead selection. The quarter-grid/checkerboard idea, bit replacement, CNN predictors for RDHEI and masked-pixel prediction are prior art. A first-of-kind or state-of-the-art claim is unsupported by current evidence.
+
+## 9. Remaining experimental work before submission
 
 - Produce a locked manuscript dataset table that includes image-size distribution, source/provenance family, grayscale/RGB exclusions and licences/copyright checks.
 - Run an externally reviewed security assessment covering custom key derivation, nonce management, authentication order, tampering, hider key custody and failure behaviour.

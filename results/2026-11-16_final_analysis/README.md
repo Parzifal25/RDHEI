@@ -12,6 +12,7 @@ This directory consolidates the evidence-backed analysis and a new manuscript dr
 - `EXPERIMENTAL_ANALYSIS.md`: baseline comparison, ablations, corpus stratification, RGB blend analysis, complexity and limitations.
 - `SECURITY_REVIEW.md`: implementation-level security review, threat model and open verification work.
 - `MANUSCRIPT_DRAFT.md`: current paper draft aligned to the active EDR2 and CC-EDR2-RGB protocol implementations.
+- `RELATED_WORK_POSITIONING.md`: closest prior-art matrix, novelty boundary and required head-to-head comparisons.
 - `tables/`: compact summary tables, stratification, per-image capacity ledgers, phase scores, receiver audit and complexity records.
 - `figures/`: nine publication-oriented, editable SVG charts derived from the committed CSV summaries.
 
