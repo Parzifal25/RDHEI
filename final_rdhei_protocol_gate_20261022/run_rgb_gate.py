@@ -450,6 +450,7 @@ def main():
                     image_exact = False
                     payload_exact = False
                     passed = False
+                    receiver_source_access_violation = False
                     try:
                         reserved, capability = rgb_protocol.reserve(
                             image, master, packet_nonce, prepared=prepared
@@ -473,6 +474,10 @@ def main():
                         receiver_status = "completed"
                     except Exception as exc:
                         receiver_error = f"{type(exc).__name__}: {exc}"
+                        receiver_source_access_violation = (
+                            "permissionerror" in receiver_error.lower()
+                            and "source" in receiver_error.lower()
+                        )
                     blend_passes += int(passed)
                     blend_cases += 1
                     row = {
@@ -488,6 +493,7 @@ def main():
                         "passed": passed,
                         "receiver_status": receiver_status,
                         "receiver_error": receiver_error,
+                        "receiver_source_access_violation": receiver_source_access_violation,
                         "independent_receiver_process": receiver_audit["receiver_pid"] is not None,
                         "receiver_pid": receiver_audit["receiver_pid"],
                         "receiver_seconds": receiver_audit["receiver_seconds"],
@@ -508,6 +514,7 @@ def main():
                         "independent_process": receiver_audit["receiver_pid"] is not None,
                         "receiver_status": receiver_status,
                         "receiver_error": receiver_error,
+                        "receiver_source_access_violation": receiver_source_access_violation,
                         "source_access": receiver_audit["source_access"],
                         "source_reads": json.dumps(receiver_audit["source_reads"]),
                         "opened_read_paths": json.dumps(receiver_audit["receiver_opened_read_paths"]),
@@ -605,6 +612,7 @@ def main():
     }
     source_access_violations = sum(
         bool(row.get("source_access")) or bool(row.get("source_reads"))
+        or bool(row.get("receiver_source_access_violation"))
         for row in receiver_audit_rows
     )
     failed_rows = any(row.get("status") in {"error", "roundtrip_failed"} for row in capacity_rows)
@@ -638,7 +646,10 @@ def main():
         "roundtrip_passed_by_blend": roundtrip_passed_by_blend,
         "roundtrip_failed": sum(row.get("passed") is False for row in roundtrip_rows),
         "roundtrip_failed_by_blend": roundtrip_failed_by_blend,
-        "independent_receiver_processes": len(receiver_audit_rows),
+        "receiver_process_attempts": len(receiver_audit_rows),
+        "independent_receiver_processes": sum(
+            bool(row.get("independent_process")) for row in receiver_audit_rows
+        ),
         "receiver_source_access_violations": source_access_violations,
         "receiver_process_fail_closed": True,
         "blend_settings": [{"num": n, "den": d} for n, d in BLENDS],
