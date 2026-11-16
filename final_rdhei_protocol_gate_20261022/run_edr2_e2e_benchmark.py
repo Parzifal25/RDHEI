@@ -158,6 +158,9 @@ def main() -> None:
         return rows
 
     rows, baseline, peak, delta = sample_rss_around(measured)
+    nonce_values = [row["nonce_hex"] for row in rows]
+    if len(set(nonce_values)) != len(nonce_values):
+        raise AssertionError("benchmark reused a nonce under the same master key")
     checkpoint_hash = sha256_file(checkpoint)
 
     with (output / "e2e_stage_timings.csv").open("w", newline="", encoding="utf-8") as stream:
@@ -205,6 +208,7 @@ def main() -> None:
         "nonce_policy": "unique sequential 128-bit benchmark nonces under one fixed master key; benchmark-only",
         "warmups": args.warmups,
         "measured_repeats": args.repeats,
+        "unique_measured_nonces": len(set(nonce_values)),
         "payload_policy": "full measured net capacity in every trial",
         "timing_scope": (
             "in-memory prepare, reserve/encrypt, encrypted-domain embed, packet authentication, "
