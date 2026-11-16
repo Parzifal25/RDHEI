@@ -10,8 +10,8 @@
 | `rgb_dataset_stratification.csv` | RGB outcomes by corpus group and (for 3/4) resolution | Run #79 |
 | `rgb_adaptive_phase_gain_*.csv` | Adaptive 24-assignment selection relative to fixed (0,1,2) | 20 directory-fit image/blend pairs |
 | `rgb_receiver_audit_summary_corrected.csv` | Reparsed source-read and receiver pass counts | 162 independent receiver subprocesses |
-| `complexity_benchmark_run90.csv` | Reproducible CPU predictor runtime, model compute, storage and sampled RSS | Run #90 |
+| `complexity_benchmark_run90.csv` | Reproducible CPU predictor runtime, model compute, storage and sampled RSS | Run #90 |\n| `e2e_benchmark_run102.csv` | Active EDR2 pipeline stage timings on native USC-SIPI 5.2.08.tiff | Run #102; 10 measured repeats |\n| `parser_fuzz_run98.csv` | Coverage-guided parser fuzz budget and run outcome | Run #98; 20,000 Atheris inputs |
 
-Full raw phase-assignment scores (4,896 rows) and per-case receiver records remain in the linked Run #79 evidence archive; the compact per-image adaptive-gain ledger is committed here. The original Run #79 raw files are not rewritten to conceal the earlier summary counter defect.
+Full raw phase-assignment scores (4,896 rows) and per-case receiver records remain in the linked Run #79 evidence archive; full e2e iteration records and fuzz seed corpus remain in their corresponding Actions artifacts; the compact per-image adaptive-gain ledger is committed here. The original Run #79 raw files are not rewritten to conceal the earlier summary counter defect.
 
 Interpretation and explicit comparability boundaries are documented in `../EXPERIMENTAL_ANALYSIS.md`.
