@@ -1,7 +1,7 @@
 # Security review — active EDR2 and CC-EDR2-RGB
 
 **Type:** source-level implementation review, not an independent cryptographic audit.  
-**Reviewed branch head before this documentation commit:** `fbdce6d7323affbc136ff681e2baf9329419eaa3`.
+**Active implementation revision inspected:** `af872d0d984356eda66bd83ec8972dccb40f239c` (grayscale parser exception normalisation). The expanded deterministic adversarial regression suite passed in [Run #93](https://github.com/Parzifal25/RDHEI/actions/runs/43875481127).
 
 ## 1. Scope and active implementation
 
@@ -37,7 +37,7 @@ HMAC is a message-authentication code. AES-CTR itself is a confidentiality mode,
 
 The receiver semantic inputs are the marked encrypted image, master key and nonce, with the common decoder/checkpoint installed as shared software. It does not accept sender-produced image-dependent prediction, label, location, error, payload-length or capacity sidecars.
 
-The receiver test suite covers exact image/payload reconstruction, wrong key, wrong nonce, marked-image tampering, RGB distinct channel keys, non-default RGB blend recovery and partial-byte payload lengths. The RGB end-to-end Run #79 regression set reported 51 passing tests. This is useful implementation evidence but is not an independent cryptographic test programme.
+The receiver test suite covers exact image/payload reconstruction, wrong key, wrong nonce, marked-image tampering, RGB distinct channel keys, non-default RGB blend recovery and partial-byte payload lengths. A new deterministic adversarial suite additionally mutates the grayscale header, encrypted directory, HMAC tag, payload carrier and non-carrier image body; checks malformed header modes/reserved fields/length bounds; authenticates a deliberately malformed compressed directory before verifying parser rejection; and applies 64 seeded one-bit packet mutations plus malformed dimensions. The new suite and existing grayscale/RGB protocol regressions passed in [Run #93](https://github.com/Parzifal25/RDHEI/actions/runs/43875481127). The grayscale parser now converts zlib decompression failures into a controlled packet-format ValueError. This is deterministic mutation/regression testing, not coverage-guided parser fuzzing or an independent cryptographic test programme.
 
 ## 3. Threat model: claims and exclusions
 
@@ -59,14 +59,15 @@ The receiver test suite covers exact image/payload reconstruction, wrong key, wr
 2. **The experiment nonce policy is not a production policy.** Run #79 derived deterministic per-packet test keys/nonces from image identity, blend and payload case to make the experiment reproducible. Those values are not a recommendation for deployment.
 3. **Hider capability distribution is security-critical.** The owner sends the derived hider capability through an authenticated confidential key-delivery mechanism. That channel and its lifecycle are assumed, not implemented/audited as part of the experiment.
 4. **The authorized hider is trusted with authentication authority.** Because it has the MAC capability, it can create valid tags for modified packets. This threat is not covered.
-5. **The Python source-read guard is a measurement aid, not confinement.** It patches `builtins.open` and `io.open`; it does not create an OS namespace, seccomp policy, container boundary or filesystem sandbox.
+5. **Replay/freshness is not enforced by the packet format.** A previously valid marked image and its matching key/nonce may be replayed to a receiver that does not maintain an external freshness ledger. Applications needing freshness must bind the packet to an authenticated transaction identifier or enforce one-time nonce/packet acceptance outside this prototype.
+6. **The Python source-read guard is a measurement aid, not confinement.** It patches `builtins.open` and `io.open`; it does not create an OS namespace, seccomp policy, container boundary or filesystem sandbox.
 6. **Legacy code must not be confused with active protocol code.** `src/encryption.py` implements raw AES-CTR without a packet MAC and documents that limitation. Use the active EDR2/RGB codepaths when describing the evaluated method.
 
 ## 5. Required security work before a strong security claim
 
 - Commission an independent review of key hierarchy, HKDF context strings, AES-CTR key/counter separation, HMAC binding, bootstrap/final header handling, nonce lifecycle and key delivery.
-- Fuzz the header and directory parsers, especially length bounds, malformed zlib input, truncated packets and ambiguous phase cases.
-- Expand tamper testing to mutate every authenticated region and every header/directory/tag carrier, and test all wrong-key/wrong-nonce/truncated/oversized combinations.
+- Add coverage-guided parser fuzzing (for example, a Python fuzz harness over framing and decompression entry points) and run it for a recorded corpus/budget; the current 64-case seeded mutation sweep is not a substitute.
+- Expand tamper testing across all RGB and grayscale header/directory/tag carrier bytes, all truncation boundaries, oversized dimensions, decompression bombs and ambiguous phase candidates. The current grayscale regression covers representative authenticated regions, not every possible byte/length combination.
 - Run static analysis and dependency review; pin library versions and hash the frozen decoder/checkpoint artifacts.
 - Define the operational owner–hider–receiver trust model, including whether the hider may be malicious and how capability keys are delivered, rotated, revoked and stored.
 - Evaluate denial-of-service and resource-exhaustion behaviour on adversarial dimensions and compressed directories.
