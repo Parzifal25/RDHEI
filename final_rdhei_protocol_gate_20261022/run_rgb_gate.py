@@ -241,7 +241,7 @@ def main():
             "file_bytes": int(source.stat().st_size),
         }
         inventory.append(record)
-        master, nonce = stable_ids(args.seed, pixels_hash)
+        master, _base_nonce = stable_ids(args.seed, pixels_hash)
         base_row = dict(record)
         base_row["status"] = "prepared"
         image_started = time.perf_counter()
@@ -407,9 +407,6 @@ def main():
                 if prepared is None or int(prepared["net"]) <= 0:
                     continue
                 tested_blends.append(int(blend_num))
-                reserved, capability = rgb_protocol.reserve(
-                    image, master, nonce, prepared=prepared
-                )
                 blend_passes = 0
                 blend_cases = 0
                 for case, requested in PAYLOAD_CASES:
@@ -421,6 +418,15 @@ def main():
                         length = int(prepared["net"])
                     length = min(length, int(prepared["net"]))
                     payload = payload_for(length, args.seed, pixels_hash, f"{blend_num}/4:{case}")
+                    packet_nonce = int.from_bytes(
+                        hashlib.sha256(
+                            f"CC-EDR2-RGB-PACKET|{args.seed}|{pixels_hash}|blend={blend_num}/4|case={case}".encode("ascii")
+                        ).digest()[:16],
+                        "big",
+                    )
+                    reserved, capability = rgb_protocol.reserve(
+                        image, master, packet_nonce, prepared=prepared
+                    )
                     embed_started = time.perf_counter()
                     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
                     embed_seconds = time.perf_counter() - embed_started
@@ -429,7 +435,7 @@ def main():
                         marked=marked,
                         payload=payload,
                         master=master,
-                        nonce=nonce,
+                        nonce=packet_nonce,
                         source_path=source,
                         dataset_root=root,
                         output_root=receiver_root,
@@ -606,7 +612,8 @@ def main():
         "checkpoint": model_identity,
         "training_performed": False,
         "benchmark_key_policy": (
-            "Deterministically derived per-image keys/nonces for reproducible experiments only; "
+            "Deterministically derived per-image master keys and unique per-packet nonces "
+            "derived from image hash, blend and payload case for reproducible experiments only; "
             "not a deployment key-management recommendation."
         ),
         "seed": args.seed,
