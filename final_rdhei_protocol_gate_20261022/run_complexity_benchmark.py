@@ -171,8 +171,8 @@ def worker(method, checkpoint_name, output_json):
         gc.collect()
     arr = np.asarray(samples, dtype=np.float64)
     result.update({
-        "baseline_rss_mb": round(baseline, 3), "peak_rss_mb": round(peak, 3),
-        "peak_rss_delta_mb": round(delta, 3),
+        "baseline_rss_mib": round(baseline, 3), "peak_rss_mib": round(peak, 3),
+        "peak_rss_delta_mib": round(delta, 3),
         "runtime_mean_ms": float(arr.mean()), "runtime_std_ms": float(arr.std(ddof=1)),
         "runtime_min_ms": float(arr.min()), "runtime_max_ms": float(arr.max()),
         "runtime_median_ms": float(np.median(arr)),
@@ -218,7 +218,7 @@ def main():
             raise RuntimeError(f"benchmark worker failed for {method}: exit={proc.exitcode}")
         row = json.loads(out_json.read_text(encoding="utf-8"))
         results.append(row)
-        print(f"{method}: {row['runtime_mean_ms']:.3f} ms, peak RSS delta={row['peak_rss_delta_mb']:.2f} MB", flush=True)
+        print(f"{method}: {row['runtime_mean_ms']:.3f} ms, peak RSS delta={row['peak_rss_delta_mib']:.2f} MiB", flush=True)
 
     cols = []
     for row in results:
@@ -245,25 +245,25 @@ def main():
         f"- Input: deterministic 512x512 uint8 synthetic grayscale image; SHA-256 {env['benchmark_image_sha256']}",
         f"- Timing: {WARMUP} warmups and {REPEATS} timed repeats; full-map predictor only",
         "- FLOP convention: one MAC = 2 FLOPs, counting Conv2d and Linear only; non-matrix operations excluded.",
-        "- Memory: fresh worker per method; process RSS sampled every 5 ms after warmup.",
+        "- Memory: fresh worker per method; process RSS sampled every 5 ms after warmup; RSS is reported in MiB (bytes / 2^20).",
         "- Checkpoint file bytes, tensor storage and peak RSS delta are separate measurements.",
         "- No training or fine-tuning performed.", "",
         "## CNN complexity and runtime", "",
-        "| Model | Patch | Params | MACs/patch | FLOPs/patch | FLOPs/full 512x512 map | Checkpoint MB | State tensor MB | Peak RSS delta MB | Mean runtime ms |",
+        "| Model | Patch | Params | MACs/patch | FLOPs/patch | FLOPs/full 512x512 map | Checkpoint MB | State tensor MB | Peak RSS delta MiB | Mean runtime ms |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for r in cnn:
         lines.append(f"| {r['method']} | {r['patch_size']}x{r['patch_size']} | {r['parameters']:,} "
             f"| {r['macs_per_patch']:,} | {r['flops_per_patch']:,} | {r['full_map_flops_512']:,} "
             f"| {r['checkpoint_file_bytes']/1e6:.4f} | {r['state_dict_tensor_bytes']/1e6:.4f} "
-            f"| {r['peak_rss_delta_mb']:.2f} | {r['runtime_mean_ms']:.3f} |")
+            f"| {r['peak_rss_delta_mib']:.2f} | {r['runtime_mean_ms']:.3f} |")
     lines += ["", "## Predictor runtime comparison", "",
-        "| Method | Mean ms | Std ms | Median ms | Min ms | Max ms | FPS | Peak RSS delta MB |",
+        "| Method | Mean ms | Std ms | Median ms | Min ms | Max ms | FPS | Peak RSS delta MiB |",
         "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for r in results:
         lines.append(f"| {r['method']} | {r['runtime_mean_ms']:.3f} | {r['runtime_std_ms']:.3f} "
             f"| {r['runtime_median_ms']:.3f} | {r['runtime_min_ms']:.3f} | {r['runtime_max_ms']:.3f} "
-            f"| {r['runtime_fps']:.4f} | {r['peak_rss_delta_mb']:.2f} |")
+            f"| {r['runtime_fps']:.4f} | {r['peak_rss_delta_mib']:.2f} |")
     lines += ["", "## Measurement boundaries", "",
         "- FLOPs/patch is one forward pass on one P×P input patch. Full-map FLOPs multiply the patch count by 262,144.",
         "- The exact EDR2 safe-lattice per-phase and four-phase MAC/FLOP counts are reported only for the proposed 3x3 checkpoint. The 3x3 step-2 lattice is not applied to the 5x5 or 7x7 ablations; their full-map counts are still reported separately.",
@@ -298,7 +298,7 @@ def main():
     bar("fig_cnn_flops_per_patch.png", [r["method"] for r in cnn],
         [r["flops_per_patch"] for r in cnn], "FLOPs per patch", "CNN forward-pass FLOPs per input patch")
     bar("fig_cnn_peak_rss_delta.png", [r["method"] for r in cnn],
-        [r["peak_rss_delta_mb"] for r in cnn], "Peak RSS delta (MB)",
+        [r["peak_rss_delta_mib"] for r in cnn], "Peak RSS delta (MiB)",
         "Sampled incremental process RSS during CNN inference")
     print(f"Complexity benchmark complete: {output}", flush=True)
 
