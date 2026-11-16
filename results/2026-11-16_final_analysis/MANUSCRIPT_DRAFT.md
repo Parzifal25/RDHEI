@@ -8,7 +8,7 @@
 
 This work investigates a convolutional-neural-network (CNN) predictor for reversible data hiding in encrypted images (RDHEI), with an emphasis on synchronizing prediction at the receiver while accounting explicitly for in-band recovery overhead. The grayscale EDR2 protocol uses a frozen residual CNN with a 3×3 masked neighbourhood and a step-2 safe lattice. Four maximum-density lattice phases are evaluated independently; the selected phase maximizes signed net payload after the encrypted header, compressed label directory, authentication tag, carrier opportunity cost and bootstrap-byte backup are accounted for. The selected phase is implicitly indicated by the authenticated in-band header location, and the receiver requires only the marked encrypted image, a 32-byte master key and a 128-bit nonce as per-image semantic inputs.
 
-On a curated 243-image native grayscale USC-SIPI corpus, the native EDR2 gate produced positive signed net capacity for 163 images and passed 978/978 exact image/payload round-trip trials among accepted positive-capacity cases. A separate matched predictor comparison on the same curated images found that the proposed 3×3 checkpoint achieved 133/243 positive-capacity outcomes and mean candidate MAE 4.813, outperforming MED, GAP and a simplified CALIC-style predictor on those measures, but not the 5×5 no-weighted-loss CNN ablation, which achieved 140 positive cases and MAE 4.623. The 3×3 model was selected for its smaller compute footprint rather than best predictive accuracy. A separate RGB prototype evaluated 51 native RGB images, four spatial/cross-channel blend weights and all 24 ordered phase assignments. Seven images achieved positive net capacity under at least one blend, and all 162 exact-recovery trials over positive image/blend pairs passed. A reproducible CPU benchmark measured the 3×3 full-map predictor at 708.5 ms for a 512×512 input, approximately 185 times the measured MED runtime. These results demonstrate exact-recovery feasibility under the tested conditions, while also exposing sparse RGB coverage and a substantial CPU inference cost. Independent cryptographic review and broader security validation remain necessary.
+On a curated 243-image native grayscale USC-SIPI corpus, the native EDR2 gate produced positive signed net capacity for 163 images and passed 978/978 exact image/payload round-trip trials among accepted positive-capacity cases. A separate matched predictor comparison on the same curated images found that the proposed 3×3 checkpoint achieved 133/243 positive-capacity outcomes and mean candidate MAE 4.813, outperforming MED, GAP and a simplified CALIC-style predictor on those measures, but not the 5×5 no-weighted-loss CNN ablation, which achieved 140 positive cases and MAE 4.623. The 3×3 model was selected for its smaller compute footprint rather than best predictive accuracy. A separate RGB prototype evaluated 51 native RGB images, four spatial/cross-channel blend weights and all 24 ordered phase assignments. Seven images achieved positive net capacity under at least one blend, and all 162 exact-recovery trials over positive image/blend pairs passed. A reproducible CPU benchmark measured the 3×3 full-map predictor at 708.5 ms for a synthetic 512×512 input, approximately 185 times the measured MED runtime. A separate native-image end-to-end benchmark on USC-SIPI image 5.2.08.tiff measured a mean 2.506 s (10 repeats) for the active owner-to-receiver pipeline, with 10/10 exact image and full-payload recoveries and a sampled incremental RSS peak of 16.59 MiB. A 20,000-input coverage-guided parser campaign completed without a reported crash, alongside deterministic adversarial packet tests. The RGB extension remains exploratory with sparse positive capacity. These results establish implementation-level recovery and robustness evidence under the tested conditions; independent cryptographic review and formal security analysis remain necessary.
 
 **Keywords:** reversible data hiding; encrypted images; CNN prediction; safe lattice; bit-plane replacement; in-band metadata; exact recovery; RGB image processing.
 
@@ -162,23 +162,19 @@ The tested settings are \(a/d\in\{0,1/4,2/4,3/4\}\). The R3D2 packet authenticat
 
 ### 4.1 Datasets
 
-The grayscale corpus contains 243 curated, unique, native 8-bit USC-SIPI images. The five source volumes were acquired as native TIFF archives. The preparation pipeline retains only single-frame, two-dimensional, 8-bit grayscale images without resizing, cropping, recompression or colour conversion. The curation manifest records archive and file SHA-256 values, source archive member, dimensions, catalogue group, curation rationale and a curator-defined correlation-cluster label for each accepted image. Exact decoded-pixel duplicates are removed before the evaluation manifest is frozen.
+The grayscale corpus contains 243 curated, unique, native 8-bit USC-SIPI images. The five source volumes were acquired as native TIFF archives. The preparation pipeline retains only single-frame, two-dimensional, 8-bit grayscale images without resizing, cropping, recompression or colour conversion. The final native EDR2 allowlist pins archive and file SHA-256 values, source archive members, dimensions, catalogue group and curation rationale. The allowlist contains 245 candidate files before exact decoded-pixel deduplication; two duplicate pixel arrays are removed, leaving 243 evaluated images. The native EDR2 and matched-predictor runs have exactly the same 243 decoded-pixel SHA-256 values. An earlier matched-run manifest labelled 232 records natural and 11 constructed; the final native allowlist applies the more restrictive catalogue interpretation and labels 239 natural and four constructed. The matched predictor's natural/constructed subgroup values in this manuscript have been recomputed against the final native labels, while the 29-cluster bootstrap retains the matched-run provenance clusters for the same image set.
 
 | Grayscale corpus stratum | Images |
 |---|---:|
-| Volume 1 texture scans and mosaics, catalogue group | 58 |
-| Constructed texture mosaics, separately labelled | 4 |
+| Texture scans and mosaics (natural-labelled) | 58 |
+| Constructed texture mosaics (separate label) | 4 |
 | Rotated texture series | 91 |
-| Volume 2 monochrome aerial | 1 |
-| Volume 3 miscellaneous monochrome | 22 |
-| Volume 4 sequence 6.1 (Walter Cronkite), frames 1–16 | 16 |
-| Volume 4 sequence 6.2, retained frames 1–15 | 15 |
-| Volume 4 sequence 6.2, retained frames 17–31 | 15 |
-| Volume 4 sequence 6.3 (chemical-plant far view), frames 1–11 | 11 |
-| Volume 4 toy-vehicle motion sequence | 10 |
+| Miscellaneous monochrome | 22 |
+| Monochrome aerial | 1 |
+| Monochrome sequence frames | 67 |
 | **Total** | **243** |
 
-The grayscale resolution distribution is 62 images at 256×256, 152 at 512×512 and 29 at 1024×1024. The full-run input manifest records 239 images classified as natural and four classified as constructed texture mosaics. The image families are grouped descriptively; texture scans, rotations and adjacent sequence frames are correlated observations and should not be treated as independent photographs. The run’s allowlist records 245 files before exact pixel-duplicate removal; the evaluation corpus contains 243 unique decoded images after two duplicate files are removed.
+The grayscale resolution distribution is 62 images at 256×256, 152 at 512×512 and 29 at 1024×1024. The final native allowlist records 239 natural-labelled and four constructed texture mosaic images. The image families are correlated observations and should not be treated as independent photographs. The 29 correlation clusters used for the matched bootstrap are retained from the same exact 243-pixel-hash image set.
 
 Catalogue-based exclusions include the segmentation-information maps texmos2.s512 and texmos3.s512, the 5.1.13 resolution/calibration chart, the gray21.512 calibration step wedge and the ruler.512 pixel ruler. The format policy also rejects colour or higher-bit-depth data from the grayscale set, multi-frame TIFFs, odd-dimension inputs outside the current EDR2 protocol, unrecognized catalogue volumes and exact decoded-pixel duplicates. The excluded-candidate ledger is retained in the preparation manifest.
 
@@ -205,7 +201,7 @@ The native grayscale EDR2 gate tested accepted images at multiple payload sizes 
 
 ### 4.4 Complexity benchmark
 
-The corrected benchmark used a deterministic synthetic 512×512 input, four CPU threads, five warmups and ten timed repetitions per method, each method in a fresh process. Convolutional and linear MACs were counted from actual layer output shapes; one MAC was reported as two FLOPs. Full-map predictor timing is separated from end-to-end RDHEI latency.
+The corrected predictor benchmark used a deterministic synthetic 512×512 input, four CPU threads, five warmups and ten timed repetitions per method, each method in a fresh process. Convolutional and linear MACs were counted from actual layer output shapes; one MAC was reported as two FLOPs. A separate active EDR2 end-to-end benchmark used the native USC-SIPI image 5.2.08.tiff (512×512), two warmups and ten measured repeats on four CPU threads. It included prediction/directory preparation, reservation and encryption, encrypted-domain embedding, authentication, extraction and reconstruction, but excluded process startup, checkpoint loading and file I/O.
 
 ## 5. Results
 
@@ -229,9 +225,13 @@ At 3/4, all positive examples came from the miscellaneous-colour group (7/14), w
 
 ### 5.4 Complexity
 
-The 3×3 model contains 46,881 parameters and 122,816 MACs per candidate patch. It has lower operation count and sampled RSS than the larger CNN ablations. On a full 512×512 synthetic CPU input its mean predictor time was 708.479 ms, while MED was 3.826 ms. The CNN is about 185.2× slower than MED under this particular predictor-only benchmark. The measured predictor cost is a material practical limitation.
+The 3×3 model contains 46,881 parameters and 122,816 MACs per candidate patch. On the synthetic 512×512 CPU input its mean predictor time was 708.479 ms, while MED was 3.826 ms (approximately 185.2× slower). In the separate native-image EDR2 run on 5.2.08.tiff, mean end-to-end time was 2.5060 s (sample SD 0.1036 s; median 2.5131 s). Stage means were 1.5115 s for prediction/directory preparation, 0.1157 s for reservation/encryption, 0.0699 s for encrypted-domain embedding/authentication, and 0.8089 s for receiver authentication/extraction/recovery. The benchmark inserted the full measured net capacity of 39,655 bits (0.151272 bpp) in each measured trial, recovered image and payload exactly in 10/10 trials, and used 10 distinct benchmark nonces. Process RSS was 382.56 MiB at baseline and 399.15 MiB at sampled peak (increment 16.59 MiB). This single-image, warmed CPU benchmark is not a corpus-wide deployment latency claim.
 
 ## 6. Security and limitations
+
+### 6.1 Security validation evidence
+
+The active grayscale packet parser now converts malformed zlib decompression errors into a controlled packet rejection. Deterministic adversarial regression tests cover modified header, encrypted directory, authentication tag, payload carrier and non-carrier image bytes; malformed codec/reserved/length fields; authenticated malformed compressed data; wrong keys/nonces; and seeded mutation inputs. The expanded grayscale/RGB regression suite passed in GitHub Actions Run #93. Atheris coverage-guided parser fuzzing completed 20,000 inputs in Run #98 without a reported crash; the campaign log recorded 121 coverage counters and 188 feature counters. These tests are implementation-level evidence, not exhaustive parser assurance or formal cryptographic analysis.
 
 The active EDR2 code combines HKDF-derived key domains, AES-256-CTR and HMAC-SHA256 authentication. The receiver checks authentication before directory decompression and has bounded directory parsing. Tests cover wrong keys/nonces and tampering. This is implementation-level evidence, not a formal security proof. AES-CTR is a confidentiality mode; integrity in this design is provided separately by HMAC. The hider's data-hiding capability includes authentication authority, so malicious-hider resistance is not claimed. Nonce uniqueness under each master key is mandatory.
 
@@ -275,6 +275,8 @@ The native grayscale EDR2 implementation demonstrates positive net payload for a
 [14] S. Peng, M. Zhang, Y. Ke, C. Jiang et al., “High-capacity reversible data hiding in encrypted images using dual-stage bit-plane compression and CP-ABE-based recovery authorization,” *Scientific Reports*, 2026, published 8 August 2026, doi: [10.1038/s41598-026-65778-w](https://doi.org/10.1038/s41598-026-65778-w).
 
 [15] F. Ren, Z. Zhang, K. Jiang, P. Zhang and T. Yang, “Reversible data hiding and authentication scheme for encrypted image based on prediction error compression,” *Scientific Reports*, vol. 15, article 11636, 2025, doi: [10.1038/s41598-025-95433-9](https://doi.org/10.1038/s41598-025-95433-9).
+
+[16] USC-SIPI, “USC-SIPI Image Database — Copyright Information,” [https://sipi.usc.edu/database/copyright.php](https://sipi.usc.edu/database/copyright.php), accessed 16 November 2026.
 
 ## Figure captions and source files
 
