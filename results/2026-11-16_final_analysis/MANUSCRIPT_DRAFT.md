@@ -25,7 +25,20 @@ Prior art substantially constrains the novelty claim. Yi and Zhou's adaptive che
 
 [14] S. Peng, M. Zhang, Y. Ke, C. Jiang et al., “High-capacity reversible data hiding in encrypted images using dual-stage bit-plane compression and CP-ABE-based recovery authorization,” *Scientific Reports*, published 8 August 2026, doi: [10.1038/s41598-026-65778-w](https://doi.org/10.1038/s41598-026-65778-w).
 
-Recent RRBE systems also exploit global zero high-order bit-plane runs, adaptive hierarchical block variable-length coding, capacity-aware block rearrangement and CP-ABE-based recovery authorization on BOSSBase, BOWS-2 and UCID [14]. We have not yet extracted that paper's detailed numerical results, so it is included as a required qualitative comparator rather than assigned an unverified rate.
+Ren et al. (2025) proposed an RDHEI scheme combining an improved gradient-adjusted predictor (ISGAP), adaptive Huffman compression of prediction errors and separate plaintext/ciphertext authentication. Their experiments used 100 images from each of BOSSBase and BOWS-2 and report average embedding rates of 3.39 bpp and 3.27 bpp, respectively, with exact image recovery [15]. This is relevant because it combines prediction-error compression with authentication, although its predictor, embedding architecture and accounting differ from EDR2.
+
+Recent RRBE systems also exploit global zero high-order bit-plane runs, adaptive hierarchical block variable-length coding, capacity-aware block rearrangement and CP-ABE-based recovery authorization on BOSSBase, BOWS-2 and UCID [14]. The accessible article abstract establishes the method and datasets but does not state a numerical rate; no rate is inferred here.
+
+| Closest published comparator | Core mechanism and evaluation reported by the source | Numerical result quoted here | Comparability boundary |
+|---|---|---|---|
+| Yi and Zhou (2018), ACBP/PRDHEI [11] | Checkerboard reference set predicts three-quarters of pixels; adaptive bit-level embedding replaces bits. | Fully reversible at ε=1. At ε=255, maximum 4.5 bpp with recovered-image average PSNR above 32 dB. | The 4.5-bpp point is not lossless; it must not be compared as an exact-recovery capacity. |
+| Ping et al. (2024) [12] | Asymmetric CNN plus adaptive-mean second-stage predictor; BOSSBase, UCID, BOWS-2 and six standard images. | No numerical rate reproduced in this draft. | CNN prediction for RDHEI is established prior art; method-specific extraction and recovery differ. |
+| Cheng et al. (2025) [13] | Pixel-level masked autoencoder with polar coding in a VRAE design. | No numerical rate reproduced in this draft. | Masked-pixel learned recovery is prior art, but VRAE/polar-code results are not a direct RRBE comparison. |
+| Ren et al. (2025) [15] | ISGAP prediction-error compression and plaintext/ciphertext authentication; 100 images each from BOSSBase and BOWS-2. | Average 3.39 bpp and 3.27 bpp, respectively. | Dataset, predictor, embedding path and rate accounting differ from EDR2. |
+| Zhou et al. (2026), BCAGC [5] | Bit-plane classification and adaptive group coding; BOSSBase, BOWS-2 and UCID. | Average 4.1472, 4.0565 and 3.4465 bpp, respectively. | The published rates are not matched to EDR2's USC-SIPI corpus or signed net-capacity ledger. |
+| Peng et al. (2026) [14] | Dual-stage bit-plane compression, adaptive hierarchical block variable-length coding, block rearrangement and CP-ABE recovery authorization; BOSSBase, BOWS-2 and UCID. | No numerical rate reproduced in this draft. | Highly relevant bit-plane/RRBE comparator; detailed full-paper tables still require extraction and protocol normalization. |
+
+These published values are a literature-side comparison, not a matched experiment. EDR2 reports signed net capacity after in-band directory, authentication-carrier and bootstrap-restoration costs; published embedding-rate definitions and dataset protocols may differ. No claim of quantitative superiority is made. A head-to-head ranking requires reimplementing or obtaining the comparator code and evaluating all methods on the same native images with the same exact-recovery and overhead rules.
 
 The candidate contribution here is narrower: a deterministic local input-invariance condition for a frozen, centre-masked 3×3 CNN under a step-2 separated candidate-centre phase, coupled to an overhead-aware four-phase signed-net selection rule. The project also provides an authenticated in-band packet and an evaluated RGB variant. These are candidate contributions to defend with direct comparison; they are not evidence that the general checkerboard, CNN, masking or bit-replacement ideas are first-of-kind.
 
@@ -149,7 +162,29 @@ The tested settings are \(a/d\in\{0,1/4,2/4,3/4\}\). The R3D2 packet authenticat
 
 ### 4.1 Datasets
 
-The grayscale corpus contains 243 curated unique native 8-bit USC-SIPI images. Its provenance structure includes rotated texture series, texture scans, sequences and 11 constructed texture mosaics. The manifest groups the 243 images into 29 curator-defined correlation clusters. The RGB corpus contains 51 distinct native 8-bit RGB images, comprising 37 aerial-colour and 14 miscellaneous-colour images. All source and decoded-pixel hashes were unique in the RGB run.
+The grayscale corpus contains 243 curated, unique, native 8-bit USC-SIPI images. The five source volumes were acquired as native TIFF archives. The preparation pipeline retains only single-frame, two-dimensional, 8-bit grayscale images without resizing, cropping, recompression or colour conversion. The curation manifest records archive and file SHA-256 values, source archive member, dimensions, catalogue group, curation rationale and a curator-defined correlation-cluster label for each accepted image. Exact decoded-pixel duplicates are removed before the evaluation manifest is frozen.
+
+| Grayscale corpus stratum | Images |
+|---|---:|
+| Volume 1 texture scans | 51 |
+| Constructed texture mosaics | 11 |
+| Rotated texture series | 91 |
+| Volume 2 monochrome aerial | 1 |
+| Volume 3 miscellaneous monochrome | 22 |
+| Volume 4 Walter Cronkite sequence | 16 |
+| Volume 4 sequence 6.2, frames 1–16 (true-motion segment) | 15 |
+| Volume 4 sequence 6.2, frames 17–32 (undirected-motion segment) | 15 |
+| Volume 4 chemical-plant far-view sequence | 11 |
+| Volume 4 toy-vehicle motion sequence | 10 |
+| **Total** | **243** |
+
+The grayscale resolution distribution is 62 images at 256×256, 152 at 512×512 and 29 at 1024×1024. The 243 records are assigned to 29 curator-defined correlation clusters; texture scans, rotations and adjacent sequence frames are not treated as independent photographs. Eleven constructed texture mosaics are reported separately from the 232 curator-labelled natural-image records.
+
+Catalogue-based exclusions include the segmentation-information maps texmos2.s512 and texmos3.s512, the 5.1.13 resolution/calibration chart, the gray21.512 calibration step wedge and the ruler.512 pixel ruler. The format policy also rejects colour or higher-bit-depth data from the grayscale set, multi-frame TIFFs, odd-dimension inputs outside the current EDR2 protocol, unrecognized catalogue volumes and exact decoded-pixel duplicates. The excluded-candidate ledger is retained in the preparation manifest.
+
+The separate RGB corpus contains 51 distinct native 8-bit RGB images: 37 aerial-colour images and 14 miscellaneous-colour images. Its resolution distribution is 8 images at 256×256, 18 at 512×512, 24 at 1024×1024 and one at 2250×2250. RGB data are not converted to grayscale or resized. The per-image source manifest records official archive checksums and source-file hashes.
+
+**Copyright and reuse.** USC-SIPI describes the database as intended for research, but states that it does not hold copyright for many images and that the copyright status of many items is unknown; it also cautions that it often cannot grant publication permission. Accordingly, access to the dataset is not treated as a blanket redistribution or figure-reuse licence. Before submission, each source image selected for a qualitative manuscript panel must be checked against its item-level provenance and rights status and cleared with the publisher where needed. Unless rights are documented, the paper will use derived plots and author-generated visualisations rather than reproducing source photographs; source-image files will not be bundled with the supplement.
 
 ### 4.2 Baselines and ablations
 
@@ -188,7 +223,9 @@ CNN v3 (5×5, no weighted loss) achieved 140 positive images and MAE 4.6233; it 
 
 The RGB evaluation covered 51 native images, four blends and 24 ordered phase assignments for each image/blend. Seven images achieved positive net capacity under at least one blend; 44 did not. At 0/4, 3 images were positive; at 1/4, 3; at 2/4, 5; and at 3/4, 7. All 162 receiver trials over positive image/blend pairs recovered the original RGB image and payload exactly.
 
-Across directory-fit image/blend pairs, adaptive selection among all 24 ordered R/G/B phase assignments was compared against the fixed assignment (0,1,2). Mean net-capacity gains were 970.3, 1,223.3, 567.2 and 1,543.1 bits for blends 0/4, 1/4, 2/4 and 3/4, with 3, 3, 6 and 8 directory-fit pairs, respectively. The gains are conditional on directory fit and do not make a negative signed net capacity payload-positive.\n\nAt 3/4, all positive examples came from the miscellaneous-colour group (7/14), with no positive aerial-colour image (0/37). The 0/4 fit-only mean bpp was 1.557 over three images; the 3/4 mean was 0.367 over seven images. The blend study thus shows a change in feasible-image coverage, not uniform capacity improvement.
+Across directory-fit image/blend pairs, adaptive selection among all 24 ordered R/G/B phase assignments was compared against the fixed assignment (0,1,2). Mean net-capacity gains were 970.3, 1,223.3, 567.2 and 1,543.1 bits for blends 0/4, 1/4, 2/4 and 3/4, with 3, 3, 6 and 8 directory-fit pairs, respectively. The gains are conditional on directory fit and do not make a negative signed net capacity payload-positive.
+
+At 3/4, all positive examples came from the miscellaneous-colour group (7/14), with no positive aerial-colour image (0/37). The 0/4 fit-only mean bpp was 1.557 over three images; the 3/4 mean was 0.367 over seven images. The blend study thus shows a change in feasible-image coverage, not uniform capacity improvement.
 
 ### 5.4 Complexity
 
@@ -234,6 +271,10 @@ The native grayscale EDR2 implementation demonstrates positive net payload for a
 [12] P. Ping, J. Huo and B. Guo, “Novel asymmetric CNN-based and adaptive mean predictors for reversible data hiding in encrypted images,” *Expert Systems with Applications*, vol. 246, article 123270, 2024, doi: [10.1016/j.eswa.2024.123270](https://doi.org/10.1016/j.eswa.2024.123270).
 
 [13] Z. Cheng, K. Chen and Q. Guan, “Reversible data hiding in encrypted images based on pixel-level masked autoencoder and polar code,” *Signal Processing*, vol. 226, article 109664, 2025, doi: [10.1016/j.sigpro.2024.109664](https://doi.org/10.1016/j.sigpro.2024.109664).
+
+[14] S. Peng, M. Zhang, Y. Ke, C. Jiang et al., “High-capacity reversible data hiding in encrypted images using dual-stage bit-plane compression and CP-ABE-based recovery authorization,” *Scientific Reports*, 2026, published 8 August 2026, doi: [10.1038/s41598-026-65778-w](https://doi.org/10.1038/s41598-026-65778-w).
+
+[15] F. Ren, Z. Zhang, K. Jiang, P. Zhang and T. Yang, “Reversible data hiding and authentication scheme for encrypted image based on prediction error compression,” *Scientific Reports*, vol. 15, article 11636, 2025, doi: [10.1038/s41598-025-95433-9](https://doi.org/10.1038/s41598-025-95433-9).
 
 ## Figure captions and source files
 
