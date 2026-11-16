@@ -66,7 +66,7 @@ The receiver test suite covers exact image/payload reconstruction, wrong key, wr
 ## 5. Required security work before a strong security claim
 
 - Commission an independent review of key hierarchy, HKDF context strings, AES-CTR key/counter separation, HMAC binding, bootstrap/final header handling, nonce lifecycle and key delivery.
-- Add coverage-guided parser fuzzing (for example, a Python fuzz harness over framing and decompression entry points) and run it for a recorded corpus/budget; the current 64-case seeded mutation sweep is not a substitute.
+- Extend the successful Atheris campaign beyond its initial 20,000 inputs, preserve a longer-lived seed corpus and crash corpus, and fuzz grayscale plus RGB framing/decompression entry points. The completed run is evidence, not exhaustive parser assurance.
 - Expand tamper testing across all RGB and grayscale header/directory/tag carrier bytes, all truncation boundaries, oversized dimensions, decompression bombs and ambiguous phase candidates. The current grayscale regression covers representative authenticated regions, not every possible byte/length combination.
 - Run static analysis and dependency review; pin library versions and hash the frozen decoder/checkpoint artifacts.
 - Define the operational owner–hider–receiver trust model, including whether the hider may be malicious and how capability keys are delivered, rotated, revoked and stored.
