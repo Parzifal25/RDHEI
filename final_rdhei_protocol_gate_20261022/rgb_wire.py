@@ -205,7 +205,7 @@ def _unpack_labels(data: bytes, candidate_count: int):
     if len(set(phases)) != 4 or set(phases) != set(range(PHASES)):
         raise ValueError("RGB phases must be a permutation of 0,1,2,3")
     labels = []
-    offset = 8
+    offset = 10
     for _ in range(3):
         packed = np.frombuffer(data[offset:offset + expected], dtype=np.uint8)
         offset += expected
