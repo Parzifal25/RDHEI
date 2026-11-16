@@ -22,7 +22,7 @@ import rgb_wire
 
 CROSS_BLEND_NUM = 1
 CROSS_BLEND_DEN = 4
-RGB_VERSION = b"R3D1"
+RGB_VERSION = b"R3D2"
 
 
 class RGBCapacityError(ValueError):
@@ -113,8 +113,11 @@ def _image_identity(image: np.ndarray) -> str:
 
 
 def _pack_directory(phases: tuple[int, int, int], calibration_phase: int,
+                    blend_num: int, blend_den: int,
                     labels: list[np.ndarray]) -> tuple[bytes, bytes, int]:
-    raw = bytearray(RGB_VERSION + bytes((*phases, calibration_phase)))
+    if blend_den <= 0 or not 0 <= blend_num <= blend_den or blend_den > 255:
+        raise ValueError("invalid RGB blend ratio for packet directory")
+    raw = bytearray(RGB_VERSION + bytes((*phases, calibration_phase, blend_num, blend_den)))
     for row in labels:
         raw.extend(predictor.packlabels(row))
     raw = bytes(raw)
@@ -214,7 +217,7 @@ def prepare(original: np.ndarray, *, blend_num: int = CROSS_BLEND_NUM,
             })
 
         raw, metadata, codec = _pack_directory(
-            phases, calibration_phase, labels_by_channel
+            phases, calibration_phase, blend_num, blend_den, labels_by_channel
         )
         bootstrap = rgb_wire.HEADER_BYTES + len(metadata) + rgb_wire.TAG_BYTES
         candidate_count = len(coordinate_cache[(0, red_phase)][0])
@@ -399,7 +402,7 @@ def receive(marked_rgb: np.ndarray, master: bytes, nonce: int):
         references = _cross_feature(reserved, channel, ys, xs)
         fused, _, _ = _fused_prediction(
             spatial, references, regressions[channel],
-            CROSS_BLEND_NUM, CROSS_BLEND_DEN
+            q["blend_num"], q["blend_den"]
         )
         start = q["bootstrap"] if channel == 0 else 0
         labels = q["labels"][channel]
