@@ -155,12 +155,13 @@ def independent_receiver_roundtrip(
     with Image.open(recovered_path) as recovered_image:
         recovered = np.asarray(recovered_image, dtype=np.uint8).copy()
     extracted = np.load(payload_path, allow_pickle=False)
-    # The caller compares recovered pixels to the original after this
-    # process exits. The receiver itself never receives the original image.
     payload_exact = bool(np.array_equal(extracted, payload))
-    image_exact = None
-    return {
-        "image_exact": image_exact,
+    marked_hash = hashlib.sha256(marked.tobytes(order="C")).hexdigest()
+    if receiver_result.get("marked_image_sha256") != marked_hash:
+        raise RuntimeError("receiver processed a different marked image than the sender created")
+    if receiver_result.get("payload_sha256") != hashlib.sha256(extracted.tobytes()).hexdigest():
+        raise RuntimeError("receiver payload hash does not match saved extraction")
+    receiver_summary = {
         "payload_exact": payload_exact,
         "receiver_pid": int(receiver_result["receiver_pid"]),
         "receiver_seconds": float(receiver_result["receiver_seconds"]),
@@ -169,7 +170,10 @@ def independent_receiver_roundtrip(
         "source_reads": [],
         "receiver_opened_read_paths": receiver_result.get("opened_read_paths", []),
         "receiver_payload_sha256": receiver_result.get("payload_sha256"),
-        "receiver_case_dir": str(case_dir),
+    }
+    shutil.rmtree(case_dir, ignore_errors=True)
+    return {
+        **receiver_summary,
     }, recovered, extracted
 
 
@@ -407,6 +411,7 @@ def main():
                     image, master, nonce, prepared=prepared
                 )
                 blend_passes = 0
+                blend_cases = 0
                 for case, requested in PAYLOAD_CASES:
                     if requested >= 0:
                         length = int(requested)
@@ -434,6 +439,7 @@ def main():
                     payload_exact = bool(np.array_equal(extracted, payload))
                     passed = image_exact and payload_exact
                     blend_passes += int(passed)
+                    blend_cases += 1
                     row = {
                         "image": relative,
                         "pixels_sha256": pixels_hash,
@@ -479,7 +485,7 @@ def main():
                         Image.fromarray(recovered, mode="RGB").save(image_dir / f"recovered_{case}.png")
                         np.save(image_dir / f"payload_{case}.npy", payload, allow_pickle=False)
                         np.save(image_dir / f"extracted_{case}.npy", extracted, allow_pickle=False)
-                base_row[f"blend_{blend_num}_roundtrip_cases"] = int(blend_passes)
+                base_row[f"blend_{blend_num}_roundtrip_cases"] = int(blend_cases)
                 base_row[f"blend_{blend_num}_roundtrip_passed"] = int(blend_passes)
             base_row["roundtrip_tested_blends"] = json.dumps(tested_blends)
             base_row["roundtrip_case_count_all_blends"] = len(per_image_roundtrip_rows)
@@ -491,10 +497,8 @@ def main():
                     "roundtrip_passed" if base_row["all_roundtrips_passed"]
                     else "roundtrip_failed"
                 )
-            elif selected is None:
-                base_row["status"] = (
-                    "roundtrip_passed" if blend_results else "rejected_no_positive_net_capacity"
-                )
+            elif not tested_blends:
+                base_row["status"] = "rejected_no_positive_net_capacity_any_blend"
             else:
                 base_row["status"] = (
                     "roundtrip_passed" if int(selected["net"]) <= 0
@@ -528,35 +532,74 @@ def main():
         )
         for blend, _ in BLENDS
     }
+    roundtrip_cases_by_blend = {
+        str(blend): sum(int(row["blend_num"]) == blend for row in roundtrip_rows)
+        for blend, _ in BLENDS
+    }
+    roundtrip_images_by_blend = {
+        str(blend): len({row["image"] for row in roundtrip_rows if int(row["blend_num"]) == blend})
+        for blend, _ in BLENDS
+    }
+    roundtrip_passed_by_blend = {
+        str(blend): sum(
+            int(row["blend_num"]) == blend and row.get("passed") is True
+            for row in roundtrip_rows
+        )
+        for blend, _ in BLENDS
+    }
+    roundtrip_failed_by_blend = {
+        str(blend): sum(
+            int(row["blend_num"]) == blend and row.get("passed") is False
+            for row in roundtrip_rows
+        )
+        for blend, _ in BLENDS
+    }
+    nonpositive_by_blend = {
+        str(blend): sum(
+            row.get(f"blend_{blend}_net_capacity_bits") is not None
+            and float(row.get(f"blend_{blend}_net_capacity_bits")) <= 0
+            for row in capacity_rows
+        )
+        for blend, _ in BLENDS
+    }
+    source_access_violations = sum(
+        bool(row.get("source_access")) or bool(row.get("source_reads"))
+        for row in receiver_audit_rows
+    )
+    failed_rows = any(row.get("status") in {"error", "roundtrip_failed"} for row in capacity_rows)
     summary = {
         "protocol": "CC-EDR2-RGB",
-        "status": "completed_with_failures" if any(
-            row.get("status") in {
-                "error", "roundtrip_failed",
-                "rejected_nonpositive_net_capacity",
-                "rejected_no_feasible_assignment_at_1_4_blend",
-            } for row in capacity_rows
-        ) else "completed",
+        "protocol_packet_version": rgb_protocol.RGB_VERSION.decode("ascii"),
+        "status": "completed_with_receiver_failures" if failed_rows else "completed_with_capacity_rejections",
         "input_files_seen": len(files),
         "distinct_native_rgb_inputs": len(inventory),
         "skipped_files": len(skipped),
         "capacity_rows": len(capacity_rows),
-        "positive_net_images": sum(
-            float(row.get("signed_net_capacity_bits") or 0) > 0 for row in capacity_rows
-        ),
+        "positive_net_images": blend_positive_counts["1"],
+        "positive_net_images_at_1_4": blend_positive_counts["1"],
         "positive_net_images_by_blend": blend_positive_counts,
+        "nonpositive_net_images_by_blend": nonpositive_by_blend,
         "images_with_at_least_one_directory_fit_by_blend": blend_fit_counts,
-        "nonpositive_net_images": sum(
-            row.get("status") == "rejected_nonpositive_net_capacity" for row in capacity_rows
-        ),
         "no_feasible_1_4_images": sum(
-            row.get("status") == "rejected_no_feasible_assignment_at_1_4_blend"
+            int(row.get("blend_1_directory_fit_assignments") or 0) == 0
             for row in capacity_rows
         ),
+        "phase_assignment_rows": len(assignment_rows),
+        "expected_phase_assignment_rows": len(inventory) * len(BLENDS),
+        "total_24phase_assignment_scores": sum(
+            int(row.get("phase_assignment_count") or 0) for row in assignment_rows
+        ),
         "roundtrip_images": len({row["image"] for row in roundtrip_rows}),
+        "roundtrip_images_by_blend": roundtrip_images_by_blend,
         "roundtrip_cases": len(roundtrip_rows),
+        "roundtrip_cases_by_blend": roundtrip_cases_by_blend,
         "roundtrip_passed": sum(row.get("passed") is True for row in roundtrip_rows),
+        "roundtrip_passed_by_blend": roundtrip_passed_by_blend,
         "roundtrip_failed": sum(row.get("passed") is False for row in roundtrip_rows),
+        "roundtrip_failed_by_blend": roundtrip_failed_by_blend,
+        "independent_receiver_processes": len(receiver_audit_rows),
+        "receiver_source_access_violations": source_access_violations,
+        "receiver_process_fail_closed": True,
         "blend_settings": [{"num": n, "den": d} for n, d in BLENDS],
         "phase_assignments_per_blend": 24,
         "checkpoint_sha256": model_identity["checkpoint_sha256"],
