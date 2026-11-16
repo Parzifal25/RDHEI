@@ -86,6 +86,8 @@ def test_rgb_exact_roundtrip_payload_and_authenticated_phase_discovery(monkeypat
     inspected = rgb_wire.inspect(reserved, hider, stage="bootstrap")
     assert inspected["phases"] == prepared["phases"]
     assert inspected["calibration_phase"] == prepared["calibration_phase"]
+    assert inspected["blend_num"] == prepared["blend_num"] == 1
+    assert inspected["blend_den"] == prepared["blend_den"] == 4
 
     payload = np.random.default_rng(19).integers(0, 2, 137, dtype=np.uint8)
     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
@@ -96,6 +98,33 @@ def test_rgb_exact_roundtrip_payload_and_authenticated_phase_discovery(monkeypat
     assert marked.shape == original.shape
     assert marked.dtype == np.uint8
 
+
+
+@pytest.mark.parametrize("blend_num", [0, 2, 3])
+def test_rgb_packet_authenticates_and_receiver_uses_nondefault_blend(blend_num, monkeypatch):
+    monkeypatch.setattr(predictor, "model", lambda: object())
+    monkeypatch.setattr(predictor, "predict", fake_spatial)
+    original = constant_rgb()
+    master = bytes(range(32))
+    nonce = 0x1234567890ABCDEF1122334455667780 + blend_num
+
+    prepared = rgb_protocol.prepare(
+        original, blend_num=blend_num, blend_den=4
+    )
+    assert prepared["net"] > 0
+    reserved, capability = rgb_protocol.reserve(
+        original, master, nonce, prepared=prepared
+    )
+    hider = rgb_wire.hider_keys(capability["hider"])
+    inspected = rgb_wire.inspect(reserved, hider, stage="bootstrap")
+    assert inspected["blend_num"] == blend_num
+    assert inspected["blend_den"] == 4
+
+    payload = np.random.default_rng(700 + blend_num).integers(0, 2, 137, dtype=np.uint8)
+    marked = rgb_protocol.embed(reserved, payload, capability["hider"])
+    recovered, extracted = rgb_protocol.receive(marked, master, nonce)
+    np.testing.assert_array_equal(recovered, original)
+    np.testing.assert_array_equal(extracted, payload)
 
 def test_rgb_wrong_key_and_tampering_fail_closed(monkeypatch):
     monkeypatch.setattr(predictor, "model", lambda: object())
