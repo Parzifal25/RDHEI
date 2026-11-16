@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """Coverage-guided fuzz target for the authenticated EDR2 grayscale parser.
 
-The harness creates a valid local packet once, then uses Atheris inputs to
-construct authenticated malformed headers/directories and mutate carrier and
-non-carrier bytes. ValueError is the expected packet-rejection outcome; any
-other uncaught exception is a fuzzer finding.
+Build a valid authenticated packet fixture, then mutate header fields and
+construct authenticated malformed directories so the target reaches
+post-authentication framing/decompression/label validation.
 
 Run:
   python -m pip install atheris
-  python tests/fuzz_edr2_parser.py tests/fuzz_corpus -artifact_prefix=/tmp/edr2-crash-
+  python tests/fuzz_edr2_parser.py --write-seed-dir /tmp/edr2-fuzz-corpus
+  python tests/fuzz_edr2_parser.py -max_len=4096 -runs=20000 /tmp/edr2-fuzz-corpus
 """
 from __future__ import annotations
 
 import hashlib
-import struct
 import sys
+import zlib
+from pathlib import Path
 
 import numpy as np
-
 import atheris
 
 with atheris.instrument_imports():
@@ -45,21 +45,49 @@ def _byte(data: bytes, index: int, default: int = 0) -> int:
     return data[index] if index < len(data) else default
 
 
+def _valid_compressed_directory() -> bytes:
+    labels = np.asarray(_BASE_INFO["labels"], dtype=np.uint8)
+    if len(labels) % 2:
+        labels = np.pad(labels, (0, 1))
+    packed = ((labels[0::2] << 4) | labels[1::2]).astype(np.uint8).tobytes()
+    return zlib.compress(packed, level=9)
+
+
+def write_seed_dir(directory: Path) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    compressed = _valid_compressed_directory()
+    if len(compressed) > 65535:
+        raise ValueError("fuzz seed directory too large for header field")
+    # mode=1, canonical reserved bytes, compressed directory length and bytes.
+    # The trailing four bytes plus flag select an in-range zero payload length.
+    seed = (
+        bytes((1, 1, 0, 0))
+        + len(compressed).to_bytes(2, "big")
+        + compressed
+        + bytes((0, 0, 0, 0, 1))
+    )
+    (directory / "valid-compressed-directory.seed").write_bytes(seed)
+    print(
+        f"wrote valid compressed directory seed: {directory / 'valid-compressed-directory.seed'} "
+        f"({len(seed)} bytes)"
+    )
+
+
 def TestOneInput(data: bytes) -> None:
-    """Fuzz one canonical image packet without allowing invalid input to escape."""
+    """Fuzz one canonical image packet; ValueError is expected rejection."""
     if not data:
         return
 
     packet = _BASE.copy()
 
-    # Mutate a deterministic set of non-carrier bytes, then authenticate the
-    # resulting packet so the receiver progresses beyond the HMAC check.
+    # Mutate selected image bytes, then authenticate the packet, so fuzzing
+    # reaches parser paths rather than stopping at an expected MAC failure.
     for offset in range(min(16, len(data) // 2)):
         index = int.from_bytes(data[offset * 2:offset * 2 + 2], "big") % packet.size
         packet.reshape(-1)[index] ^= _byte(data, 32 + offset) or 1
 
     mode = _byte(data, 0) & 1
-    reserved = b"\\x00\\x00\\x00" if (_byte(data, 1) & 3) else bytes(
+    reserved = b"\x00\x00\x00" if (_byte(data, 1) & 3) else bytes(
         (_byte(data, 1), _byte(data, 2), _byte(data, 3))
     )
     max_length = max(0, min(_MAX_DIRECTORY_BYTES, 65535))
@@ -67,7 +95,7 @@ def TestOneInput(data: bytes) -> None:
         directory_length = _EXPECTED_DIRECTORY_BYTES
         start = 4
     else:
-        directory_length = int.from_bytes(data[4:6].ljust(2, b"\\x00"), "big") % (max_length + 1)
+        directory_length = int.from_bytes(data[4:6].ljust(2, b"\x00"), "big") % (max_length + 1)
         start = 6
 
     raw_directory = data[start:start + directory_length]
@@ -75,13 +103,16 @@ def TestOneInput(data: bytes) -> None:
         raw_directory = raw_directory + bytes(directory_length - len(raw_directory))
 
     if mode == 0:
-        # Raw directory path: exact packed-label byte count is required.
+        # Raw directory path requires the exact packed-label byte count.
         directory_length = _EXPECTED_DIRECTORY_BYTES
         raw_directory = (raw_directory + bytes(directory_length))[:directory_length]
 
-    payload_length = int.from_bytes(data[6:10].ljust(4, b"\\x00"), "big")
-    # Keep some cases in range and some deliberately over capacity.
-    if _byte(data, 10) & 1:
+    # Payload controls follow the directory so they do not overwrite directory
+    # seed bytes. Mutations choose both in-range and deliberately invalid lengths.
+    payload_offset = start + directory_length
+    payload_raw = data[payload_offset:payload_offset + 4].ljust(4, b"\x00")
+    payload_length = int.from_bytes(payload_raw, "big")
+    if _byte(data, payload_offset + 4) & 1:
         payload_length %= max(1, int(_BASE_INFO["net"]) + 1)
     else:
         payload_length = int(_BASE_INFO["net"]) + (payload_length & 255) + 1
@@ -100,13 +131,11 @@ def TestOneInput(data: bytes) -> None:
         packet[_BASE_Y[:wire.HEADER_BYTES], _BASE_X[:wire.HEADER_BYTES]] = np.frombuffer(
             encrypted_header, dtype=np.uint8
         )
-
         encrypted_directory = wire.crypt(raw_directory, CAPABILITY["directory"])
         packet[
             _BASE_Y[wire.HEADER_BYTES:wire.HEADER_BYTES + directory_length],
             _BASE_X[wire.HEADER_BYTES:wire.HEADER_BYTES + directory_length],
         ] = np.frombuffer(encrypted_directory, dtype=np.uint8)
-
         wire.seal(
             packet,
             CAPABILITY,
@@ -114,7 +143,6 @@ def TestOneInput(data: bytes) -> None:
             phase=_BASE_PHASE,
         )
     except ValueError:
-        # Invalid lengths or noncanonical framing are ordinary rejections.
         try:
             wire.inspect(packet, CAPABILITY)
         except ValueError:
@@ -128,6 +156,10 @@ def TestOneInput(data: bytes) -> None:
 
 
 def main() -> None:
+    if len(sys.argv) >= 3 and sys.argv[1] == "--write-seed-dir":
+        write_seed_dir(Path(sys.argv[2]))
+        return
+
     print(
         "EDR2 parser fuzz fixture:",
         {
