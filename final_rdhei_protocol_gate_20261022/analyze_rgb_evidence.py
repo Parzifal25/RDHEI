@@ -17,6 +17,18 @@ import pandas as pd
 BLENDS = (0, 1, 2, 3)
 
 
+def json_array_has_items(value) -> bool:
+    """Parse JSON-serialized arrays; an empty string '[]' is not a read."""
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return False
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return bool(value.strip())
+    return bool(value)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-dir", required=True)
@@ -101,6 +113,10 @@ def main():
                 blend_roundtrips.get(
                     "receiver_source_access_violation", pd.Series([False] * len(blend_roundtrips))
                 ).astype(str).str.lower().eq("true").sum()
+            ) + int(
+                blend_roundtrips.get(
+                    "receiver_source_reads", pd.Series(["[]"] * len(blend_roundtrips))
+                ).map(json_array_has_items).sum()
             )
         else:
             complete_case_images = receiver_processes = source_access_violations = 0
