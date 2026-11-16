@@ -43,6 +43,11 @@ on:
         required: true
         type: boolean
         default: false
+      run_complexity_benchmark:
+        description: "Run the standalone reproducible CNN complexity, memory and runtime benchmark."
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -165,6 +170,50 @@ jobs:
             /tmp/proposed-cnn-native-edr2-e2e/
             /tmp/usc-sipi-grayscale/dataset_manifest.json
             /tmp/usc-sipi-grayscale/natural_image_allowlist.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  complexity-benchmark:
+    # Standalone rerun keeps the compute-cost audit independent of the long RGB corpus job.
+    if: ${{ inputs.run_complexity_benchmark == true || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-complexity-only]')) }}
+    needs: rgb-protocol-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out complexity benchmark revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install reproducible complexity dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pandas matplotlib psutil
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile frozen predictor and complexity tools
+        run: |
+          python -m py_compile \\
+            src/baselines.py \\
+            src/cnn_model.py \\
+            src/predictor.py \\
+            final_rdhei_protocol_gate_20261022/wire.py \\
+            final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py
+
+      - name: Run reproducible frozen-CNN complexity, runtime and memory benchmark
+        run: |
+          python final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py \\
+            --output-dir /tmp/rdhei-complexity-benchmark
+
+      - name: Upload standalone reproducible complexity benchmark
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rdhei-reproducible-complexity-benchmark-corrected
+          path: /tmp/rdhei-complexity-benchmark/
           if-no-files-found: warn
           retention-days: 30
 
