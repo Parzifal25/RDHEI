@@ -166,19 +166,19 @@ The grayscale corpus contains 243 curated, unique, native 8-bit USC-SIPI images.
 
 | Grayscale corpus stratum | Images |
 |---|---:|
-| Volume 1 texture scans | 51 |
-| Constructed texture mosaics | 11 |
+| Volume 1 texture scans and mosaics, catalogue group | 58 |
+| Constructed texture mosaics, separately labelled | 4 |
 | Rotated texture series | 91 |
 | Volume 2 monochrome aerial | 1 |
 | Volume 3 miscellaneous monochrome | 22 |
-| Volume 4 Walter Cronkite sequence | 16 |
-| Volume 4 sequence 6.2, frames 1–16 (true-motion segment) | 15 |
-| Volume 4 sequence 6.2, frames 17–32 (undirected-motion segment) | 15 |
-| Volume 4 chemical-plant far-view sequence | 11 |
+| Volume 4 sequence 6.1 (Walter Cronkite), frames 1–16 | 16 |
+| Volume 4 sequence 6.2, retained frames 1–15 | 15 |
+| Volume 4 sequence 6.2, retained frames 17–31 | 15 |
+| Volume 4 sequence 6.3 (chemical-plant far view), frames 1–11 | 11 |
 | Volume 4 toy-vehicle motion sequence | 10 |
 | **Total** | **243** |
 
-The grayscale resolution distribution is 62 images at 256×256, 152 at 512×512 and 29 at 1024×1024. The 243 records are assigned to 29 curator-defined correlation clusters; texture scans, rotations and adjacent sequence frames are not treated as independent photographs. Eleven constructed texture mosaics are reported separately from the 232 curator-labelled natural-image records.
+The grayscale resolution distribution is 62 images at 256×256, 152 at 512×512 and 29 at 1024×1024. The full-run input manifest records 239 images classified as natural and four classified as constructed texture mosaics. The image families are grouped descriptively; texture scans, rotations and adjacent sequence frames are correlated observations and should not be treated as independent photographs. The run’s allowlist records 245 files before exact pixel-duplicate removal; the evaluation corpus contains 243 unique decoded images after two duplicate files are removed.
 
 Catalogue-based exclusions include the segmentation-information maps texmos2.s512 and texmos3.s512, the 5.1.13 resolution/calibration chart, the gray21.512 calibration step wedge and the ruler.512 pixel ruler. The format policy also rejects colour or higher-bit-depth data from the grayscale set, multi-frame TIFFs, odd-dimension inputs outside the current EDR2 protocol, unrecognized catalogue volumes and exact decoded-pixel duplicates. The excluded-candidate ledger is retained in the preparation manifest.
 
