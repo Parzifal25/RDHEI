@@ -157,7 +157,7 @@ def independent_receiver_roundtrip(
     extracted = np.load(payload_path, allow_pickle=False)
     # The caller compares recovered pixels to the original after this
     # process exits. The receiver itself never receives the original image.
-    payload_exact = bool(np.array_equal(extracted, payload)
+    payload_exact = bool(np.array_equal(extracted, payload))
     image_exact = None
     return {
         "image_exact": image_exact,
