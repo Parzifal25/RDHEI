@@ -202,7 +202,7 @@ def main():
         "flop_convention": "one multiply-accumulate = 2 FLOPs; Conv2d and Linear only",
         "excluded_from_mac_flop_count": ["bias additions", "BatchNorm", "ReLU", "Sigmoid",
             "output scaling", "patch extraction/memory copies", "NumPy preprocessing", "Python overhead"],
-        "memory_measurement": "RSS sampled every 5 ms during timed inference in a fresh process; baseline after warmup",
+        "memory_measurement": "RSS sampled every 5 ms during timed inference in a fresh process; baseline after warmup; report units are MiB (bytes / 2^20)",
         "training_performed": False, "training_or_finetuning": False,
     }
     (output / "benchmark_environment.json").write_text(json.dumps(env, indent=2, sort_keys=True)+"\n", encoding="utf-8")
