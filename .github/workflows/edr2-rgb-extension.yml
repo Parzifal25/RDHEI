@@ -24,6 +24,7 @@ on:
       - "final_rdhei_protocol_gate_20261022/wire.py"
       - "tests/test_edr2_rgb.py"
       - "tests/test_edr2_rgb_dataset.py"
+      - "tests/test_edr2_adversarial_packets.py"
       - "src/cnn_model.py"
       - "models/v4_patch3.pth"
   workflow_dispatch:
@@ -90,7 +91,8 @@ jobs:
             tests/test_edr2_publication_hardening.py \
             tests/test_edr2_receiver_only.py \
             tests/test_edr2_rgb.py \
-            tests/test_edr2_rgb_dataset.py
+            tests/test_edr2_rgb_dataset.py \
+            tests/test_edr2_adversarial_packets.py
 
 
 
