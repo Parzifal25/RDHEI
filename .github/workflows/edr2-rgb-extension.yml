@@ -196,16 +196,16 @@ jobs:
 
       - name: Compile frozen predictor and complexity tools
         run: |
-          python -m py_compile \\
-            src/baselines.py \\
-            src/cnn_model.py \\
-            src/predictor.py \\
-            final_rdhei_protocol_gate_20261022/wire.py \\
+          python -m py_compile \
+            src/baselines.py \
+            src/cnn_model.py \
+            src/predictor.py \
+            final_rdhei_protocol_gate_20261022/wire.py \
             final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py
 
       - name: Run reproducible frozen-CNN complexity, runtime and memory benchmark
         run: |
-          python final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py \\
+          python final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py \
             --output-dir /tmp/rdhei-complexity-benchmark
 
       - name: Upload standalone reproducible complexity benchmark
