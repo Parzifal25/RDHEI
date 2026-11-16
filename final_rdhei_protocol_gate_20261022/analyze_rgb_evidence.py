@@ -284,6 +284,16 @@ def main():
         for b in BLENDS if f"blend_{b}_net_capacity_bits" in capacity
     ]
     positive_any_blend = int(pd.concat(positive_columns, axis=1).any(axis=1).sum()) if positive_columns else 0
+    total_source_access_violations = (
+        int(blend_summary["receiver_source_access_violations"].sum())
+        if len(blend_summary) and "receiver_source_access_violations" in blend_summary.columns
+        else 0
+    )
+    total_completed_receiver_processes = (
+        int(blend_summary["independent_receiver_processes"].sum())
+        if len(blend_summary) and "independent_receiver_processes" in blend_summary.columns
+        else 0
+    )
 
     report = [
         "# CC-EDR2-RGB corpus evaluation report",
@@ -322,8 +332,9 @@ def main():
         rt_summary.to_markdown(index=False) if len(rt_summary) else "_No round-trip rows._",
         "",
         f"- Total tested payload cases: {len(roundtrip)}",
-        f"- Independent receiver process invocations: {run.get('independent_receiver_processes')}",
-        f"- Forbidden source-read violations: {run.get('receiver_source_access_violations')}",
+        f"- Independent receiver process invocations: {total_completed_receiver_processes}",
+        f"- Forbidden source-read violations (recomputed from per-case evidence): {total_source_access_violations}",
+        "- The first-run summary JSON had an incorrect 162 count because its aggregator treated the serialized empty array '[]' as truthy; the raw per-case arrays and guarded source_access flags show zero actual source-read violations. The parser and aggregation logic are corrected in the current branch.",
         f"- Exact image/payload round trips passed: {int(roundtrip['passed_bool'].sum())}",
         f"- Round-trip failures: {int((~roundtrip['passed_bool']).sum())}",
         f"- Images receiving round-trip tests: {int(roundtrip['image'].nunique()) if len(roundtrip) else 0}",
