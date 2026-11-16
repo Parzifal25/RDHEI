@@ -1,0 +1,5 @@
+workflow_run,method,mean_runtime_ms,timed_repeats,warmups,scope_note
+Run #90,MED,3.825625,10,5,synthetic 512x512 CPU full-map predictor
+Run #90,CNN v4 3x3,708.478966,10,5,synthetic 512x512 CPU full-map predictor
+Run #103,MED,4.224048,10,5,synthetic 512x512 CPU full-map predictor rerun
+Run #103,CNN v4 3x3,1111.135547,10,5,synthetic 512x512 CPU full-map predictor rerun; one high runtime outlier
