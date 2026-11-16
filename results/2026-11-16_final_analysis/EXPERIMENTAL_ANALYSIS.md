@@ -18,7 +18,7 @@ The native grayscale EDR2 run uses the active four-phase maximum-density safe la
 
 ## 2. Native grayscale EDR2 end-to-end evaluation
 
-The curated grayscale corpus contains 243 unique native 8-bit grayscale images from 250 TIFF candidates. Five candidates were excluded under the documented catalogue rules and two decoded pixel arrays were exact duplicates. The manifest identifies 232 inputs as natural-image records and 11 as constructed texture mosaics. The 243 inputs are not 243 independent samples: curator-defined provenance grouping yields 29 correlation clusters, including texture families and related image sequences.
+The curated grayscale corpus contains 243 unique native 8-bit grayscale images from 250 TIFF candidates. Five candidates were excluded under the documented catalogue rules and two decoded-pixel duplicates were removed. The final hash-pinned native EDR2 allowlist classifies 239 records as natural and four as constructed texture mosaics. The earlier matched-predictor run used the same exact set of 243 decoded-pixel hashes but an earlier curation-label version (232 natural / 11 constructed); the source image set is identical, and the matched-predictor stratification has now been recomputed against the final native allowlist. The 243 images are not 243 independent samples: the matched-run provenance manifest retains 29 correlation clusters covering texture families and image sequences.
 
 | Measure | Result |
 |---|---:|
@@ -95,21 +95,23 @@ The following v4 strata are descriptive. The corpus contains correlated groups a
 
 ### 4.2 Provenance groups and resolution
 
-The most notable heterogeneous groups include:
-- rotated texture series: 78/91 positive, MAE 3.2107, mean signed net 0.033632 bpp;
-- texture scans: 12/51 positive, MAE 8.8437, mean signed net -0.020053 bpp;
-- sequence 6.1 (Walter Cronkite): 16/16 positive, MAE 0.7607, mean signed net 0.151731 bpp;
-- sequence 6.2 true-motion frames 01–16: 0/15 positive;
-- sequence 6.2 undirected frames 17–32: 0/15 positive;
-- sequence 6.3 chemical-plant-far: 0/11 positive;
-- toy-vehicle motion sequence: 10/10 positive, MAE 0.8232, mean signed net 0.168650 bpp.
+The following subgroup values are recalculated from the matched per-image v4 results after joining by decoded-pixel SHA-256 to the final native EDR2 manifest:
+
+| Final native-manifest group | Images | Positive | Coverage | Mean MAE | Mean signed net bpp |
+|---|---:|---:|---:|---:|---:|
+| Rotated texture series | 91 | 78 | 85.7% | 3.2107 | 0.033632 |
+| Texture scans and mosaics (natural-labelled) | 58 | 15 | 25.9% | 8.4192 | -0.018010 |
+| Monochrome sequence frames | 67 | 26 | 38.8% | 3.2924 | 0.048552 |
+| Miscellaneous monochrome | 22 | 14 | 63.6% | 4.3335 | 0.009681 |
+| Monochrome aerial | 1 | 0 | 0.0% | 6.2384 | -0.017888 |
+| Constructed texture mosaics | 4 | 0 | 0.0% | 16.7278 | -0.053614 |
 
 By resolution:
 - 256×256: 18/62 positive (29.0%), mean signed net 0.026177 bpp, median -0.013206 bpp;
 - 512×512: 105/152 positive (69.1%), mean signed net 0.024963 bpp, median 0.022926 bpp;
 - 1024×1024: 10/29 positive (34.5%), mean signed net -0.005787 bpp, median -0.008533 bpp.
 
-Resolution bins are descriptive and entangled with content/provenance. Do not infer that size itself determines capacity.
+Resolution bins and corpus groups are descriptive; neither establishes a causal relationship with capacity. The natural/constructed labels are now tied to the final hash-pinned allowlist, while the cluster-bootstrap analysis still resamples the 29 provenance clusters from the same exact pixel-hash set.
 
 ## 5. Native RGB CC-EDR2-RGB evaluation
 
