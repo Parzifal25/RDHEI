@@ -18,6 +18,8 @@ on:
       - "models/v3_no_weighted_loss.pth"
       - "models/v5_patch7.pth"
       - "final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py"
+      - "final_rdhei_protocol_gate_20261022/rgb_receiver_cli.py"
+      - "final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py"
       - "final_rdhei_protocol_gate_20261022/predictor.py"
       - "final_rdhei_protocol_gate_20261022/wire.py"
       - "tests/test_edr2_rgb.py"
@@ -106,7 +108,7 @@ jobs:
       - name: Install grayscale comparison dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy pillow pycryptodome pandas matplotlib tabulate
+          python -m pip install numpy pillow pycryptodome pandas matplotlib tabulate psutil
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Compile comparative runner and existing EDR2 modules
@@ -194,7 +196,9 @@ jobs:
             final_rdhei_protocol_gate_20261022/rgb_protocol.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_rgb.py \
             final_rdhei_protocol_gate_20261022/run_rgb_gate.py \
-            final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py
+            final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py \
+            final_rdhei_protocol_gate_20261022/rgb_receiver_cli.py \
+            final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py
 
       - name: Download and verify official USC-SIPI RGB TIFFs
         run: |
@@ -215,12 +219,26 @@ jobs:
             --evidence-dir /tmp/cc-edr2-rgb-evidence \
             --output-dir /tmp/cc-edr2-rgb-paper-analysis
 
+      - name: Run reproducible frozen-CNN complexity, runtime and memory benchmark
+        run: |
+          python final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py \
+            --output-dir /tmp/rdhei-complexity-benchmark
+
       - name: Upload CC-EDR2-RGB raw evidence tables and manifests
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cc-edr2-rgb-full-corpus-evidence
           path: /tmp/cc-edr2-rgb-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload reproducible complexity benchmark report, measurements and figures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rdhei-reproducible-complexity-benchmark
+          path: /tmp/rdhei-complexity-benchmark/
           if-no-files-found: warn
           retention-days: 30
 
