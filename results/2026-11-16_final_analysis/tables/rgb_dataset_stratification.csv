@@ -1,0 +1,13 @@
+blend,stratifier,stratum,images,directory_fit_images,positive_net_images,positive_fraction
+0/4,corpus_group,aerial_colour,37,0,0,0
+0/4,corpus_group,miscellaneous_colour,14,3,3,0.214286
+1/4,corpus_group,aerial_colour,37,0,0,0
+1/4,corpus_group,miscellaneous_colour,14,3,3,0.214286
+2/4,corpus_group,aerial_colour,37,0,0,0
+2/4,corpus_group,miscellaneous_colour,14,6,5,0.357143
+3/4,corpus_group,aerial_colour,37,0,0,0
+3/4,corpus_group,miscellaneous_colour,14,8,7,0.500000
+3/4,resolution,256x256,8,5,5,0.625
+3/4,resolution,512x512,18,3,2,0.111111
+3/4,resolution,1024x1024,24,0,0,0
+3/4,resolution,2250x2250,1,0,0,0

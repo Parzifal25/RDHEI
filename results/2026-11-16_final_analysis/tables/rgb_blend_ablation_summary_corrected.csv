@@ -1,0 +1,5 @@
+blend,corpus_images,directory_fit_images,positive_net_images,nonpositive_fit_images,no_directory_fit_images,roundtrip_cases,roundtrip_passed,roundtrip_failed,distinct_receiver_processes,unique_packet_nonces,receiver_source_access_violations,mean_signed_net_bits_fit_only,mean_signed_net_bpp_fit_only
+0/4,51,3,3,0,48,27,27,0,27,27,0,157866,1.556988
+1/4,51,3,3,0,48,27,27,0,27,27,0,91669.667,0.803504
+2/4,51,6,5,1,45,45,45,0,45,45,0,56320.333,0.404195
+3/4,51,8,7,1,43,63,63,0,63,63,0,46752,0.367307

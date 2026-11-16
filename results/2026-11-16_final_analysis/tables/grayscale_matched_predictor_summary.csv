@@ -1,0 +1,10 @@
+method,images,positive_net_images,positive_net_coverage,mean_signed_net_bpp,mean_candidate_mae,exact_roundtrips,roundtrip_attempts,comparison_scope
+MED,243,49,0.201646,-0.013890172,7.950317,49,49,matched step-4 16-phase grid
+GAP,243,58,0.238683,-0.013759801,7.840758,58,58,matched step-4 16-phase grid
+CALIC_simplified,243,49,0.201646,-0.015780190,8.202062,49,49,matched step-4 16-phase grid; simplified CALIC-style implementation
+CNN_v1_full,243,138,0.567901,0.025344393,4.632404,138,138,matched step-4 16-phase grid
+CNN_v2_no_residual,243,139,0.572016,0.023831163,4.657307,139,139,matched step-4 16-phase grid
+CNN_v3_no_weighted_loss,243,140,0.576132,0.025864075,4.623324,140,140,matched step-4 16-phase grid
+CNN_v4_patch3_proposed,243,133,0.547325,0.021603027,4.813039,133,133,matched step-4 16-phase grid
+CNN_v5_patch7,243,140,0.576132,0.025028582,4.688238,140,140,matched step-4 16-phase grid
+HistogramShift_global_peak_zero,243,235,0.967078,0.025018960,,235,235,Separate plaintext-before-AES reference; not same encrypted-domain hider

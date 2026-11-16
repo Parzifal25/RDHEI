@@ -1,0 +1,44 @@
+{
+  "prepared_date": "2026-11-16",
+  "repository": "Parzifal25/RDHEI",
+  "branch": "research/edr2-rgb-extension",
+  "parent_commit": "fbdce6d7323affbc136ff681e2baf9329419eaa3",
+  "checkpoint": {
+    "file": "models/v4_patch3.pth",
+    "sha256": "a9021862c753e11b0100fb11eba0d3b55800915654ed962fcdede8449b159d5d",
+    "parameters": 46881
+  },
+  "training_performed": false,
+  "evidence": {
+    "rgb_run": {
+      "id": 43825299870,
+      "url": "https://github.com/Parzifal25/RDHEI/actions/runs/43825299870",
+      "artifact_id": 14208375193,
+      "artifact_sha256": "e5418d3ed62772eb906841d979782032eecb263f4b2edcd0899ac1aa8507e154"
+    },
+    "rgb_paper_analysis": {
+      "artifact_id": 14208320308,
+      "artifact_sha256": "6d197ab410c0ef8bf9f1077241e26dd7f13c74918d327ef8e50805bbc250775a"
+    },
+    "complexity_run": {
+      "id": 43858892804,
+      "url": "https://github.com/Parzifal25/RDHEI/actions/runs/43858892804",
+      "artifact_id": 14222102560,
+      "artifact_sha256": "1c3c56f0c1b61d45a39c614b1f4486addc3baa114ad42960cf30146927c319e1"
+    }
+  },
+  "rgb_audit_counter_correction": {
+    "original_top_level_count": 162,
+    "recomputed_from_per_case_evidence": 0,
+    "reason": "Original aggregator applied bool() to serialized JSON string [] (truthy); every parsed source_reads array is empty and every source_access flag false.",
+    "original_raw_artifacts_preserved": true,
+    "python_open_guard_is_not_os_sandbox": true
+  },
+  "comparability_warning": "Native grayscale EDR2 step-2/four-phase full-corpus run is separate from matched grayscale predictor comparison using common step-4/16-phase grid.",
+  "limits": [
+    "CALIC baseline is simplified CALIC-style, not canonical full CALIC.",
+    "Histogram-shift reference uses separate plaintext-before-AES embedding path.",
+    "RGB positive-net coverage is sparse: 7/51 under at least one tested blend.",
+    "Complexity benchmark is predictor-only on deterministic synthetic 512x512 CPU input."
+  ]
+}

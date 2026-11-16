@@ -1,0 +1,5 @@
+blend,directory_fit_pairs,positive_net_pairs,mean_gain_bits,median_gain_bits,max_gain_bits,min_gain_bits
+0/4,3,3,970.333,963,1550,398
+1/4,3,3,1223.333,928,2315,427
+2/4,6,5,567.167,415.5,1445,0
+3/4,8,7,1543.125,1077.5,4520,278

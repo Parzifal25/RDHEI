@@ -1,0 +1,5 @@
+metric,reference,estimate_v4_minus_reference,ci95_low,ci95_high,clusters,bootstrap_replicates,seed
+positive_net_coverage,MED,0.345679,0.203774,0.526329,29,10000,20261116
+positive_net_coverage,GAP,0.308642,0.169810,0.492611,29,10000,20261116
+positive_net_coverage,CALIC_simplified,0.345679,0.202840,0.530519,29,10000,20261116
+positive_net_coverage,CNN_v3_no_weighted_loss,-0.028807,-0.087788,0.025774,29,10000,20261116

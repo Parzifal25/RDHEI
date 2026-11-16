@@ -1,0 +1,16 @@
+stratifier,stratum,images,positive_net_images,positive_rate,mean_candidate_mae,mean_signed_net_bpp
+classification,natural,232,130,0.560345,4.592115,0.023646
+classification,constructed,11,3,0.272727,9.472531,-0.021485
+corpus_group,constructed_texture_mosaics,11,3,0.272727,9.472531,-0.021485
+corpus_group,miscellaneous_monochrome,22,14,0.636364,4.333460,0.009681
+corpus_group,monochrome_aerial,1,0,0.000000,6.238351,-0.017888
+corpus_group,rotated_texture_series,91,78,0.857143,3.210745,0.033632
+corpus_group,sequence_6_1_walter_cronkite,16,16,1.000000,0.760671,0.151731
+corpus_group,sequence_6_2_true_motion_frames_01_16,15,0,0.000000,4.280158,-0.012326
+corpus_group,sequence_6_2_undirected_frames_17_32,15,0,0.000000,4.370142,-0.014504
+corpus_group,sequence_6_3_chemical_plant_far,11,0,0.000000,6.403091,-0.041708
+corpus_group,sequence_motion_toy_vehicles,10,10,1.000000,0.823191,0.168650
+corpus_group,texture_scans,51,12,0.235294,8.843671,-0.020053
+resolution,256x256,62,18,0.290323,3.746200,0.026177
+resolution,512x512,152,105,0.690789,4.994746,0.024963
+resolution,1024x1024,29,10,0.344828,6.141471,-0.005787

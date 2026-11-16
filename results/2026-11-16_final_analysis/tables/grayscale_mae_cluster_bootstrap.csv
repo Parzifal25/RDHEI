@@ -1,0 +1,5 @@
+metric,reference,n_paired_images,mean_difference_v4_minus_reference,median_difference,ci95_low,ci95_high,clusters,bootstrap_replicates,seed
+candidate_MAE,MED,243,-3.137278,-2.676483,-4.131790,-2.363761,29,10000,20261116
+candidate_MAE,GAP,243,-3.027719,-2.567716,-3.998488,-2.244682,29,10000,20261116
+candidate_MAE,CALIC_simplified,243,-3.389022,-2.822069,-4.426424,-2.576264,29,10000,20261116
+candidate_MAE,CNN_v3_no_weighted_loss,243,0.189715,0.184760,0.101729,0.273533,29,10000,20261116

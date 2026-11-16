@@ -1,0 +1,2 @@
+corpus_images,positive_net_images,nonpositive_net_images,roundtrip_cases,exact_image_recoveries,exact_payload_recoveries,signed_net_bits_sum,pixels_sum,pooled_signed_net_bpp,mean_per_image_signed_net_bpp,training_performed,model_changed,checkpoint_sha256
+243,163,80,978,978,978,4445763,74317824,0.059820952,0.110540178,false,false,a9021862c753e11b0100fb11eba0d3b55800915654ed962fcdede8449b159d5d
