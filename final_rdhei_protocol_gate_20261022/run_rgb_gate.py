@@ -7,6 +7,8 @@ import csv
 import hashlib
 import json
 import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path, PurePosixPath
 
@@ -91,6 +93,86 @@ def safe_id(relative: str) -> str:
     return hashlib.sha256(relative.encode("utf-8")).hexdigest()[:16]
 
 
+def independent_receiver_roundtrip(
+    marked: np.ndarray,
+    payload: np.ndarray,
+    master: bytes,
+    nonce: int,
+    source_path: Path,
+    dataset_root: Path,
+    output_root: Path,
+    test_id: str,
+):
+    """Send only marked ciphertext + key/nonce to a fresh receiver OS process."""
+    case_dir = output_root / test_id
+    case_dir.mkdir(parents=True, exist_ok=False)
+    marked_path = case_dir / "marked.png"
+    recovered_path = case_dir / "recovered.png"
+    payload_path = case_dir / "payload.npy"
+    result_path = case_dir / "receiver_result.json"
+    request_path = case_dir / "receiver_request.json"
+    Image.fromarray(marked, mode="RGB").save(marked_path, format="PNG")
+    forbidden = [str(dataset_root.resolve()), str(source_path.resolve())]
+    repo_data = Path(__file__).resolve().parents[1] / "data"
+    if repo_data.exists():
+        forbidden.append(str(repo_data.resolve()))
+    request = {
+        "marked_image": str(marked_path.resolve()),
+        "master_key_hex": master.hex(),
+        "nonce": int(nonce),
+        "recovered_image": str(recovered_path.resolve()),
+        "payload_npy": str(payload_path.resolve()),
+        "result_json": str(result_path.resolve()),
+        "forbidden_paths": forbidden,
+    }
+    request_path.write_text(json.dumps(request, sort_keys=True), encoding="utf-8")
+    cli = Path(__file__).resolve().with_name("rgb_receiver_cli.py")
+    started = time.perf_counter()
+    completed = subprocess.run(
+        [sys.executable, str(cli), "--request-json", str(request_path)],
+        cwd=str(Path(__file__).resolve().parents[1]),
+        capture_output=True,
+        text=True,
+        timeout=900,
+        check=False,
+    )
+    process_wall = time.perf_counter() - started
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"independent RGB receiver failed (exit={completed.returncode}): "
+            f"{completed.stderr[-2000:]}"
+        )
+    if not result_path.is_file() or not recovered_path.is_file() or not payload_path.is_file():
+        raise RuntimeError("independent RGB receiver omitted one or more output evidence files")
+    receiver_result = json.loads(result_path.read_text(encoding="utf-8"))
+    if receiver_result.get("source_access") or receiver_result.get("source_reads"):
+        raise RuntimeError("independent RGB receiver attempted a forbidden source-image read")
+    forbidden_resolved = [Path(p).resolve() for p in forbidden]
+    opened = [Path(p).resolve() for p in receiver_result.get("opened_read_paths", [])]
+    for opened_path in opened:
+        if any(opened_path == root or root in opened_path.parents for root in forbidden_resolved):
+            raise RuntimeError(f"receiver opened forbidden source path: {opened_path}")
+    with Image.open(recovered_path) as recovered_image:
+        recovered = np.asarray(recovered_image, dtype=np.uint8).copy()
+    extracted = np.load(payload_path, allow_pickle=False)
+    # The caller compares recovered pixels to the original after this
+    # process exits. The receiver itself never receives the original image.
+    payload_exact = bool(np.array_equal(extracted, payload)
+    image_exact = None
+    return {
+        "image_exact": image_exact,
+        "payload_exact": payload_exact,
+        "receiver_pid": int(receiver_result["receiver_pid"]),
+        "receiver_seconds": float(receiver_result["receiver_seconds"]),
+        "receiver_process_wall_seconds": process_wall,
+        "source_access": False,
+        "source_reads": [],
+        "receiver_opened_read_paths": receiver_result.get("opened_read_paths", []),
+        "receiver_payload_sha256": receiver_result.get("payload_sha256"),
+        "receiver_case_dir": str(case_dir),
+    }, recovered, extracted
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", required=True)
@@ -119,6 +201,7 @@ def main():
 
     capacity_rows = []
     roundtrip_rows = []
+    receiver_audit_rows = []
     assignment_rows = []
     inventory = []
     skipped = []
@@ -262,113 +345,161 @@ def main():
                 base_row["best_blend_net_capacity_bits"] = None
 
             selected = blend_results.get(1)
-            if selected is None:
+            fixed = None
+            fixed_assignment_error = ""
+            if selected is not None:
+                try:
+                    fixed = rgb_protocol.prepare(
+                        image,
+                        blend_num=1,
+                        blend_den=4,
+                        assignment_override=FIXED_ASSIGNMENT,
+                        spatial_cache=spatial_cache,
+                        coordinate_cache=coordinate_cache,
+                    )
+                except rgb_protocol.RGBCapacityError as exc:
+                    fixed_assignment_error = str(exc)
+
+            # Preserve the legacy main-blend fields in the per-image table.
+            if selected is not None:
+                selected["stats"]["blend_feasible_count"] = len(blend_results)
                 base_row.update({
-                    "status": "rejected_no_feasible_assignment_at_1_4_blend",
+                    "status": "capacity_evaluated",
+                    "candidate_count_per_channel": int(selected["stats"]["candidate_count_per_channel"]),
+                    "gross_slots_all_channels": int(selected["stats"]["gross_slots_all_channels"]),
+                    "foregone_red_header_slots": int(selected["stats"]["foregone_red_header_slots"]),
+                    "metadata_bytes": int(selected["stats"]["directory_stored_bytes"] + rgb_protocol.rgb_wire.HEADER_BYTES + rgb_protocol.rgb_wire.TAG_BYTES),
+                    "bootstrap_candidates": int(selected["stats"]["bootstrap_candidates"]),
+                    "backup_bits": int(selected["stats"]["bootstrap_backup_bits"]),
+                    "stream_bits": int(selected["stats"]["ordinary_stream_bits"]),
+                    "signed_net_capacity_bits": int(selected["net"]),
+                    "signed_net_bpp_per_rgb_pixel": float(selected["net"] / (image.shape[0] * image.shape[1])),
+                    "selected_rgb_phases": json.dumps(list(selected["phases"])),
+                    "calibration_phase": int(selected["calibration_phase"]),
+                    "fixed_assignment_012_net_capacity_bits": int(fixed["net"]) if fixed is not None else None,
+                    "fixed_assignment_error": fixed_assignment_error,
+                    "adaptive_assignment_gain_bits": int(selected["net"] - fixed["net"]) if fixed is not None else None,
+                    "channel_prediction_metrics": json.dumps(selected["prediction_metrics"], separators=(",", ":")),
+                    "phase_assignment_scores": json.dumps(selected["assignment_scores"], separators=(",", ":")),
+                    "blend_feasible_count": len(blend_results),
+                    "image_prepare_seconds": time.perf_counter() - image_started,
+                })
+            else:
+                base_row.update({
+                    "status": "no_feasible_assignment_at_1_4",
                     "error": blend_errors.get(1, "no feasible 1/4 blend assignment"),
                     "blend_feasible_count": len(blend_results),
                     "image_prepare_seconds": time.perf_counter() - image_started,
                 })
-                capacity_rows.append(base_row)
-                continue
 
-            fixed_assignment_error = ""
-            try:
-                fixed = rgb_protocol.prepare(
-                    image,
-                    blend_num=1,
-                    blend_den=4,
-                    assignment_override=FIXED_ASSIGNMENT,
-                    spatial_cache=spatial_cache,
-                    coordinate_cache=coordinate_cache,
+            # Round-trip every positive-net blend independently. Each payload case
+            # is handed to a fresh receiver process; all four blends are tested.
+            tested_blends = []
+            per_image_roundtrip_rows = []
+            receiver_root = output / "_receiver_process_work"
+            receiver_root.mkdir(exist_ok=True)
+            for blend_num, blend_den in BLENDS:
+                prepared = blend_results.get(blend_num)
+                if prepared is None or int(prepared["net"]) <= 0:
+                    continue
+                tested_blends.append(int(blend_num))
+                reserved, capability = rgb_protocol.reserve(
+                    image, master, nonce, prepared=prepared
                 )
-            except rgb_protocol.RGBCapacityError as exc:
-                fixed = None
-                fixed_assignment_error = str(exc)
-
-            selected["stats"]["blend_feasible_count"] = len(blend_results)
-            base_row.update({
-                "status": "capacity_evaluated",
-                "candidate_count_per_channel": int(selected["stats"]["candidate_count_per_channel"]),
-                "gross_slots_all_channels": int(selected["stats"]["gross_slots_all_channels"]),
-                "foregone_red_header_slots": int(selected["stats"]["foregone_red_header_slots"]),
-                "metadata_bytes": int(selected["stats"]["directory_stored_bytes"] + rgb_protocol.rgb_wire.HEADER_BYTES + rgb_protocol.rgb_wire.TAG_BYTES),
-                "bootstrap_candidates": int(selected["stats"]["bootstrap_candidates"]),
-                "backup_bits": int(selected["stats"]["bootstrap_backup_bits"]),
-                "stream_bits": int(selected["stats"]["ordinary_stream_bits"]),
-                "signed_net_capacity_bits": int(selected["net"]),
-                "signed_net_bpp_per_rgb_pixel": float(selected["net"] / (image.shape[0] * image.shape[1])),
-                "selected_rgb_phases": json.dumps(list(selected["phases"])),
-                "calibration_phase": int(selected["calibration_phase"]),
-                "fixed_assignment_012_net_capacity_bits": int(fixed["net"]) if fixed is not None else None,
-                "fixed_assignment_error": fixed_assignment_error,
-                "adaptive_assignment_gain_bits": int(selected["net"] - fixed["net"]) if fixed is not None else None,
-                "channel_prediction_metrics": json.dumps(selected["prediction_metrics"], separators=(",", ":")),
-                "phase_assignment_scores": json.dumps(selected["assignment_scores"], separators=(",", ":")),
-                "blend_feasible_count": len(blend_results),
-                "image_prepare_seconds": time.perf_counter() - image_started,
-            })
-
-            if selected["net"] <= 0:
-                base_row["status"] = "rejected_nonpositive_net_capacity"
-                capacity_rows.append(base_row)
-                continue
-
-            reserved, capability = rgb_protocol.reserve(
-                image, master, nonce, prepared=selected
-            )
-            if args.keep_artifacts:
-                image_dir = artifact_root / safe_id(relative)
-                image_dir.mkdir(parents=True, exist_ok=False)
-                shutil.copy2(source, image_dir / ("original" + source.suffix.lower()))
-                Image.fromarray(reserved, mode="RGB").save(image_dir / "reserved_encrypted.png")
-
-            lengths = []
-            for case, requested in PAYLOAD_CASES:
-                if requested >= 0:
-                    length = requested
-                elif requested == -1:
-                    length = max(0, int(selected["net"]) - 1)
-                else:
-                    length = int(selected["net"])
-                length = min(int(length), int(selected["net"]))
-                if length not in lengths:
-                    lengths.append(length)
-                    payload = payload_for(length, args.seed, pixels_hash, case)
-                    marked_started = time.perf_counter()
+                blend_passes = 0
+                for case, requested in PAYLOAD_CASES:
+                    if requested >= 0:
+                        length = int(requested)
+                    elif requested == -1:
+                        length = max(0, int(prepared["net"]) - 1)
+                    else:
+                        length = int(prepared["net"])
+                    length = min(length, int(prepared["net"]))
+                    payload = payload_for(length, args.seed, pixels_hash, f"{blend_num}/4:{case}")
+                    embed_started = time.perf_counter()
                     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
-                    embed_seconds = time.perf_counter() - marked_started
-                    receive_started = time.perf_counter()
-                    recovered, extracted = rgb_protocol.receive(marked, master, nonce)
-                    receiver_seconds = time.perf_counter() - receive_started
+                    embed_seconds = time.perf_counter() - embed_started
+                    receiver_test_id = f"{safe_id(relative)}_blend{blend_num}_{case}"
+                    receiver_audit, recovered, extracted = independent_receiver_roundtrip(
+                        marked=marked,
+                        payload=payload,
+                        master=master,
+                        nonce=nonce,
+                        source_path=source,
+                        dataset_root=root,
+                        output_root=receiver_root,
+                        test_id=receiver_test_id,
+                    )
                     image_exact = bool(np.array_equal(recovered, image))
                     payload_exact = bool(np.array_equal(extracted, payload))
-                    roundtrip_rows.append({
+                    passed = image_exact and payload_exact
+                    blend_passes += int(passed)
+                    row = {
                         "image": relative,
                         "pixels_sha256": pixels_hash,
-                        "blend_num": 1,
-                        "blend_den": 4,
+                        "blend_num": int(blend_num),
+                        "blend_den": int(blend_den),
                         "case": case,
                         "payload_bits": int(length),
-                        "net_capacity_bits": int(selected["net"]),
+                        "net_capacity_bits": int(prepared["net"]),
                         "image_exact": image_exact,
                         "payload_exact": payload_exact,
-                        "passed": image_exact and payload_exact,
+                        "passed": passed,
+                        "independent_receiver_process": True,
+                        "receiver_pid": receiver_audit["receiver_pid"],
+                        "receiver_seconds": receiver_audit["receiver_seconds"],
+                        "receiver_process_wall_seconds": receiver_audit["receiver_process_wall_seconds"],
+                        "receiver_source_access": receiver_audit["source_access"],
+                        "receiver_source_reads": json.dumps(receiver_audit["source_reads"]),
+                        "receiver_opened_read_paths": json.dumps(receiver_audit["receiver_opened_read_paths"]),
                         "embed_seconds": embed_seconds,
-                        "receiver_seconds": receiver_seconds,
+                    }
+                    roundtrip_rows.append(row)
+                    per_image_roundtrip_rows.append(row)
+                    receiver_audit_rows.append({
+                        "image": relative,
+                        "blend_num": int(blend_num),
+                        "blend_den": int(blend_den),
+                        "case": case,
+                        "receiver_pid": receiver_audit["receiver_pid"],
+                        "independent_process": True,
+                        "source_access": receiver_audit["source_access"],
+                        "source_reads": json.dumps(receiver_audit["source_reads"]),
+                        "opened_read_paths": json.dumps(receiver_audit["receiver_opened_read_paths"]),
+                        "payload_bits": int(length),
+                        "payload_sha256": receiver_audit["receiver_payload_sha256"],
+                        "image_exact": image_exact,
+                        "payload_exact": payload_exact,
+                        "passed": passed,
                     })
                     if args.keep_artifacts:
+                        image_dir = artifact_root / safe_id(relative) / f"blend_{blend_num}"
+                        image_dir.mkdir(parents=True, exist_ok=True)
                         Image.fromarray(marked, mode="RGB").save(image_dir / f"marked_{case}.png")
                         Image.fromarray(recovered, mode="RGB").save(image_dir / f"recovered_{case}.png")
                         np.save(image_dir / f"payload_{case}.npy", payload, allow_pickle=False)
                         np.save(image_dir / f"extracted_{case}.npy", extracted, allow_pickle=False)
-
-            all_passed = all(
-                row["passed"] is True
-                for row in roundtrip_rows if row["image"] == relative
+                base_row[f"blend_{blend_num}_roundtrip_cases"] = int(blend_passes)
+                base_row[f"blend_{blend_num}_roundtrip_passed"] = int(blend_passes)
+            base_row["roundtrip_tested_blends"] = json.dumps(tested_blends)
+            base_row["roundtrip_case_count_all_blends"] = len(per_image_roundtrip_rows)
+            base_row["all_roundtrips_passed"] = bool(
+                per_image_roundtrip_rows and all(r["passed"] for r in per_image_roundtrip_rows)
             )
-            base_row["status"] = "roundtrip_passed" if all_passed else "roundtrip_failed"
-            base_row["all_roundtrips_passed"] = all_passed
+            if per_image_roundtrip_rows:
+                base_row["status"] = (
+                    "roundtrip_passed" if base_row["all_roundtrips_passed"]
+                    else "roundtrip_failed"
+                )
+            elif selected is None:
+                base_row["status"] = (
+                    "roundtrip_passed" if blend_results else "rejected_no_positive_net_capacity"
+                )
+            else:
+                base_row["status"] = (
+                    "roundtrip_passed" if int(selected["net"]) <= 0
+                    else "error_no_roundtrip_case"
+                )
             capacity_rows.append(base_row)
         except Exception as exc:
             base_row["status"] = "error"
@@ -378,6 +509,7 @@ def main():
     elapsed = time.perf_counter() - started
     write_csv(output / "rgb_capacity_summary.csv", capacity_rows)
     write_csv(output / "rgb_roundtrip_summary.csv", roundtrip_rows)
+    write_csv(output / "rgb_receiver_process_audit.csv", receiver_audit_rows)
     write_csv(output / "rgb_phase_assignment_scores.csv", assignment_rows)
     write_csv(output / "rgb_input_inventory.csv", inventory)
     write_csv(output / "rgb_skipped_inputs.csv", skipped)
