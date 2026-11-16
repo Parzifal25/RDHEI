@@ -76,9 +76,31 @@ def main():
             continue
         values = pd.to_numeric(capacity[cap_col], errors="coerce")
         usable = values.dropna()
-        success_images = int(
-            ((values > 0) & capacity["status"].isin(["roundtrip_passed", "roundtrip_failed"])).sum()
+        blend_roundtrips = (
+            roundtrip.loc[
+                pd.to_numeric(roundtrip.get("blend_num", pd.Series(dtype=float)), errors="coerce") == blend
+            ].copy()
+            if len(roundtrip) else roundtrip.copy()
         )
+        if len(blend_roundtrips):
+            blend_roundtrips["passed_bool"] = (
+                blend_roundtrips["passed"].astype(str).str.lower().eq("true")
+            )
+            per_image_rt = blend_roundtrips.groupby("image")["passed_bool"].agg(["count", "all"])
+            complete_case_images = int(((per_image_rt["count"] >= 9) & per_image_rt["all"]).sum())
+            receiver_processes = int(
+                blend_roundtrips.get(
+                    "independent_receiver_process", pd.Series([False] * len(blend_roundtrips))
+                ).astype(str).str.lower().eq("true").sum()
+            )
+            source_access_violations = int(
+                blend_roundtrips.get(
+                    "receiver_source_access", pd.Series([False] * len(blend_roundtrips))
+                ).astype(str).str.lower().eq("true").sum()
+            )
+        else:
+            complete_case_images = receiver_processes = source_access_violations = 0
+        images_tested = int(blend_roundtrips["image"].nunique()) if len(blend_roundtrips) else 0
         rows.append({
             "cross_blend": f"{blend}/4",
             "corpus_images": int(len(capacity)),
@@ -86,12 +108,17 @@ def main():
             "positive_net_images": int((usable > 0).sum()),
             "nonpositive_net_images": int((usable <= 0).sum()),
             "images_without_any_directory_fit": int(
-                (pd.to_numeric(capacity.get(f"blend_{blend}_directory_fit_assignments", 0), errors="coerce").fillna(0) == 0).sum()
-            ) if f"blend_{blend}_directory_fit_assignments" in capacity else int(len(capacity) - usable.notna().sum()),
-            "images_with_roundtrip": int(roundtrip.loc[
-                (roundtrip.get("blend_num", pd.Series(1, index=roundtrip.index)) == blend),
-                "image"
-            ].nunique()) if len(roundtrip) and blend == 1 else 0,
+                (pd.to_numeric(capacity.get(f"blend_{blend}_directory_fit_assignments", 0),
+                               errors="coerce").fillna(0) == 0).sum()
+            ) if f"blend_{blend}_directory_fit_assignments" in capacity
+            else int(len(capacity) - usable.notna().sum()),
+            "images_with_roundtrip": images_tested,
+            "roundtrip_cases": int(len(blend_roundtrips)),
+            "roundtrip_passed": int(blend_roundtrips["passed_bool"].sum()) if len(blend_roundtrips) else 0,
+            "roundtrip_failed": int((~blend_roundtrips["passed_bool"]).sum()) if len(blend_roundtrips) else 0,
+            "complete_9_case_images_all_exact": complete_case_images,
+            "independent_receiver_processes": receiver_processes,
+            "receiver_source_access_violations": source_access_violations,
             "mean_signed_net_bits": float(usable.mean()) if len(usable) else np.nan,
             "median_signed_net_bits": float(usable.median()) if len(usable) else np.nan,
             "mean_signed_net_bpp_per_rgb_pixel": float(pd.to_numeric(capacity[bpp_col], errors="coerce").mean()),
@@ -99,7 +126,6 @@ def main():
             "images_better_than_spatial_only": np.nan if blend == 0 else int(
                 (values > pd.to_numeric(capacity["blend_0_net_capacity_bits"], errors="coerce")).sum()
             ),
-            "images_with_roundtrip": success_images if blend == 1 else 0,
         })
         for channel in range(3):
             for metric in ("spatial_mae", "cross_channel_mae", "fused_mae"):
@@ -160,12 +186,22 @@ def main():
     assignment_details = pd.DataFrame(detailed_assignment_rows)
 
     roundtrip["passed_bool"] = roundtrip["passed"].astype(str).str.lower().eq("true")
-    rt_summary = roundtrip.groupby("case", sort=False).agg(
-        tests=("image", "count"),
-        passed=("passed_bool", "sum"),
-        payload_bits_min=("payload_bits", "min"),
-        payload_bits_max=("payload_bits", "max"),
-    ).reset_index()
+    if len(roundtrip):
+        group_cols = [col for col in ("blend_num", "case") if col in roundtrip.columns]
+        agg = {
+            "image": ("image", "count"),
+            "passed": ("passed_bool", "sum"),
+            "payload_bits_min": ("payload_bits", "min"),
+            "payload_bits_max": ("payload_bits", "max"),
+            "independent_receiver_processes": ("independent_receiver_process", "sum"),
+        }
+        rt_summary = roundtrip.groupby(group_cols, sort=False).agg(**agg).reset_index()
+        rt_summary = rt_summary.rename(columns={"image": "tests"})
+    else:
+        rt_summary = pd.DataFrame(columns=[
+            "blend_num", "case", "tests", "passed", "payload_bits_min",
+            "payload_bits_max", "independent_receiver_processes"
+        ])
     rt_summary["failed"] = rt_summary["tests"] - rt_summary["passed"]
 
     capacity.to_csv(output / "rgb_per_image_capacity_and_prediction.csv", index=False)
@@ -222,6 +258,12 @@ def main():
         plt.savefig(output / "fig_rgb_03_phase_selection_gain.png", dpi=220)
         plt.close()
 
+    positive_columns = [
+        pd.to_numeric(capacity[f"blend_{b}_net_capacity_bits"], errors="coerce") > 0
+        for b in BLENDS if f"blend_{b}_net_capacity_bits" in capacity
+    ]
+    positive_any_blend = int(pd.concat(positive_columns, axis=1).any(axis=1).sum()) if positive_columns else 0
+
     report = [
         "# CC-EDR2-RGB corpus evaluation report",
         "",
@@ -236,7 +278,7 @@ def main():
         "## Corpus feasibility",
         "",
         f"- Images evaluated: {len(capacity)}",
-        f"- Images with a valid positive-net packet: {int((capacity['status'] == 'roundtrip_passed').sum()) + int((capacity['status'] == 'roundtrip_failed').sum())}",
+        f"- Images with positive net capacity under at least one blend: {positive_any_blend}",
         f"- Images rejected before capacity calculation: {int((capacity['status'] == 'error').sum())}",
         f"- Status counts: {json.dumps({str(k): int(v) for k, v in status_counts.items()}, sort_keys=True)}",
         "",
@@ -259,10 +301,12 @@ def main():
         rt_summary.to_markdown(index=False) if len(rt_summary) else "_No round-trip rows._",
         "",
         f"- Total tested payload cases: {len(roundtrip)}",
+        f"- Independent receiver process invocations: {run.get("independent_receiver_processes")}",
+        f"- Forbidden source-read violations: {run.get("receiver_source_access_violations")}",
         f"- Exact image/payload round trips passed: {int(roundtrip['passed_bool'].sum())}",
         f"- Round-trip failures: {int((~roundtrip['passed_bool']).sum())}",
         f"- Images receiving round-trip tests: {int(roundtrip['image'].nunique()) if len(roundtrip) else 0}",
-        "- Exact-recovery tests use the configured 1/4 cross-channel blend; alternative blend weights are evaluated for prediction/phase/capacity, but are not separately packet-round-trip tested in this run.",
+        "- Every positive-net image/blend combination is tested using nine payload sizes, with each marked packet processed by a fresh receiver OS process. The receiver receives only the marked RGB image, master key and nonce; original source paths and the dataset root are blocked and read-audited.",
         "",
         "## Method and interpretation",
         "",
