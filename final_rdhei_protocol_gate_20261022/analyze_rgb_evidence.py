@@ -97,6 +97,10 @@ def main():
                 blend_roundtrips.get(
                     "receiver_source_access", pd.Series([False] * len(blend_roundtrips))
                 ).astype(str).str.lower().eq("true").sum()
+            ) + int(
+                blend_roundtrips.get(
+                    "receiver_source_access_violation", pd.Series([False] * len(blend_roundtrips))
+                ).astype(str).str.lower().eq("true").sum()
             )
         else:
             complete_case_images = receiver_processes = source_access_violations = 0
@@ -117,6 +121,7 @@ def main():
             "roundtrip_passed": int(blend_roundtrips["passed_bool"].sum()) if len(blend_roundtrips) else 0,
             "roundtrip_failed": int((~blend_roundtrips["passed_bool"]).sum()) if len(blend_roundtrips) else 0,
             "complete_9_case_images_all_exact": complete_case_images,
+            "receiver_process_attempts": int(len(blend_roundtrips)),
             "independent_receiver_processes": receiver_processes,
             "receiver_source_access_violations": source_access_violations,
             "mean_signed_net_bits": float(usable.mean()) if len(usable) else np.nan,
@@ -306,7 +311,7 @@ def main():
         f"- Exact image/payload round trips passed: {int(roundtrip['passed_bool'].sum())}",
         f"- Round-trip failures: {int((~roundtrip['passed_bool']).sum())}",
         f"- Images receiving round-trip tests: {int(roundtrip['image'].nunique()) if len(roundtrip) else 0}",
-        "- Every positive-net image/blend combination is tested using nine payload sizes, with each marked packet processed by a fresh receiver OS process. The receiver receives only the marked RGB image, master key and nonce; original source paths and the dataset root are blocked and read-audited.",
+        "- Every positive-net image/blend combination is attempted with nine payload sizes. Each completed case uses a fresh receiver OS process. The receiver receives only the marked RGB image, master key and nonce. Python builtins.open/io.open are guarded against reads beneath source paths; the parent audits reported paths. This is a guarded file-I/O audit, not an OS-level sandbox.",
         "",
         "## Method and interpretation",
         "",
