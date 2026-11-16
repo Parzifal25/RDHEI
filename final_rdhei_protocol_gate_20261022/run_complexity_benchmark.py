@@ -139,8 +139,6 @@ def worker(method, checkpoint_name, output_json):
             fn()
         gc.collect()
         samples, baseline, peak, delta = sample_peak_rss(fn)
-        ys, xs = wire.grid(IMAGE_SHAPE, phase=0)
-        safe_candidates = int(len(ys))
         full_count = IMAGE_SHAPE[0] * IMAGE_SHAPE[1]
         result.update({
             "checkpoint": checkpoint_name, "checkpoint_sha256": sha256_file(checkpoint),
@@ -152,12 +150,23 @@ def worker(method, checkpoint_name, output_json):
             "full_map_predictions_512": int(full_count),
             "full_map_macs_512": int(macs*full_count),
             "full_map_flops_512": int(2*macs*full_count),
-            "edr2_candidates_per_phase_512": safe_candidates,
-            "edr2_macs_per_phase_512": int(macs*safe_candidates),
-            "edr2_flops_per_phase_512": int(2*macs*safe_candidates),
-            "edr2_all_four_phase_macs_512": int(macs*safe_candidates*4),
-            "edr2_all_four_phase_flops_512": int(2*macs*safe_candidates*4),
+            "edr2_lattice_applicable": bool(patch_size == 3),
+            "edr2_candidates_per_phase_512": None,
+            "edr2_macs_per_phase_512": None,
+            "edr2_flops_per_phase_512": None,
+            "edr2_all_four_phase_macs_512": None,
+            "edr2_all_four_phase_flops_512": None,
         })
+        if patch_size == 3:
+            ys, xs = wire.grid(IMAGE_SHAPE, phase=0)
+            safe_candidates = int(len(ys))
+            result.update({
+                "edr2_candidates_per_phase_512": safe_candidates,
+                "edr2_macs_per_phase_512": int(macs*safe_candidates),
+                "edr2_flops_per_phase_512": int(2*macs*safe_candidates),
+                "edr2_all_four_phase_macs_512": int(macs*safe_candidates*4),
+                "edr2_all_four_phase_flops_512": int(2*macs*safe_candidates*4),
+            })
         del model
         gc.collect()
     arr = np.asarray(samples, dtype=np.float64)
@@ -257,7 +266,7 @@ def main():
             f"| {r['runtime_fps']:.4f} | {r['peak_rss_delta_mb']:.2f} |")
     lines += ["", "## Measurement boundaries", "",
         "- FLOPs/patch is one forward pass on one P×P input patch. Full-map FLOPs multiply the patch count by 262,144.",
-        "- The exact EDR2 safe-lattice per-phase and four-phase MAC/FLOP counts are recorded in the CSV; do not confuse them with full-map legacy predictor runtime.",
+        "- The exact EDR2 safe-lattice per-phase and four-phase MAC/FLOP counts are reported only for the proposed 3x3 checkpoint. The 3x3 step-2 lattice is not applied to the 5x5 or 7x7 ablations; their full-map counts are still reported separately.",
         "- RSS delta is sampled and can miss transient peaks shorter than the 5 ms sampling interval.",
         "- Classical predictors have no learned CNN parameters or Conv2d/Linear MAC count; runtime and RSS are measured identically.", "",
         "## Frozen checkpoint SHA-256", ""]
