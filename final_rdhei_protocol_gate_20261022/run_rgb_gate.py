@@ -431,19 +431,48 @@ def main():
                     marked = rgb_protocol.embed(reserved, payload, capability["hider"])
                     embed_seconds = time.perf_counter() - embed_started
                     receiver_test_id = f"{safe_id(relative)}_blend{blend_num}_{case}"
-                    receiver_audit, recovered, extracted = independent_receiver_roundtrip(
-                        marked=marked,
-                        payload=payload,
-                        master=master,
-                        nonce=packet_nonce,
-                        source_path=source,
-                        dataset_root=root,
-                        output_root=receiver_root,
-                        test_id=receiver_test_id,
-                    )
-                    image_exact = bool(np.array_equal(recovered, image))
-                    payload_exact = bool(np.array_equal(extracted, payload))
-                    passed = image_exact and payload_exact
+                    receiver_status = "failed"
+                    receiver_error = ""
+                    receiver_audit = {
+                        "receiver_pid": None,
+                        "receiver_seconds": None,
+                        "receiver_process_wall_seconds": None,
+                        "source_access": None,
+                        "source_reads": [],
+                        "receiver_opened_read_paths": [],
+                        "receiver_payload_sha256": None,
+                        "payload_exact": False,
+                    }
+                    recovered = None
+                    extracted = None
+                    marked = None
+                    embed_seconds = None
+                    image_exact = False
+                    payload_exact = False
+                    passed = False
+                    try:
+                        reserved, capability = rgb_protocol.reserve(
+                            image, master, packet_nonce, prepared=prepared
+                        )
+                        embed_started = time.perf_counter()
+                        marked = rgb_protocol.embed(reserved, payload, capability["hider"])
+                        embed_seconds = time.perf_counter() - embed_started
+                        receiver_audit, recovered, extracted = independent_receiver_roundtrip(
+                            marked=marked,
+                            payload=payload,
+                            master=master,
+                            nonce=packet_nonce,
+                            source_path=source,
+                            dataset_root=root,
+                            output_root=receiver_root,
+                            test_id=receiver_test_id,
+                        )
+                        image_exact = bool(np.array_equal(recovered, image))
+                        payload_exact = bool(np.array_equal(extracted, payload))
+                        passed = image_exact and payload_exact
+                        receiver_status = "completed"
+                    except Exception as exc:
+                        receiver_error = f"{type(exc).__name__}: {exc}"
                     blend_passes += int(passed)
                     blend_cases += 1
                     row = {
@@ -457,7 +486,9 @@ def main():
                         "image_exact": image_exact,
                         "payload_exact": payload_exact,
                         "passed": passed,
-                        "independent_receiver_process": True,
+                        "receiver_status": receiver_status,
+                        "receiver_error": receiver_error,
+                        "independent_receiver_process": receiver_audit["receiver_pid"] is not None,
                         "receiver_pid": receiver_audit["receiver_pid"],
                         "receiver_seconds": receiver_audit["receiver_seconds"],
                         "receiver_process_wall_seconds": receiver_audit["receiver_process_wall_seconds"],
@@ -474,7 +505,9 @@ def main():
                         "blend_den": int(blend_den),
                         "case": case,
                         "receiver_pid": receiver_audit["receiver_pid"],
-                        "independent_process": True,
+                        "independent_process": receiver_audit["receiver_pid"] is not None,
+                        "receiver_status": receiver_status,
+                        "receiver_error": receiver_error,
                         "source_access": receiver_audit["source_access"],
                         "source_reads": json.dumps(receiver_audit["source_reads"]),
                         "opened_read_paths": json.dumps(receiver_audit["receiver_opened_read_paths"]),
@@ -487,10 +520,12 @@ def main():
                     if args.keep_artifacts:
                         image_dir = artifact_root / safe_id(relative) / f"blend_{blend_num}"
                         image_dir.mkdir(parents=True, exist_ok=True)
-                        Image.fromarray(marked, mode="RGB").save(image_dir / f"marked_{case}.png")
-                        Image.fromarray(recovered, mode="RGB").save(image_dir / f"recovered_{case}.png")
-                        np.save(image_dir / f"payload_{case}.npy", payload, allow_pickle=False)
-                        np.save(image_dir / f"extracted_{case}.npy", extracted, allow_pickle=False)
+                        if marked is not None:
+                            Image.fromarray(marked, mode="RGB").save(image_dir / f"marked_{case}.png")
+                        if recovered is not None and extracted is not None:
+                            Image.fromarray(recovered, mode="RGB").save(image_dir / f"recovered_{case}.png")
+                            np.save(image_dir / f"payload_{case}.npy", payload, allow_pickle=False)
+                            np.save(image_dir / f"extracted_{case}.npy", extracted, allow_pickle=False)
                 base_row[f"blend_{blend_num}_roundtrip_cases"] = int(blend_cases)
                 base_row[f"blend_{blend_num}_roundtrip_passed"] = int(blend_passes)
             base_row["roundtrip_tested_blends"] = json.dumps(tested_blends)
