@@ -26,7 +26,7 @@ from src.cnn_model import load_model
 from src.predictor import cnn_predict_map
 import wire
 
-WARMUP, REPEATS, THREADS = 2, 5, 4
+WARMUP, REPEATS, THREADS = 5, 10, 4
 IMAGE_SHAPE, IMAGE_SEED = (512, 512), 20261116
 VARIANTS = [
     ("CNN-3x3 (proposed v4)", "v4_patch3.pth"),
