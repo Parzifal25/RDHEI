@@ -20,18 +20,24 @@ This directory consolidates the evidence-backed analysis and a new manuscript dr
 
 | Evidence | Workflow | Status |
 |---|---|---|
-| Native grayscale EDR2 corpus | [Run #76 (repository workflow history)](https://github.com/Parzifal25/RDHEI/actions) | 243 inputs; 163 positive net; 978/978 exact round-trips |
-| Matched grayscale predictors and ablations | [Run #63](https://github.com/Parzifal25/RDHEI/actions) | 243 inputs; common conservative step-4 / 16-phase comparison |
-| Native RGB end-to-end | [Run #79](https://github.com/Parzifal25/RDHEI/actions/runs/43825299870) | 51 inputs; 4 blends; 24 assignments; 162/162 exact round-trips on positive cases |
-| Corrected complexity benchmark | [Run #90](https://github.com/Parzifal25/RDHEI/actions/runs/43858892804) | successful CPU benchmark; 5 warmups, 10 measured runs per method |
+| Native grayscale EDR2 four-phase corpus | [Run #71](https://github.com/Parzifal25/RDHEI/actions/runs/43579225461) | 243 native TIFFs; 163 positive; 978/978 exact round-trips; two decoded-pixel duplicates removed |
+| Matched grayscale predictors and ablations | [Run #63](https://github.com/Parzifal25/RDHEI/actions/runs/43694973838) | 243 identical decoded-pixel hashes; common step-4 / 16-phase comparison; 133/243 v4 positive |
+| Native RGB end-to-end and adaptive phase evaluation | [Run #79](https://github.com/Parzifal25/RDHEI/actions/runs/43825299870) | 51 images; four blends; 4,896 phase scores; 162/162 exact receiver trials among positive image/blend cases |
+| Predictor complexity/runtime/memory | [Run #90](https://github.com/Parzifal25/RDHEI/actions/runs/43858892804) | 512×512 synthetic CPU predictor benchmark; 5 warmups and 10 timed repeats per method |
+| Active native-image EDR2 end-to-end runtime/memory | [Run #102](https://github.com/Parzifal25/RDHEI/actions/runs/43885495308) | Native 5.2.08.tiff; 10 repeats; 10/10 exact recoveries; mean 2.506 s; sampled RSS increment 16.59 MiB |
+| Adversarial grayscale parser campaign | [Run #98](https://github.com/Parzifal25/RDHEI/actions/runs/43884570447) | 20,000 Atheris coverage-guided inputs; no crash artifact reported; 121 coverage counters / 188 feature counters |
+| Expanded deterministic tamper/parser regression | [Run #93](https://github.com/Parzifal25/RDHEI/actions/runs/43875481127) | Grayscale and RGB protocol regression tests passed |
+| Final rerun batch | [Run #103](https://github.com/Parzifal25/RDHEI/actions/runs/43907455905) | Native grayscale, matched grayscale, RGB, parser fuzz and complexity jobs triggered; see live job/artifact status before citing any updated output |
 
-Run #79 original evidence artifact IDs:
-- raw RGB evidence: `14208375193`, SHA-256 `e5418d3ed62772eb906841d979782032eecb263f4b2edcd0899ac1aa8507e154`
-- RGB paper analysis: `14208320308`, SHA-256 `6d197ab410c0ef8bf9f1077241e26dd7f13c74918d327ef8e50805bbc250775a`
+Run #79 evidence artifacts:
+- raw RGB evidence: `14208375193`, source archive SHA-256 `e5418d3ed62772eb906841d979782032eecb263f4b2edcd0899ac1aa8507e154`
+- RGB paper analysis: `14208320308`, source archive SHA-256 `6d197ab410c0ef8bf9f1077241e26dd7f13c74918d327ef8e50805bbc250775a`
 
-Run #90 complexity artifact ID: `14222102560`, SHA-256 `1c3c56f0c1b61d45a39c614b1f4486addc3baa114ad42960cf30146927c319e1`.
+Run #90 complexity artifact: `14222102560`. Run #98 fuzz artifact: `14233618728`. Run #102 active E2E artifact: `14233328717`.
 
-The Actions artifacts are the authoritative full raw evidence archives; GitHub Actions artifacts have finite retention and are not a substitute for archiving the raw data permanently. This directory commits compact audited summaries and SVG figures. The original raw Run #79 evidence has not been edited.
+The final native and matched grayscale manifests contain the same 243 decoded-pixel SHA-256 values, although the earlier matched-run curation labels differed. The committed stratification CSV has been recomputed using the final native allowlist labels; the 29-cluster bootstrap still uses the provenance clusters from the matched run. All final summaries must be read with that note.
+
+GitHub Actions artifacts have finite retention. The closure package separately archives the evidence ZIPs used for this record; the raw Run #79 artifact is preserved unchanged, and its erroneous top-level source-access counter is corrected only in the derived per-case audit.
 
 ## Important scope boundaries
 
@@ -40,7 +46,7 @@ The Actions artifacts are the authoritative full raw evidence archives; GitHub A
 3. Histogram shifting is a separate plaintext-before-AES reference; it is not a same-protocol encrypted-domain hider.
 4. RGB CC-EDR2 is a research prototype with sparse positive-capacity coverage. Its 162/162 success denominator contains only payload trials for positive-capacity image/blend pairs.
 5. The receiver source-read check is guarded Python file I/O, not an OS sandbox.
-6. The 512×512 complexity benchmark uses a deterministic synthetic input and is not directly comparable to the earlier Lena/WSL runtime benchmark.
+6. The Run #90 512×512 complexity benchmark uses a deterministic synthetic input; Run #102 is a separate warmed, native-image end-to-end measurement. They measure different scopes and should not be merged.
 7. No independent cryptographic audit or formal security proof has been completed.
 
 ## Reproduction
@@ -57,7 +63,7 @@ Do not use legacy `src/encryption.py` as evidence for the active authenticated E
 - `final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py`: complete in-memory prepare, reserve/encrypt, encrypted-domain embedding, authentication, extraction and reconstruction timing with sampled process RSS.
 - `tests/test_edr2_adversarial_packets.py`: deterministic malformed-header, authenticated malformed-compression, wrong-key/nonce and tamper mutation regression tests.
 
-The end-to-end timing workflow uses a deterministic synthetic 512×512 fixture with full-net payload insertion. It is reported separately from natural-image throughput, predictor-only timing, process startup and deployment I/O. Its benchmark artifact is produced by the dedicated EDR2 Actions job.
+The Run #102 end-to-end timing workflow uses native USC-SIPI image 5.2.08.tiff (512×512), full-net payload insertion, two warmups and ten measured repeats. It is reported separately from predictor-only timing, process startup and deployment I/O. Run #96 is an earlier synthetic-fixture smoke benchmark and is superseded for native-image timing by Run #102.
 
 
-The nine committed SVGs include the adaptive 24-phase assignment-gain figure. Compact per-image phase-gain records are saved as CSV. The full 4,896 assignment-score ledger and the full per-case receiver evidence remain in the linked Run #79 raw evidence archive; the original Action artifact is preserved without editing.
+The nine committed SVGs include the adaptive 24-phase assignment-gain figure. Compact per-image phase-gain records are saved as CSV. The full 4,896 assignment-score ledger and the full per-case receiver evidence remain in the linked Run #79 raw evidence archive; the original Action artifact is preserved without editing. The familiar six legacy PNG controls (Airplane, Baboon, Goldhill, Jetplane, Lena and Peppers) are not present in either full-corpus manifest and are not included in the 243-image USC-SIPI corpus; the 2026-11-16 runs record all six as missing. Historical Airplane/Goldhill/Jetplane/Lena receiver outputs in repository evidence folders do not constitute restoration of the original six source PNGs.
