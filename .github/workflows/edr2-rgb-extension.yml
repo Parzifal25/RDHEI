@@ -428,6 +428,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install numpy pillow pycryptodome pandas psutil
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Compile active grayscale protocol and corpus tools
         run: |
