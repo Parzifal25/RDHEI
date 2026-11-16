@@ -25,6 +25,43 @@
       "url": "https://github.com/Parzifal25/RDHEI/actions/runs/43858892804",
       "artifact_id": 14222102560,
       "artifact_sha256": "1c3c56f0c1b61d45a39c614b1f4486addc3baa114ad42960cf30146927c319e1"
+    },
+    "final_batch": {
+      "workflow_run_id": 43907455905,
+      "url": "https://github.com/Parzifal25/RDHEI/actions/runs/43907455905",
+      "commit": "b0f4b799a9495daf36d9efe969da4dbdbcc3074a",
+      "last_checked_utc": "2026-11-16T16:27:12Z",
+      "status": "in_progress_at_snapshot",
+      "jobs": {
+        "protocol_regressions": "success",
+        "parser_fuzz": "success",
+        "complexity_benchmark": "success",
+        "native_grayscale_full_corpus": "in_progress",
+        "matched_grayscale_comparison": "in_progress",
+        "rgb_full_corpus": "in_progress",
+        "separate_e2e_benchmark": "skipped"
+      },
+      "artifacts": {
+        "parser_fuzz": 14246323561,
+        "complexity_benchmark": 14245044019
+      },
+      "note": "The primary 243-image/51-image claims in the closure package cite previously completed runs #71, #63 and #79; do not treat pending jobs as completed evidence."
+    },
+    "complexity_repeatability": {
+      "run90": {
+        "workflow_run_id": 43858892804,
+        "artifact_id": 14222102560,
+        "v4_mean_ms": 708.4789657,
+        "med_mean_ms": 3.8256251
+      },
+      "run103": {
+        "workflow_run_id": 43907455905,
+        "artifact_id": 14245044019,
+        "v4_mean_ms": 1111.1355466,
+        "v4_std_ms": 380.4413518,
+        "med_mean_ms": 4.2240477
+      },
+      "interpretation": "Separate measurements; not averaged because v4 runtime showed substantial variation and a high outlier in Run #103."
     }
   },
   "rgb_audit_counter_correction": {
