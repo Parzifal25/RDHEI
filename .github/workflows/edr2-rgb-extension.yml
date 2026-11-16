@@ -20,7 +20,7 @@ on:
       - "final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py"
       - "final_rdhei_protocol_gate_20261022/rgb_receiver_cli.py"
       - "final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py"
-      - "final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py"
+      - "final_rdhei_protocol_gate_20261022/run_edr2_native_e2e_benchmark.py"
       - "final_rdhei_protocol_gate_20261022/predictor.py"
       - "final_rdhei_protocol_gate_20261022/wire.py"
       - "tests/test_edr2_rgb.py"
@@ -332,7 +332,7 @@ jobs:
       - name: Compile active EDR2 benchmark
         run: |
           python -m py_compile \
-            final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py \
+            final_rdhei_protocol_gate_20261022/run_edr2_native_e2e_benchmark.py \
             final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py \
             final_rdhei_protocol_gate_20261022/protocol.py \
             final_rdhei_protocol_gate_20261022/wire.py
@@ -345,7 +345,7 @@ jobs:
 
       - name: Run full active EDR2 pipeline runtime and memory benchmark on a native image
         run: |
-          python final_rdhei_protocol_gate_20261022/run_edr2_e2e_benchmark.py \
+          python final_rdhei_protocol_gate_20261022/run_edr2_native_e2e_benchmark.py \
             --output-dir /tmp/rdhei-e2e-runtime-memory \
             --image-path /tmp/usc-sipi-gray-e2e/misc/5.2.08.tiff \
             --repeats 10 --warmups 2 --size 512
