@@ -13,6 +13,7 @@
 | Zhou et al. (2026), bit-plane classification and adaptive group coding (BCAGC), *IET Image Processing* 20(1), e70310, [doi:10.1049/ipr2.70310](https://doi.org/10.1049/ipr2.70310) | MED prediction errors are decomposed into bit-planes, classified using 4-bit sequence patterns and encoded with adaptive fixed-length or Huffman group coding. Reports 4.1472 bpp (BOSSbase), 4.0565 bpp (BOWS-2) and 3.4465 bpp (UCID). | Current high-capacity bit-plane RDHEI is directly relevant. Published rates are not directly comparable without identical datasets and overhead accounting; their magnitude makes a normalized comparison essential. |
 | Hung et al. (2026), D4-symmetry bidirectional pixel shifting and context-aware recovery, *Applied Sciences* 16(20), 10343, [doi:10.3390/app162010343](https://doi.org/10.3390/app162010343) | D4-symmetry bidirectional pixel shifts and context-aware recovery for high-capacity RDHEI. | A contemporary recovery alternative that should be discussed and, where feasible, compared. |
 | Tram & Nguyen (published 9 Nov 2026), overlapping block partitioning and shared-MSB encoding, *CTU Journal of Innovation and Sustainable Development* 18, Special Issue ISDS, 1–10, [doi:10.22144/ctujoisd.2026.049](https://doi.org/10.22144/ctujoisd.2026.049) | Overlapping blocks and shared-MSB encoding. | Very recent prior art; do not imply overlapping/block-sharing mechanisms are new. |
+| Peng et al. (published 8 Aug 2026), dual-stage bit-plane compression and CP-ABE recovery authorization, *Scientific Reports*, [doi:10.1038/s41598-026-65778-w](https://doi.org/10.1038/s41598-026-65778-w) | RRBE-based scheme using predictors, global compression of consecutive all-zero high-order bit planes, adaptive hierarchical block variable-length coding of remaining bit planes, block rearrangement by embedding capacity, and ciphertext-policy attribute-based recovery authorization. Evaluated on BOSSBase, BOWS-2 and UCID. | Highly relevant modern RRBE/bit-plane comparator and a multi-user authorization design not covered by the current protocol. The published abstract establishes the method and datasets, but detailed numeric results should be extracted from the full paper before any numerical comparison. |
 
 ## What can and cannot be claimed
 
@@ -45,8 +46,9 @@ Do not describe the current system as high-capacity or state-of-the-art until sa
 2. Reproduce Ping et al.'s asymmetric CNN/adaptive-mean scheme or provide a detailed source-verified comparison if code is unavailable.
 3. Compare with BCAGC on a common subset; normalize headers, maps, backup bits, authentication overhead and exact image/payload recovery.
 4. Compare with Cheng et al.'s masked-autoencoder design without conflating its VRAE/polar-code receiver with our RRBE-style protocol.
-5. Assess whether D4-symmetry and overlapping/shared-MSB methods can be reproduced.
-6. Search patents, conferences, preprints and terminology variants around masked-predictor synchronization, independent sets/checkerboard phases and deterministic learned prediction before asserting novelty.
+5. Obtain the full Peng et al. (2026) article and add a normalized capacity, security and complexity comparison for its dual-stage bit-plane compression and CP-ABE architecture.
+6. Assess whether D4-symmetry and overlapping/shared-MSB methods can be reproduced.
+7. Search patents, conferences, preprints and terminology variants around masked-predictor synchronization, independent sets/checkerboard phases and deterministic learned prediction before asserting novelty.
 
 ## Sources consulted
 
@@ -57,3 +59,4 @@ Do not describe the current system as high-capacity or state-of-the-art until sa
 - [Zhou et al., 2026 — Wiley](https://ietresearch.onlinelibrary.wiley.com/doi/10.1049/ipr2.70310)
 - [Hung et al., 2026 — MDPI](https://www.mdpi.com/10.3390/app162010343)
 - [Tram & Nguyen, 2026 — CTU Journal](https://ctujs.ctu.edu.vn/index.php/ctujs/article/view/3142)
+- [Peng et al., 2026 — Scientific Reports](https://www.nature.com/articles/s41598-026-65778-w)
