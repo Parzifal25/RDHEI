@@ -192,6 +192,8 @@ The v4 predictor takes 708.479 ms per full map in this benchmark, compared with 
 
 These timings are predictor-only: embedding, AES, extraction and recovery are excluded. They include the repository predictor's patch extraction/preprocessing path. The deterministic synthetic CI benchmark must not be directly compared with earlier Lena/WSL timings.
 
+A second predictor-only rerun in final closure Run #103 measured MED at 4.224 ms and v4 at 1,111.136 ms. The v4 sample standard deviation was 380.44 ms, including a 2,166 ms outlier. This corresponds to approximately 263× MED runtime in that run. Run #90 and Run #103 are retained separately rather than averaged because the v4 timings vary materially; see tables/complexity_repeat_comparison.csv. This reinforces the need for profiling, optimisation and additional repeated measurements.
+
 ## 7. Overall findings and claims allowed
 
 Evidence supports the following carefully scoped statements:
