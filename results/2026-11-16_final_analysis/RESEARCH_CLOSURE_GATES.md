@@ -45,7 +45,15 @@ Exact-equivalence sweep results (two independent workflow runs, 512x512, one pha
 - Across every candidate configuration: patch arrays matched exactly; maximum raw prediction delta was 0.0; rounded prediction mismatches were zero.
 - Checkpoint remained the same frozen v4 SHA-256: `a9021862c753e11b0100fb11eba0d3b55800915654ed962fcdede8449b159d5d`.
 
-The vectorized extractor and two-thread setting have now been applied on the research branch only. Full native-corpus recovery and end-to-end remeasurement are in progress in [run 44056245803](https://github.com/Parzifal25/RDHEI/actions/runs/44056245803). Do not claim an end-to-end speedup until that run passes and its artifacts are inspected.
+The vectorized extractor and two-thread setting have been applied on the research branch only. The exact-output microbenchmark confirms zero raw prediction deltas and zero rounded prediction mismatches. A corrected 10-repeat native-image E2E benchmark then completed successfully in [run 44056835389](https://github.com/Parzifal25/RDHEI/actions/runs/44056835389), artifact `14316686389`:
+- Same native 512x512 USC-SIPI image (5.2.08.tiff), same v4 checkpoint, two warmups, ten measured repeats, CPU and actual two PyTorch threads.
+- Mean complete pipeline: 1.114019 s (SD 0.058079, median 1.120437 s); 2.25x faster / 55.55% less elapsed time than the earlier 2.506018 s baseline on the same image. This is a combined patch-vectorization and thread-configuration comparison, not an isolated causal estimate for one change.
+- Preparation mean 0.582318 s; reserve/encrypt 0.070166 s; embed/authenticate 0.043262 s; receiver/extract/recover 0.418273 s.
+- All 10 full-capacity payload trials recovered the image and payload exactly; unique benchmark nonces; 39,655 payload bits (0.151272 bpp).
+- Sampled RSS baseline 392.51 MiB, peak 403.38 MiB, incremental peak 10.87 MiB.
+- The earlier 0.787740 s run report was superseded because its benchmark metadata incorrectly stated four threads; the corrected run reports the actual two-thread model configuration.
+
+The complete 243-image exact-recovery audit on the optimized predictor branch remains a separate active job in [run 44056245803](https://github.com/Parzifal25/RDHEI/actions/runs/44056245803). Do not close the regression gate until that job succeeds and its artifact is inspected.
 
 Existing native 512x512 EDR2 end-to-end measurement: mean 2.5060 s over 10 repeats (SD 0.1036 s), including preparation, reservation/encryption, data-hider embedding/authentication, and receiver authentication/extraction/recovery. This was measured on one USC-SIPI image, not across the corpus.
 
