@@ -24,7 +24,7 @@ def main():
             im.load(); px=np.asarray(im)
         if px.dtype!=np.uint8 or px.ndim!=2: raise SystemExit(f"Not 2D uint8 grayscale: {rel} {px.dtype} {px.shape}")
         if list(px.shape)!=r["shape"]: raise SystemExit(f"Shape mismatch for {rel}: {px.shape} != {r['shape']}")
-        ph=sha256(np.ascontiguousarray(px).tobytes())
+        ph=sha256(str(tuple(px.shape)).encode("ascii")+b"|uint8|"+px.tobytes(order="C"))
         if ph!=r["pixels_sha256"]: raise SystemExit(f"Decoded-pixel hash mismatch: {rel}: {ph}")
         if ph in seen: raise SystemExit(f"Unexpected duplicate decoded pixels: {rel}")
         seen.add(ph)
