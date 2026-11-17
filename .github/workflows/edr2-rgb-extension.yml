@@ -1,5 +1,5 @@
 name: EDR2 RGB extension gate
-# Final closure batch marker is recorded in results/2026-11-16_final_analysis/FINAL_CLOSURE_RUN_REQUEST.md.
+# Research gates: runtime-equivalent sweep and isolated v3 step-3 lattice system experiment.
 
 on:
   push:
