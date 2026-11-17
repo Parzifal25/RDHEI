@@ -12,6 +12,22 @@ Matched predictor evaluation: all predictors were tested on the same 243-image g
 
 These results do not establish that v3 is the best full EDR2 predictor. Its 5x5 receptive field has radius 2; it cannot use the current step-2 / four-phase production geometry without risking prediction-context interference. An isolated full-system experiment has therefore been added for v3 with a step-3 / nine-phase lattice and a two-pixel border. This is experimental geometry and is not a production wire-format change.
 
+### Gate 1 full-system v3 result (2026-11-17)
+
+The complete 243-image v3 safe-geometry job passed in [run 44054088540](https://github.com/Parzifal25/RDHEI/actions/runs/44054088540), job `v3-safe-lattice-experiment`, artifact `14315159838`. The overall workflow is marked failed because its separate complexity step used the earlier benchmark script revision with the missing-`sys` defect; the v3 job itself concluded success.
+
+- v3 checkpoint SHA-256: `1fa025e252d5a3c95509ab1a8321e0b46ca72aa083161c2e9b8c30c2ab5e5c41`.
+- Geometry: step 3, nine phases, two-pixel border, 5x5 receptive radius 2.
+- Positive images: 153/243 (62.96%).
+- Mean signed net bpp over all images: 0.0499319; positive-only mean: 0.1032192; positive-only median: 0.0676651.
+- Prediction invariance passed 243/243 images.
+- Exact image and payload recovery passed 765/765 trials (five payload lengths per positive image).
+- The run is explicitly experimental; its nine-phase packets are not compatible with the production four-phase EDR2 receiver.
+
+Interpretation: v3 remains the strongest tested checkpoint by matched predictor MAE, but its geometry-safe full-system capacity is lower than the previously validated v4 production configuration (v4: 163/243 positive, mean signed net bpp 0.059821; 978/978 exact trials). Because the geometry differs, present these as system-configuration outcomes, not a controlled single-variable ablation. Retain v4 for the current system unless a better safe geometry or a separately authorised trained model demonstrates a stronger full-system result.
+
+No retraining was launched; the prior retraining/calibration investigation records that retraining was stopped on the user's instruction and is prohibited unless that instruction is explicitly superseded.
+
 **Pass criteria:**
 - Reproduce v3-v4 prediction metrics on one hash-pinned native corpus.
 - Run each model using geometry safe for its actual receptive radius.
