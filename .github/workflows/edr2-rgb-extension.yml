@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - research/edr2-rgb-extension
+      - research/edr2-runtime-optimization
     paths:
       - ".github/workflows/edr2-rgb-extension.yml"
       - "final_rdhei_protocol_gate_20261022/rgb_*.py"
