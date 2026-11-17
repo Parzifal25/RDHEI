@@ -23,6 +23,14 @@ These results do not establish that v3 is the best full EDR2 predictor. Its 5x5 
 
 **Current status: open; baseline weakness confirmed; exact-equivalence sweep running.**
 
+Exact-equivalence sweep results (two independent workflow runs, 512x512, one phase / 65,025 patches, 1 warmup + 3 timed repeats):
+- Patch construction: legacy 45.36 ms vs vectorized 2.64 ms in run 44055399791; repeat 69.09 ms vs 3.16 ms in run 44055419609.
+- Best tested setting: 2 CPU threads, batch 2,048. Inference means varied from 73.57 ms to 126.93 ms across the two hosted runs; the legacy 4-thread/2,048 setting measured 144.92 ms and 161.00 ms.
+- Across every candidate configuration: patch arrays matched exactly; maximum raw prediction delta was 0.0; rounded prediction mismatches were zero.
+- Checkpoint remained the same frozen v4 SHA-256: `a9021862c753e11b0100fb11eba0d3b55800915654ed962fcdede8449b159d5d`.
+
+The vectorized extractor and two-thread setting have now been applied on the research branch only. Full native-corpus recovery and end-to-end remeasurement are in progress in [run 44056245803](https://github.com/Parzifal25/RDHEI/actions/runs/44056245803). Do not claim an end-to-end speedup until that run passes and its artifacts are inspected.
+
 Existing native 512x512 EDR2 end-to-end measurement: mean 2.5060 s over 10 repeats (SD 0.1036 s), including preparation, reservation/encryption, data-hider embedding/authentication, and receiver authentication/extraction/recovery. This was measured on one USC-SIPI image, not across the corpus.
 
 Previous 512x512 predictor benchmarks show CNN-v4 substantially slower than MED and with run-to-run instability. A new benchmark sweep compares the existing patch extraction with vectorized extraction, batch sizes 1,024–32,768, and CPU thread counts 1, 2 and 4. It requires patch arrays to be exactly equal and floating predictions to agree within a stated tolerance, with zero rounded-pixel mismatches.
@@ -34,9 +42,15 @@ Previous 512x512 predictor benchmarks show CNN-v4 substantially slower than MED 
 - Publish mean, median, standard deviation, peak RSS and machine/CPU/software details.
 - Do not describe a faster patch microbenchmark as an end-to-end speedup until the full pipeline is remeasured.
 
+### Gate 1 current experiment status (2026-11-17)
+
+The isolated v3 step-3 / nine-phase native experiment has been added and its workflow has successfully compiled the harness, acquired the native USC-SIPI corpus, and built the 243-image allowlist. The 243-image full-system run was still in progress at the latest status check: [run 44054088540](https://github.com/Parzifal25/RDHEI/actions/runs/44054088540). Do not select v3 based only on the matched step-4 predictor table; wait for the net-capacity and exact-recovery report under the safe geometry.
+
 ## Gate 3 — external RDHEI comparisons
 
 **Current status: open; relevant papers and repositories identified; head-to-head reproduction not complete.**
+
+A first pass of implementation discovery found author code for ACNNP and public repositories for 2020/2023 bit-plane methods. The ACNNP author repository and both MATLAB implementation repositories have no declared GitHub licence; do not reuse/redistribute their code without permission. BCAGC and PLMAE official implementations were not located. This is still literature/repository due diligence, not a head-to-head comparison.
 
 Priority methods:
 
@@ -63,6 +77,8 @@ Published rates above are context only. Dataset, operating mode (RRBE/VRAE/CRBE)
 ## Gate 4 — independent cryptographic audit
 
 **Current status: pending external reviewer. Internal security evidence has been expanded, but this gate cannot be self-certified.**
+
+Both grayscale and RGB parser targets now have 20,000-input authenticated/coverage-guided fuzz runs with no crash reported. RGB: 20,000 runs in 14 seconds, 123 coverage counters, [run 44054823526](https://github.com/Parzifal25/RDHEI/actions/runs/44054823526), artifact `14315551603`. This closes an internal finite fuzzing task, not the independent audit.
 
 The reviewer scope and threat model are in `INDEPENDENT_CRYPTO_REVIEW_SCOPE.md`. Existing evidence includes deterministic malformed packet tests and 20,000 grayscale Atheris inputs from an earlier successful run. An authenticated RGB parser fuzz target has been added; its run must pass and its artifact be inspected.
 
