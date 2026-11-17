@@ -54,8 +54,7 @@ def extract_legacy(image: np.ndarray, ys: np.ndarray, xs: np.ndarray) -> np.ndar
 
 def extract_vectorized(image: np.ndarray, ys: np.ndarray, xs: np.ndarray) -> np.ndarray:
     windows = sliding_window_view(image, (3, 3))
-    patches = windows[ys - 1, xs - 1].astype(np.float32)
-    patches *= (1.0 / 255.0)
+    patches = windows[ys - 1, xs - 1].astype(np.float32) / 255.0
     patches[:, 1, 1] = 0.0
     return np.ascontiguousarray(patches[:, None, :, :])
 
