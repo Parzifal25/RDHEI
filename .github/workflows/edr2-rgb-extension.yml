@@ -1,5 +1,5 @@
 name: EDR2 RGB extension gate
-# Validate exact-output CPU optimization through corpus recovery and full E2E timing.
+# Repeat optimized EDR2 E2E benchmark with truthful measured CPU-thread metadata.
 
 on:
   push:
