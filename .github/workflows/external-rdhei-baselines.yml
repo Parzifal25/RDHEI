@@ -1,0 +1,114 @@
+name: External RDHEI full-system baselines
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - ".github/workflows/external-rdhei-baselines.yml"
+      - "external_baselines/**"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout isolated reproduction branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python evaluation tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow
+      - name: Retrieve exact completed EDR2 native-run corpus manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/edr2-expected
+          gh run download 43579225461 --name edr2-full-natural-corpus-evidence --dir /tmp/edr2-expected
+          test -s /tmp/edr2-expected/corpus.json
+          python -c "import json; x=json.load(open('/tmp/edr2-expected/corpus.json')); assert len(x)==243; print('Loaded exact completed EDR2 manifest:',len(x))"
+      - name: Install GNU Octave and packages
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends octave octave-statistics octave-image
+          octave --version | head -n 2
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; assert(exist('tabulate','file')==2); disp('Octave image/statistics/tabulate runtime ready');"
+      - name: Download and inventory official USC-SIPI grayscale TIFF archives
+        run: |
+          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py --output-dir /tmp/usc-sipi-baseline-corpus --archive-dir /tmp/usc-sipi-baseline-archives
+      - name: Verify exact native EDR2 corpus by source and decoded-pixel hashes
+        run: |
+          python external_baselines/prepare_validate_corpus.py --expected-corpus /tmp/edr2-expected/corpus.json --dataset-dir /tmp/usc-sipi-baseline-corpus --output-dir /tmp/external-rdhei-baseline-results/dataset
+      - name: Clone the two pinned author-linked source repositories
+        run: |
+          git clone --quiet https://github.com/edu-yinzhaoxia/Reversible-Data-Hiding-in-Encrypted-Images-Based-on-multi-MSB-Prediction-and-Huffman-Coding.git /tmp/multi-msb-huffman-src
+          git -C /tmp/multi-msb-huffman-src checkout --quiet --detach 1e69ae2713dededa56595ff09255cda1e17896d9
+          git clone --quiet https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement.git /tmp/ppmr-src
+          git -C /tmp/ppmr-src checkout --quiet --detach 21f397890289049798ced0f98d1482d629f93b06
+          mkdir -p /tmp/external-rdhei-baseline-results/provenance
+          git -C /tmp/multi-msb-huffman-src ls-files -z | xargs -0 sha256sum > /tmp/external-rdhei-baseline-results/provenance/multi_msb_source_sha256.txt
+          git -C /tmp/ppmr-src ls-files -z | xargs -0 sha256sum > /tmp/external-rdhei-baseline-results/provenance/ppmr_source_sha256.txt
+      - name: Run six-image Multi-MSB/Huffman original-source pilot
+        run: |
+          mkdir -p /tmp/external-rdhei-baseline-results/smoke /tmp/external-rdhei-baseline-results/recovered
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/multi-msb-huffman-src')); addpath(genpath('external_baselines/matlab')); run_multi_msb_huffman_batch('/tmp/external-rdhei-baseline-results/dataset/smoke_6_images.txt','/tmp/external-rdhei-baseline-results/smoke/multi_msb_huffman_smoke.csv','/tmp/external-rdhei-baseline-results/recovered/multi_msb_smoke');" 2>&1 | tee /tmp/external-rdhei-baseline-results/provenance/multi_msb_smoke.log
+      - name: Require six exact Multi-MSB/Huffman round trips
+        run: |
+          python external_baselines/validate_smoke.py /tmp/external-rdhei-baseline-results/smoke/multi_msb_huffman_smoke.csv
+      - name: Run six-image PPMR original-source pilot
+        run: |
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/ppmr-src')); addpath(genpath('external_baselines/matlab')); run_ppmr_batch('/tmp/external-rdhei-baseline-results/dataset/smoke_6_images.txt','/tmp/external-rdhei-baseline-results/smoke/ppmr_smoke.csv','/tmp/external-rdhei-baseline-results/recovered/ppmr_smoke');" 2>&1 | tee /tmp/external-rdhei-baseline-results/provenance/ppmr_smoke.log
+      - name: Require six exact PPMR round trips
+        run: |
+          python external_baselines/validate_smoke.py /tmp/external-rdhei-baseline-results/smoke/ppmr_smoke.csv
+      - name: Run full 243-image Multi-MSB/Huffman evaluation
+        run: |
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/multi-msb-huffman-src')); addpath(genpath('external_baselines/matlab')); run_multi_msb_huffman_batch('/tmp/external-rdhei-baseline-results/dataset/all_243_images.txt','/tmp/external-rdhei-baseline-results/multi_msb_huffman_raw.csv','/tmp/external-rdhei-baseline-results/recovered/multi_msb_full');" 2>&1 | tee /tmp/external-rdhei-baseline-results/provenance/multi_msb_full.log
+      - name: Run full 243-image PPMR evaluation
+        run: |
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/ppmr-src')); addpath(genpath('external_baselines/matlab')); run_ppmr_batch('/tmp/external-rdhei-baseline-results/dataset/all_243_images.txt','/tmp/external-rdhei-baseline-results/ppmr_raw.csv','/tmp/external-rdhei-baseline-results/recovered/ppmr_full');" 2>&1 | tee /tmp/external-rdhei-baseline-results/provenance/ppmr_full.log
+      - name: Aggregate source-native capacity and round-trip ledgers
+        if: always()
+        run: |
+          if [ -s /tmp/external-rdhei-baseline-results/multi_msb_huffman_raw.csv ] && [ -s /tmp/external-rdhei-baseline-results/ppmr_raw.csv ]; then
+            python external_baselines/analyze_results.py --canonical /tmp/external-rdhei-baseline-results/dataset/canonical_corpus_verified.json --multi /tmp/external-rdhei-baseline-results/multi_msb_huffman_raw.csv --ppmr /tmp/external-rdhei-baseline-results/ppmr_raw.csv --out-dir /tmp/external-rdhei-baseline-results
+          fi
+      - name: Record runtime and source provenance
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,platform,subprocess
+          from pathlib import Path
+          def run(cmd):
+            try:return subprocess.check_output(cmd,text=True,stderr=subprocess.STDOUT).strip()
+            except Exception as e:return str(e)
+          out=Path('/tmp/external-rdhei-baseline-results/provenance'); out.mkdir(parents=True,exist_ok=True)
+          data={
+            "status":"execution_attempted",
+            "upstream_sources":{
+              "multi_msb_huffman":{"repository":"https://github.com/edu-yinzhaoxia/Reversible-Data-Hiding-in-Encrypted-Images-Based-on-multi-MSB-Prediction-and-Huffman-Coding","commit":"1e69ae2713dededa56595ff09255cda1e17896d9","sha256_manifest":"multi_msb_source_sha256.txt"},
+              "ppmr":{"repository":"https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement","commit":"21f397890289049798ced0f98d1482d629f93b06","sha256_manifest":"ppmr_source_sha256.txt"}},
+            "runtime":{"os":platform.platform(),"python":platform.python_version(),"octave":run(["octave","--version"]),"cpu":run(["bash","-lc","lscpu | grep -E 'Model name|CPU\\(s\\)' | head -n2"])},
+            "dataset":{"expected_corpus_run_id":43579225461,"expected_artifact":"edr2-full-natural-corpus-evidence","validation":"exact canonical paths, source SHA256, decoded pixel SHA256, native mode, dimensions and 243 unique pixel buffers"},
+            "protocol":{"training_performed":False,"edr2_model_or_checkpoint_modified":False,"no_rgb_conversion":True,"smoke_gate_requires_6_of_6_payload_and_host_exact_round_trips":True,
+              "multi_msb_extraction_length":"length(emD), actual payload count returned by source embed stage",
+              "ppmr_native_net_bpp":"(num_emubD + num_NUBD - length(compress_predict) - 8 - 16*8 - 16*8)/(row*col)",
+              "octave_rng_note":"Upstream rand('seed', key) uses Octave's RNG stream; identity with MATLAB's stream is not asserted."},
+            "compatibility_deviations":["GNU Octave instead of MATLAB.","Multi-MSB adapter passes actual embedded payload length to source extraction/recovery functions; upstream algorithm files are unchanged."],
+            "source_license_note":"The pinned upstream repositories show no visible LICENSE/SPDX metadata; temporary checkouts are not redistributed."}
+          (out/'provenance.json').write_text(json.dumps(data,indent=2,sort_keys=True)+'\\n')
+          Path('/tmp/external-rdhei-baseline-results/provenance/git_runner_commit.txt').write_text(run(['git','rev-parse','HEAD'])+'\\n')
+          PY
+      - name: Upload baseline ledgers and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-rdhei-baseline-results
+          path: /tmp/external-rdhei-baseline-results/
+          if-no-files-found: warn
+          retention-days: 30
