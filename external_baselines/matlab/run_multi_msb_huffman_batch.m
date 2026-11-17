@@ -15,7 +15,9 @@ function run_multi_msb_huffman_batch(list_file, output_csv, recovery_dir)
     if ~ischar(image_path), break; end
     image_path = strtrim(image_path);
     if isempty(image_path), continue; end
-    [~, image_id, ~] = fileparts(image_path);
+    fields = strsplit(image_path, sprintf('\t'));
+    if numel(fields) ~= 2, error('Input list line must contain image_id<TAB>path'); end
+    image_id = fields{1}; image_path = fields{2};
     attempted_bits = 0; embedded_bits = 0; native_bpp = NaN;
     payload_exact = false; image_exact = false; status = 'ERROR'; error_text = '';
     t0 = tic();
