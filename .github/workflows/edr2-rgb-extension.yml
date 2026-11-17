@@ -1,5 +1,5 @@
 name: EDR2 RGB extension gate
-# Launch the corrected predictor benchmark harness.
+# Validate exact-output CPU optimization through corpus recovery and full E2E timing.
 
 on:
   push:
