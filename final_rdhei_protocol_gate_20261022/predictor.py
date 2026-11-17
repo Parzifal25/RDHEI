@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,7 @@ CHECKPOINT = ROOT / "models" / "v4_patch3.pth"
 SAFE_ZONE_STEP = 2
 PREDICTOR_RADIUS = 1
 BATCH_SIZE = 2048
+CPU_THREADS = 2
 
 BOOK = wire.BOOK.copy()
 ENC = {tuple(map(int, row)): index for index, row in enumerate(BOOK)}
@@ -40,7 +42,7 @@ def model():
     """Load and cache the frozen 3x3 checkpoint on CPU."""
     global _MODEL, _MODEL_IDENTITY
     if _MODEL is None:
-        torch.set_num_threads(4)
+        torch.set_num_threads(CPU_THREADS)
         loaded, patch_size, residual, params = load_model(str(CHECKPOINT), device="cpu")
         if patch_size != 3 or residual is not True:
             raise ValueError(
@@ -56,6 +58,8 @@ def model():
             "residual": residual,
             "parameters": params,
             "batch_size": BATCH_SIZE,
+            "cpu_threads": CPU_THREADS,
+            "patch_extraction": "vectorized_sliding_window_view",
             "safe_zone_step": SAFE_ZONE_STEP,
             "safe_zone_phase_count": wire.SAFE_ZONE_PHASES,
         }
@@ -93,12 +97,14 @@ def predict(image, ys, xs, active_model=None):
     if len(ys) == 0:
         return np.empty(0, dtype=np.float32)
 
-    patches = np.stack([
-        image[y - radius:y + radius + 1, x - radius:x + radius + 1]
-        for y, x in zip(ys, xs)
-    ]).astype(np.float32) / 255.0
+    # Gather every overlapping P×P patch in one indexed operation rather
+    # than allocating one Python slice per candidate. Preserve the legacy
+    # float32 division exactly so the frozen checkpoint's predictions remain
+    # bit-for-bit identical before rounding.
+    windows = sliding_window_view(image, (2 * radius + 1, 2 * radius + 1))
+    patches = windows[ys - radius, xs - radius].astype(np.float32) / 255.0
     patches[:, radius, radius] = 0.0
-    patches = patches[:, None, :, :]
+    patches = np.ascontiguousarray(patches[:, None, :, :])
 
     outputs = []
     active_model.eval()
