@@ -1,5 +1,5 @@
 name: EDR2 RGB extension gate
-# Launch corrected CPU, v3 geometry, and authenticated RGB parser fuzz gates.
+# Rerun corrected RGB authenticated parser fuzz target after harness cleanup.
 
 on:
   push:
