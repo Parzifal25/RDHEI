@@ -51,8 +51,8 @@ jobs:
           git clone --quiet https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement.git /tmp/ppmr-src
           git -C /tmp/ppmr-src checkout --quiet --detach 21f397890289049798ced0f98d1482d629f93b06
           mkdir -p /tmp/external-rdhei-baseline-results/provenance
-          git -C /tmp/multi-msb-huffman-src ls-files -z | xargs -0 sha256sum > /tmp/external-rdhei-baseline-results/provenance/multi_msb_source_sha256.txt
-          git -C /tmp/ppmr-src ls-files -z | xargs -0 sha256sum > /tmp/external-rdhei-baseline-results/provenance/ppmr_source_sha256.txt
+          (cd /tmp/multi-msb-huffman-src && git ls-files -z | xargs -0 sha256sum) > /tmp/external-rdhei-baseline-results/provenance/multi_msb_source_sha256.txt
+          (cd /tmp/ppmr-src && git ls-files -z | xargs -0 sha256sum) > /tmp/external-rdhei-baseline-results/provenance/ppmr_source_sha256.txt
       - name: Run six-image Multi-MSB/Huffman original-source pilot
         run: |
           mkdir -p /tmp/external-rdhei-baseline-results/smoke /tmp/external-rdhei-baseline-results/recovered
