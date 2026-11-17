@@ -20,6 +20,8 @@ import torch
 from numpy.lib.stride_tricks import sliding_window_view
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 CHECKPOINT = ROOT / "models" / "v4_patch3.pth"
 IMAGE_SHAPE = (512, 512)
 SEED = 20261117
