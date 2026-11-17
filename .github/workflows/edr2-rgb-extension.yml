@@ -1,5 +1,5 @@
 name: EDR2 RGB extension gate
-# Research gates: runtime-equivalent sweep and isolated v3 step-3 lattice system experiment.
+# Launch corrected exact CPU sweep and v3 step-3 native experiment.
 
 on:
   push:
