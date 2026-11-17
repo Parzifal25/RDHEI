@@ -52,7 +52,7 @@ Status: **external review not completed**. This document defines the review targ
 - Deterministic grayscale packet tests include wrong key/nonce, tampering of header, directory, tag, payload and image body, authenticated malformed zlib content, invalid dimensions and framing.
 - Grayscale parser: 20,000 Atheris coverage-guided inputs were run in a prior successful workflow. This is a finite run.
 - RGB tests cover exact recovery, wrong key, packet tampering, key-domain separation and 24-phase assignment handling.
-- A separate RGB authenticated-parser fuzz target has been added; its successful run and artifact must be recorded before the package is considered updated.
+- RGB parser: 20,000 authenticated Atheris inputs completed in 14 seconds, 123 coverage counters, no crash artifact reported; CI run [44054823526](https://github.com/Parzifal25/RDHEI/actions/runs/44054823526), artifact ID `14315551603`. This is a bounded fuzz run, not an exhaustive proof.
 - Exact image/payload recovery tests are correctness evidence, not cryptographic security proofs.
 
 ## Required independent deliverable
