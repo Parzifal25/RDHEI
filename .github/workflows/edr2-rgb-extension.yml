@@ -1,5 +1,5 @@
 name: EDR2 RGB extension gate
-# Rerun corrected RGB authenticated parser fuzz target after harness cleanup.
+# Launch the corrected predictor benchmark harness.
 
 on:
   push:
