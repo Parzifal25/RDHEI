@@ -21,6 +21,7 @@ on:
       - "final_rdhei_protocol_gate_20261022/analyze_rgb_evidence.py"
       - "final_rdhei_protocol_gate_20261022/rgb_receiver_cli.py"
       - "final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py"
+      - "final_rdhei_protocol_gate_20261022/benchmark_predictor_optimization.py"
       - "final_rdhei_protocol_gate_20261022/run_edr2_native_e2e_benchmark.py"
       - "final_rdhei_protocol_gate_20261022/predictor.py"
       - "final_rdhei_protocol_gate_20261022/wire.py"
@@ -218,12 +219,19 @@ jobs:
           python final_rdhei_protocol_gate_20261022/run_complexity_benchmark.py \
             --output-dir /tmp/rdhei-complexity-benchmark
 
+      - name: Sweep exact-equivalence CPU patch extraction and inference settings
+        run: |
+          python final_rdhei_protocol_gate_20261022/benchmark_predictor_optimization.py \
+            --output-dir /tmp/rdhei-predictor-optimization
+
       - name: Upload standalone reproducible complexity benchmark
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rdhei-reproducible-complexity-benchmark-corrected
-          path: /tmp/rdhei-complexity-benchmark/
+          path: |
+            /tmp/rdhei-complexity-benchmark/
+            /tmp/rdhei-predictor-optimization/
           if-no-files-found: warn
           retention-days: 30
 
