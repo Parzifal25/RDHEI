@@ -3,10 +3,12 @@
 **Purpose:** Request an independent, written cryptographic review of the active EDR2 grayscale and CC-EDR2-RGB protocol implementations before any publication claim stronger than implementation-level integrity testing.
 
 **Repository:** https://github.com/Parzifal25/RDHEI  
-**Branch:** research/edr2-rgb-extension  
+**Branch:** research/edr2-runtime-optimization  
+**Frozen source target (2026-11-17):** `bb5a8c0672a4ae58340edc641cbb6a9260d9f820` (review this exact commit; do not review a moving branch head)  
+**Model policy:** existing trained checkpoints only; no retraining or fine-tuning is authorised.  
 **Primary specifications:** final_rdhei_protocol_gate_20261022/PROTOCOL_EDR2.md and PROTOCOL_EDR2_RGB.md  
 **Implementation:** wire.py, rgb_wire.py, protocol.py, rgb_protocol.py, rgb_receiver_cli.py  
-**Test entry points:** tests/test_edr2_publication_hardening.py, tests/test_edr2_receiver_only.py, tests/test_edr2_rgb.py, tests/test_edr2_rgb_dataset.py, tests/test_edr2_adversarial_packets.py
+**Test entry points:** tests/test_edr2_publication_hardening.py, tests/test_edr2_receiver_only.py, tests/test_edr2_rgb.py, tests/test_edr2_rgb_dataset.py, tests/test_edr2_adversarial_packets.py, tests/fuzz_edr2_parser.py, tests/fuzz_edr2_rgb_parser.py
 
 ## 1. Protocol summary
 
@@ -62,9 +64,11 @@ Please state which guarantees hold under each of the following:
 - The receiver checks authentication before decrypting/decompressing the directory.
 - The grayscale parser converts malformed zlib streams into a controlled packet rejection.
 - Regression tests cover wrong keys/nonces, tampering of representative authenticated regions, malformed headers, authenticated malformed compressed metadata and a deterministic 64-case mutation sweep.
-- The expanded grayscale/RGB regression workflow passed in GitHub Actions Run #93: https://github.com/Parzifal25/RDHEI/actions/runs/43875481127
+- The optimized research-branch grayscale final audit and protocol regression job passed in GitHub Actions run [44056245803](https://github.com/Parzifal25/RDHEI/actions/runs/44056245803).
+- The RGB authenticated-parser fuzz job completed 20,000 inputs without a reported crash in run [44054823526](https://github.com/Parzifal25/RDHEI/actions/runs/44054823526), artifact `14315551603`.
+- The grayscale authenticated-parser fuzz target has a prior 20,000-input successful run recorded in the current research-closure evidence.
 
-These are implementation/regression controls only. There is no independent cryptographic audit, formal proof, coverage-guided parser fuzz campaign, side-channel evaluation or security certification at this time.
+These are implementation/regression controls only. No independent cryptographic audit, formal proof, side-channel evaluation or security certification has been completed. The fuzz campaigns are finite and must not be presented as exhaustive testing.
 
 ## 5. Requested review deliverable
 
