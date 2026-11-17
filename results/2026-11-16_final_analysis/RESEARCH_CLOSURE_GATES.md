@@ -116,3 +116,34 @@ The reviewer scope and threat model are in `INDEPENDENT_CRYPTO_REVIEW_SCOPE.md`.
 ## Paper-start rule
 
 Do not start the results/manuscript draft as if all four gates passed while any gate above is open. Background literature organization and method documentation may be prepared separately, but quantitative claims and final novelty positioning must wait for the matched system comparison, CPU remeasurement, external baselines and independent review status.
+
+
+---
+
+## User-directed closure decision — 2026-11-17
+
+**Model/training constraint:** Existing trained checkpoints are frozen. No retraining, fine-tuning, or checkpoint replacement is authorised. All comparison work below must use the already-trained checkpoints and paper-derived or permission-cleared external baselines.
+
+### Gate 3 — fair external RDHEI comparison
+
+**Status remains OPEN.** The current repository's full-corpus grayscale comparator is useful but is not an external SOTA reproduction. It compares MED, GAP, simplified CALIC-style prediction, five frozen CNN checkpoints and a histogram-shifting reference on one 243-image USC-SIPI corpus. The predictor comparison uses a common step-4 / 16-phase experiment geometry. These numbers must not be relabelled as comparisons against ACBP, ACNNP, PLMAE, BCAGC or the published bit-plane coding papers.
+
+The literature review file `EDR2_LITERATURE_COMPARISON.md` records the published methods, their original datasets and rate definitions, and why their headline bpp values are not directly comparable to EDR2's signed net payload capacity. In particular:
+- ACNNP and two MATLAB bit-plane repositories have no declared licence; do not copy or redistribute their code without author permission.
+- Official PLMAE and BCAGC implementations have not been located in the current due diligence.
+- ACBP must be assessed at its reversible setting (epsilon=1); its lossy epsilon=255 result is not a reversible baseline.
+- The 2020/2023 bit-plane methods can be independently reimplemented from their papers or tested after permission is obtained, but their repository code should not be presumed reusable.
+
+**Fair-comparison acceptance:** At least one strong external reversible baseline must be independently reproduced on identical decoded pixels, with method-native preprocessing disclosed, all metadata and recovery costs counted consistently, and exact image + payload recovery verified. Publish paired per-image results and failures. Until that exists, external-SOTA superiority remains unsupported.
+
+### Gate 4 — independent cryptographic audit
+
+**Status remains OPEN — external reviewer required.** The refreshed audit brief now targets frozen commit `bb5a8c0672a4ae58340edc641cbb6a9260d9f820` on this branch and explicitly prohibits retraining. It includes the grayscale/RGB protocol files, threat model, nonce/key lifecycle, HMAC coverage, parser/decompression checks, replay, malicious-hider trust and expected written findings. See `INDEPENDENT_CRYPTO_REVIEW_BRIEF.md`.
+
+New internal evidence: the optimized research-branch native grayscale final audit and regression job passed in [run 44056245803](https://github.com/Parzifal25/RDHEI/actions/runs/44056245803); RGB authenticated parser fuzzing completed 20,000 inputs without a reported crash in [run 44054823526](https://github.com/Parzifal25/RDHEI/actions/runs/44054823526). These tests strengthen implementation evidence; they are not an independent audit, proof or certification.
+
+**Audit acceptance:** A named independent cryptographic engineer reviews the frozen commit and supplies a dated written report with scope, qualifications, severity-ranked reproducible findings, remediation/retest results and residual risks. Critical/high findings must be fixed or formally accepted. Do not call this gate passed before that report exists.
+
+### Closure rule
+
+The two requested gates cannot honestly be marked complete by internal code changes alone. Gate 3 requires permission-cleared or independently reproduced external methods and matched data. Gate 4 requires a qualified person outside the project implementation team. No retraining is needed for either gate, and none is to be launched. Once both acceptance criteria are met, freeze the evidence and begin final manuscript writing.
