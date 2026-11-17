@@ -1,5 +1,5 @@
 name: EDR2 RGB extension gate
-# Launch corrected exact CPU sweep and v3 step-3 native experiment.
+# Launch corrected CPU, v3 geometry, and authenticated RGB parser fuzz gates.
 
 on:
   push:
@@ -31,6 +31,7 @@ on:
       - "tests/test_edr2_rgb_dataset.py"
       - "tests/test_edr2_adversarial_packets.py"
       - "tests/fuzz_edr2_parser.py"
+      - "tests/fuzz_edr2_rgb_parser.py"
       - "src/cnn_model.py"
       - "models/v4_patch3.pth"
   workflow_dispatch:
@@ -475,6 +476,57 @@ jobs:
           path: |
             /tmp/edr2-fuzz-corpus/
             /tmp/edr2-fuzz-crash-*
+          if-no-files-found: warn
+          retention-days: 90
+
+  authenticated-rgb-parser-fuzz:
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[run-rgb-fuzz]') }}
+    needs: rgb-protocol-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out RGB parser fuzz branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install RGB parser fuzz dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow pycryptodome atheris
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile RGB packet parser and fuzz target
+        run: |
+          python -m py_compile \
+            final_rdhei_protocol_gate_20261022/rgb_wire.py \
+            final_rdhei_protocol_gate_20261022/rgb_protocol.py \
+            tests/fuzz_edr2_rgb_parser.py
+
+      - name: Build RGB parser fuzz seed corpus
+        run: |
+          mkdir -p /tmp/edr2-rgb-fuzz-corpus
+          printf '\\x00' > /tmp/edr2-rgb-fuzz-corpus/seed
+
+      - name: Run 20,000 authenticated RGB parser fuzz inputs
+        run: |
+          python tests/fuzz_edr2_rgb_parser.py \
+            -max_len=4096 -runs=20000 \
+            /tmp/edr2-rgb-fuzz-corpus
+        env:
+          ATHERIS_FUZZER_DEBUG: "1"
+
+      - name: Upload RGB fuzz corpus and crash artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rdhei-edr2-rgb-parser-fuzz-corpus-and-findings
+          path: |
+            /tmp/edr2-rgb-fuzz-corpus/
+            /tmp/edr2-rgb-fuzz-crash-*
           if-no-files-found: warn
           retention-days: 90
 
