@@ -29,6 +29,7 @@ EDR2 = Path(__file__).resolve().parent
 sys.path.insert(0, str(EDR2))
 
 import protocol
+import predictor
 import wire
 
 IMAGE_SEED = 20261116
@@ -134,7 +135,6 @@ def main() -> None:
 
     output = Path(args.output_dir).expanduser().resolve()
     output.mkdir(parents=True, exist_ok=False)
-    torch.set_num_threads(4)
     try:
         torch.set_num_interop_threads(1)
     except RuntimeError:
@@ -165,6 +165,12 @@ def main() -> None:
     if not checkpoint.is_file():
         raise FileNotFoundError(checkpoint)
     image_hash = hashlib.sha256(image.tobytes(order="C")).hexdigest()
+
+    # Load the frozen model first: its configured CPU thread count overrides
+    # any process default. Record the actual runtime value, not a hardcoded
+    # benchmark assumption.
+    predictor_configuration = predictor.model_identity()
+    actual_torch_threads = torch.get_num_threads()
 
     # Warm the model and complete pipeline before measuring.
     for i in range(args.warmups):
@@ -218,7 +224,8 @@ def main() -> None:
         "torch": torch.__version__,
         "psutil": psutil.__version__,
         "device": "CPU",
-        "torch_threads": 4,
+        "torch_threads": actual_torch_threads,
+        "predictor_configuration": predictor_configuration,
         "image_shape": list(image.shape),
         "image_seed": IMAGE_SEED if image_path is None else None,
         "source_image_type": source_image_type,
@@ -277,7 +284,7 @@ def main() -> None:
         f"- Input: {source_image_type} image {source_image_name}, shape {image.shape[0]}x{image.shape[1]} uint8 grayscale.",
         f"- Input file SHA-256: {source_image_sha256 if source_image_sha256 else 'not applicable (synthetic fixture)'}; decoded pixel SHA-256: {image_hash}.",
         f"- Frozen checkpoint: v4_patch3.pth (46,881 parameters), SHA-256 {checkpoint_hash}.",
-        f"- Device: CPU, 4 PyTorch threads; warm-ups: {args.warmups}; measured repeats: {args.repeats}.",
+        f"- Device: CPU, {actual_torch_threads} PyTorch threads; warm-ups: {args.warmups}; measured repeats: {args.repeats}.",
         f"- Payload: full measured net capacity in every iteration; all image and payload recoveries exact: {report['all_exact_recoveries']}.",
         f"- Memory: baseline {memory['baseline_rss_mib']:.2f} MiB; sampled peak {memory['peak_rss_mib']:.2f} MiB; incremental peak {memory['peak_rss_delta_mib']:.2f} MiB.",
         "- Timing scope: complete in-memory prepare -> reserve/encrypt -> embed -> authenticate/extract/recover.",
