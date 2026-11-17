@@ -13,6 +13,7 @@ Run:
 from __future__ import annotations
 
 import sys
+import struct
 import zlib
 from pathlib import Path
 
@@ -141,14 +142,8 @@ def TestOneInput(data: bytes) -> None:
     packet = _authenticated_malformed(data)
     try:
         rgb_wire.inspect(packet, CAPABILITY, stage="final")
-    except (ValueError, IndexError, struct_error_types(), zlib.error):
+    except (ValueError, IndexError, struct.error, zlib.error):
         return
-
-
-def struct_error_types():
-    # Resolve struct.error without creating a module-level import hook dependency.
-    import struct
-    return struct.error
 
 
 def main() -> None:
