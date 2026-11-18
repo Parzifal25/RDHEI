@@ -1,11 +1,7 @@
 name: External RDHEI full-system baselines
 on:
-  push:
-    branches:
-      - research/external-baseline-reproduction
-    paths:
-      - ".github/workflows/external-rdhei-baselines.yml"
-      - "external_baselines/**"
+  workflow_dispatch:
+
 permissions:
   contents: read
   actions: read
