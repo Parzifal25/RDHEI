@@ -1,0 +1,106 @@
+name: PPMR compatibility-patched exact-recovery pilot
+
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - ".github/workflows/external-rdhei-ppmr-pilot.yml"
+      - "external_baselines/analyze_smoke_results.py"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ppmr-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout isolated reproduction branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python evaluation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow
+      - name: Retrieve prior verified corpus and successful Multi-MSB pilot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/prior-baseline
+          gh run download 44087190480 --name external-rdhei-baseline-results --dir /tmp/prior-baseline
+          test -s /tmp/prior-baseline/smoke/multi_msb_huffman_smoke.csv
+          test -s /tmp/prior-baseline/dataset/canonical_corpus_verified.json
+      - name: Install Octave and required packages
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends octave octave-statistics octave-image
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; disp('Octave ready');"
+      - name: Recreate and verify exact native 243-image USC-SIPI corpus
+        run: |
+          python final_rdhei_protocol_gate_20261022/prepare_usc_sipi_gray.py --output-dir /tmp/usc-sipi-baseline-corpus --archive-dir /tmp/usc-sipi-baseline-archives
+          python external_baselines/prepare_validate_corpus.py --expected-corpus /tmp/prior-baseline/dataset/canonical_corpus_verified.json --dataset-dir /tmp/usc-sipi-baseline-corpus --output-dir /tmp/ppmr-fixed-pilot/dataset
+      - name: Clone pinned PPMR source and apply isolated parser compatibility correction
+        run: |
+          git clone --quiet https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement.git /tmp/ppmr-src
+          git -C /tmp/ppmr-src checkout --quiet --detach 21f397890289049798ced0f98d1482d629f93b06
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('/tmp/ppmr-src/Extract_UBdata.m')
+          original=p.read_bytes()
+          src=original.decode('utf-8')
+          old='exUB_numData=ex_end_UB_t1++ex_end_UB_t2+ex_end_UB_t3+ex_end_UB_t4+ex_end_UB_t5+ex_end_UB_t6+ex_end_UB_t7+ex_end_UB_t8;'
+          new='exUB_numData=ex_end_UB_t1+ex_end_UB_t2+ex_end_UB_t3+ex_end_UB_t4+ex_end_UB_t5+ex_end_UB_t6+ex_end_UB_t7+ex_end_UB_t8;'
+          assert src.count(old)==1, 'Expected exactly one known upstream t1++t2 syntax typo'
+          p.write_text(src.replace(old,new),encoding='utf-8')
+          patched=p.read_bytes()
+          out=Path('/tmp/ppmr-fixed-pilot/provenance');out.mkdir(parents=True,exist_ok=True)
+          record={
+            'upstream_repository':'https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement',
+            'upstream_commit':'21f397890289049798ced0f98d1482d629f93b06',
+            'file':'Extract_UBdata.m','line':78,
+            'upstream_error':'ex_end_UB_t1++ex_end_UB_t2',
+            'correction':'ex_end_UB_t1+ex_end_UB_t2',
+            'original_sha256':hashlib.sha256(original).hexdigest(),
+            'patched_sha256':hashlib.sha256(patched).hexdigest(),
+            'scope':'Temporary Octave compatibility patch only; arithmetic, predictor, embedding and extraction logic are otherwise unchanged.'
+          }
+          (out/'ppmr_compatibility_patch.json').write_text(json.dumps(record,indent=2)+'\n')
+          PY
+          git -C /tmp/ppmr-src diff -- Extract_UBdata.m > /tmp/ppmr-fixed-pilot/provenance/ppmr_source_compatibility.diff
+      - name: Run corrected six-image original-source PPMR pilot
+        run: |
+          mkdir -p /tmp/ppmr-fixed-pilot/recovered
+          set -o pipefail
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/ppmr-src')); addpath(genpath('external_baselines/matlab')); run_ppmr_batch('/tmp/ppmr-fixed-pilot/dataset/smoke_6_images.txt','/tmp/ppmr-fixed-pilot/ppmr_smoke.csv','/tmp/ppmr-fixed-pilot/recovered');" 2>&1 | awk '/^PPMR / || /^error:/' | tee /tmp/ppmr-fixed-pilot/provenance/ppmr_smoke_console.log
+      - name: Validate all six PPMR exact payload and image round trips
+        if: always()
+        run: |
+          if [ -s /tmp/ppmr-fixed-pilot/ppmr_smoke.csv ]; then
+            python external_baselines/validate_smoke.py /tmp/ppmr-fixed-pilot/ppmr_smoke.csv
+          else
+            echo "PPMR pilot produced no CSV ledger"
+            exit 1
+          fi
+      - name: Join both six-image pilots into a preliminary results summary
+        if: always()
+        run: |
+          if [ -s /tmp/ppmr-fixed-pilot/ppmr_smoke.csv ]; then
+            python external_baselines/analyze_smoke_results.py --multi /tmp/prior-baseline/smoke/multi_msb_huffman_smoke.csv --ppmr /tmp/ppmr-fixed-pilot/ppmr_smoke.csv --out /tmp/ppmr-fixed-pilot/pilot_summary.json
+          fi
+      - name: Upload corrected PPMR pilot and combined evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-rdhei-baseline-pilot-fixed
+          path: |
+            /tmp/ppmr-fixed-pilot/
+            /tmp/prior-baseline/smoke/multi_msb_huffman_smoke.csv
+            /tmp/prior-baseline/dataset/dataset_validation.json
+          if-no-files-found: warn
+          retention-days: 30
