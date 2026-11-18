@@ -7,10 +7,15 @@ import numpy as np
 def sha256(data): return hashlib.sha256(data).hexdigest()
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument("--expected-corpus",required=True); ap.add_argument("--dataset-dir",required=True); ap.add_argument("--output-dir",required=True)
+    ap.add_argument("--expected-corpus",required=True); ap.add_argument("--dataset-dir",required=True); ap.add_argument("--output-dir",required=True); ap.add_argument("--allowlist",default=None)
     a=ap.parse_args(); expected_path=Path(a.expected_corpus); root=Path(a.dataset_dir).resolve(); out=Path(a.output_dir).resolve()
     out.mkdir(parents=True,exist_ok=True); rows=json.loads(expected_path.read_text())
     if not isinstance(rows,list) or len(rows)!=243: raise SystemExit(f"Expected frozen 243-image corpus.json, got {len(rows) if isinstance(rows,list) else 'non-list'}")
+    allow_by_path={}
+    if a.allowlist:
+        allow=json.loads(Path(a.allowlist).read_text())
+        for item in allow.get("images",[]):
+            allow_by_path[item["path"]]=item
     seen=set(); canonical=[]
     for r in rows:
         rel=r.get("relative_path")
@@ -29,7 +34,16 @@ def main():
         if ph in seen: raise SystemExit(f"Unexpected duplicate decoded pixels: {rel}")
         seen.add(ph)
         if any(int(v)%4 for v in px.shape): raise SystemExit(f"PPMR 4x4 block constraint fails for {rel}: {px.shape}")
-        row=dict(r); row["verified_file_sha256"]=raw_hash; row["verified_pixels_sha256"]=ph; row["absolute_path"]=str(p); canonical.append(row)
+        row=dict(r)
+        allow=allow_by_path.get(rel)
+        if allow:
+            if allow.get("sha256") and allow["sha256"].lower()!=raw_hash.lower():
+                raise SystemExit(f"Allowlist source hash mismatch: {rel}")
+            row["corpus_group"]=allow.get("corpus_group",row.get("corpus_group"))
+            row["classification"]=allow.get("classification",row.get("classification"))
+            row["correlation_cluster"]=allow.get("correlation_cluster")
+            row["curation_note"]=allow.get("curation_note")
+        row["verified_file_sha256"]=raw_hash; row["verified_pixels_sha256"]=ph; row["absolute_path"]=str(p); canonical.append(row)
     if len(seen)!=243: raise SystemExit(f"Expected 243 unique pixel buffers, got {len(seen)}")
     (out/"canonical_corpus_verified.json").write_text(json.dumps(canonical,indent=2,sort_keys=True)+"\n")
     def image_id(r): return r["relative_path"].replace("/","__").replace(".tiff","")
