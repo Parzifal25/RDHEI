@@ -159,7 +159,7 @@ jobs:
       - name: Save exact source and correction provenance
         if: always()
         env:
-          SHARD: ${"$"}{{ matrix.shard }}
+          SHARD: ${{ matrix.shard }}
         run: |
           mkdir -p "/tmp/external-baseline-results/shard-$SHARD/provenance"
           cp /tmp/multi-msb-source-sha256.txt "/tmp/external-baseline-results/shard-$SHARD/provenance/" 2>/dev/null || true
