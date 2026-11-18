@@ -53,12 +53,11 @@ jobs:
           from pathlib import Path
           p=Path('/tmp/ppmr-src/Extract_UBdata.m')
           original=p.read_bytes()
-          src=original.decode('utf-8')
-          old='exUB_numData=ex_end_UB_t1++ex_end_UB_t2+ex_end_UB_t3+ex_end_UB_t4+ex_end_UB_t5+ex_end_UB_t6+ex_end_UB_t7+ex_end_UB_t8;'
-          new='exUB_numData=ex_end_UB_t1+ex_end_UB_t2+ex_end_UB_t3+ex_end_UB_t4+ex_end_UB_t5+ex_end_UB_t6+ex_end_UB_t7+ex_end_UB_t8;'
-          assert src.count(old)==1, 'Expected exactly one known upstream t1++t2 syntax typo'
-          p.write_text(src.replace(old,new),encoding='utf-8')
-          patched=p.read_bytes()
+          old=b'exUB_numData=ex_end_UB_t1++ex_end_UB_t2+ex_end_UB_t3+ex_end_UB_t4+ex_end_UB_t5+ex_end_UB_t6+ex_end_UB_t7+ex_end_UB_t8;'
+          new=b'exUB_numData=ex_end_UB_t1+ex_end_UB_t2+ex_end_UB_t3+ex_end_UB_t4+ex_end_UB_t5+ex_end_UB_t6+ex_end_UB_t7+ex_end_UB_t8;'
+          assert original.count(old)==1, 'Expected exactly one known upstream t1++t2 syntax typo'
+          patched=original.replace(old,new)
+          p.write_bytes(patched)
           out=Path('/tmp/ppmr-fixed-pilot/provenance');out.mkdir(parents=True,exist_ok=True)
           record={
             'upstream_repository':'https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement',
