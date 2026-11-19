@@ -1,0 +1,324 @@
+name: Corrected PPMR 243-image reproduction and matched comparison
+
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - ".github/workflows/external-rdhei-ppmr-corrected.yml"
+      - "external_baselines/**"
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Existing full-sharded run containing the verified shared corpus"
+        required: true
+        default: "44365203650"
+        type: string
+      multi_aggregate_run_id:
+        description: "Aggregate-only recovery run containing the validated Multi-MSB ledger"
+        required: true
+        default: "44443090263"
+        type: string
+      edr2_run_id:
+        description: "EDR2 native grayscale corpus evidence run"
+        required: true
+        default: "43579225461"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download the immutable, hash-verified 243-image corpus package
+        uses: actions/download-artifact@v4
+        with:
+          name: external-rdhei-full-shared-corpus
+          path: /tmp/external-baseline-shared
+          run-id: ${{ inputs.source_run_id || '44365203650' }}
+          github-token: ${{ github.token }}
+
+      - name: Verify package shape and compile Python utilities
+        run: |
+          test -s /tmp/external-baseline-shared/canonical_corpus_verified.json
+          test -s /tmp/external-baseline-shared/shard_plan.json
+          test "$(find /tmp/external-baseline-shared/shards -name 'shard_*.tsv' | wc -l)" -eq 40
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          corpus=json.loads(Path('/tmp/external-baseline-shared/canonical_corpus_verified.json').read_text())
+          plan=json.loads(Path('/tmp/external-baseline-shared/shard_plan.json').read_text())
+          assert len(corpus)==243
+          assert plan['image_count']==243 and plan['shard_count']==40
+          print('Verified canonical corpus:',len(corpus),'images /',plan['shard_count'],'shards')
+          PY
+
+      - name: Upload immutable input package for this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-rdhei-ppmr-corrected-shared
+          path: /tmp/external-baseline-shared/
+          if-no-files-found: error
+          retention-days: 14
+
+  evaluate-shard:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: ["00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39"]
+    steps:
+      - name: Checkout the isolated reproduction branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/external-baseline-reproduction
+
+      - name: Download immutable shared corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: external-rdhei-ppmr-corrected-shared
+          path: /tmp/external-baseline-shared
+
+      - name: Install GNU Octave and image/statistics packages
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends octave octave-statistics octave-image
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; assert(exist('tabulate','file')==2); disp('Octave ready');"
+
+      - name: Clone the exact pinned upstream PPMR source
+        run: |
+          git clone --quiet https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement.git /tmp/ppmr-src
+          git -C /tmp/ppmr-src checkout --quiet --detach 21f397890289049798ced0f98d1482d629f93b06
+          test "$(git -C /tmp/ppmr-src rev-parse HEAD)" = "21f397890289049798ced0f98d1482d629f93b06"
+          (cd /tmp/ppmr-src && git ls-files -z | xargs -0 sha256sum) > /tmp/ppmr-original-source-sha256.txt
+
+      - name: Apply documented temporary-checkout compatibility repairs
+        run: |
+          python external_baselines/patch_ppmr_checkout.py \
+            --repo /tmp/ppmr-src \
+            --output /tmp/ppmr-compatibility-patch.json
+          python -m py_compile external_baselines/patch_ppmr_checkout.py external_baselines/validate_ppmr_shard.py external_baselines/compare_native_protocols.py
+
+      - name: Materialize deterministic image list for this shard
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mkdir -p "/tmp/external-ppmr-results/shard-$SHARD/recovered"
+          python external_baselines/materialize_shard_list.py \
+            --shared-dir /tmp/external-baseline-shared \
+            --shard "$SHARD" \
+            --output "/tmp/external-ppmr-results/shard-$SHARD/images.tsv"
+
+      - name: Run corrected pinned PPMR source on this shard
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          set -o pipefail
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/ppmr-src')); addpath(genpath('external_baselines/matlab')); run_ppmr_batch('/tmp/external-ppmr-results/shard-$SHARD/images.tsv','/tmp/external-ppmr-results/shard-$SHARD/ppmr.csv','/tmp/external-ppmr-results/shard-$SHARD/recovered');" \
+            2>&1 | tee "/tmp/external-ppmr-results/shard-$SHARD/ppmr.log"
+
+      - name: Validate exact row coverage and attach source/pixel hashes
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python external_baselines/validate_ppmr_shard.py \
+            --expected-list "/tmp/external-baseline-shared/shards/shard_$SHARD.tsv" \
+            --canonical /tmp/external-baseline-shared/canonical_corpus_verified.json \
+            --ppmr "/tmp/external-ppmr-results/shard-$SHARD/ppmr.csv" \
+            --output "/tmp/external-ppmr-results/shard-$SHARD/shard_validation.json"
+
+      - name: Save exact upstream and patch provenance
+        if: always()
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mkdir -p "/tmp/external-ppmr-results/shard-$SHARD/provenance"
+          cp /tmp/ppmr-original-source-sha256.txt "/tmp/external-ppmr-results/shard-$SHARD/provenance/" 2>/dev/null || true
+          cp /tmp/ppmr-compatibility-patch.json "/tmp/external-ppmr-results/shard-$SHARD/provenance/" 2>/dev/null || true
+          octave --version > "/tmp/external-ppmr-results/shard-$SHARD/provenance/octave-version.txt" 2>&1 || true
+          python - <<'PY'
+          import json,os,platform
+          from pathlib import Path
+          p=Path('/tmp/external-ppmr-results/shard-'+os.environ['SHARD'])
+          (p/'provenance'/'runtime.json').write_text(json.dumps({
+            'shard':os.environ['SHARD'],
+            'python':platform.python_version(),
+            'platform':platform.platform(),
+            'training_performed':False,
+            'edr2_checkpoint_modified':False
+          },indent=2)+'\n')
+          PY
+
+      - name: Upload corrected per-shard results and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-rdhei-ppmr-corrected-shard-${{ matrix.shard }}
+          path: /tmp/external-ppmr-results/shard-${{ matrix.shard }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    needs: [prepare, evaluate-shard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout isolated reproduction branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/external-baseline-reproduction
+
+      - name: Set up Python and analysis dependencies
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install NumPy
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy
+
+      - name: Download canonical shared corpus package
+        uses: actions/download-artifact@v4
+        with:
+          name: external-rdhei-ppmr-corrected-shared
+          path: /tmp/external-baseline-shared
+
+      - name: Download every corrected PPMR shard artifact separately
+        uses: actions/download-artifact@v4
+        with:
+          pattern: external-rdhei-ppmr-corrected-shard-*
+          path: /tmp/external-ppmr-all-shards
+          merge-multiple: false
+
+      - name: Download already validated Multi-MSB 243-image ledger
+        uses: actions/download-artifact@v4
+        with:
+          name: external-rdhei-243-image-full-results-aggregated
+          path: /tmp/external-multi-results
+          run-id: ${{ inputs.multi_aggregate_run_id || '44443090263' }}
+          github-token: ${{ github.token }}
+
+      - name: Download EDR2 native 243-image capacity evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: edr2-full-natural-corpus-evidence
+          path: /tmp/edr2-native-results
+          run-id: ${{ inputs.edr2_run_id || '43579225461' }}
+          github-token: ${{ github.token }}
+
+      - name: Merge 40 corrected PPMR ledgers and verify exact corpus coverage
+        id: merge
+        run: |
+          python - <<'PY'
+          import csv,json
+          from collections import Counter
+          from pathlib import Path
+
+          base=Path('/tmp/external-ppmr-all-shards')
+          out=Path('/tmp/external-ppmr-merged')
+          out.mkdir(parents=True,exist_ok=True)
+          expected_dirs={f'external-rdhei-ppmr-corrected-shard-{i:02d}' for i in range(40)}
+          actual_dirs={p.name for p in base.iterdir() if p.is_dir()}
+          result={
+            'expected_shard_artifacts':40,
+            'actual_shard_artifacts':len(actual_dirs),
+            'missing_shard_artifacts':sorted(expected_dirs-actual_dirs),
+            'unexpected_shard_artifacts':sorted(actual_dirs-expected_dirs)
+          }
+          if actual_dirs != expected_dirs:
+            (out/'merge_validation.json').write_text(json.dumps(result,indent=2)+'\n')
+            print(json.dumps(result,indent=2))
+            raise SystemExit('Corrected PPMR is missing one or more shard artifacts')
+
+          rows=[]
+          for d in sorted(base.iterdir()):
+            csv_path=d/'ppmr.csv'
+            validation_path=d/'shard_validation.json'
+            if not csv_path.is_file() or not validation_path.is_file():
+              raise SystemExit(f'{d.name}: missing PPMR ledger or shard validation')
+            validation=json.loads(validation_path.read_text())
+            if not validation.get('ledger_complete'):
+              raise SystemExit(f'{d.name}: incomplete shard ledger: {validation}')
+            with csv_path.open(newline='',encoding='utf-8') as f:
+              shard_rows=list(csv.DictReader(f))
+            rows.extend(shard_rows)
+
+          ids=[r['image_id'] for r in rows]
+          counts=Counter(ids)
+          duplicates=sorted(k for k,v in counts.items() if v>1)
+          canonical=json.loads(Path('/tmp/external-baseline-shared/canonical_corpus_verified.json').read_text())
+          expected_ids={r['relative_path'].replace('/','__').replace('.tiff','') for r in canonical}
+          result.update({
+            'rows':len(rows),
+            'unique_images':len(set(ids)),
+            'duplicates':duplicates,
+            'missing_image_count':len(expected_ids-set(ids)),
+            'extra_image_ids':sorted(set(ids)-expected_ids),
+            'status_counts':dict(sorted(Counter(r.get('status','MISSING') for r in rows).items())),
+            'payload_exact_passes':sum(r.get('payload_exact','').lower() in ('1','true') for r in rows),
+            'host_image_exact_passes':sum(r.get('image_exact','').lower() in ('1','true') for r in rows)
+          })
+          result['complete']=len(rows)==243 and len(set(ids))==243 and not duplicates and set(ids)==expected_ids
+          with (out/'ppmr_corrected_raw.csv').open('w',newline='',encoding='utf-8') as f:
+            writer=csv.DictWriter(f,fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+          (out/'merge_validation.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,indent=2,sort_keys=True))
+          if not result['complete']:
+            raise SystemExit('Corrected PPMR merge failed 243-image exact-coverage validation')
+          PY
+
+      - name: Build paired same-corpus EDR2 and external-baseline comparison
+        if: steps.merge.outcome == 'success'
+        run: |
+          python external_baselines/compare_native_protocols.py \
+            --canonical /tmp/external-baseline-shared/canonical_corpus_verified.json \
+            --edr2-capacities /tmp/edr2-native-results/capacities.json \
+            --multi /tmp/external-multi-results/external-baseline-merged/multi_msb_huffman_per_image.csv \
+            --ppmr /tmp/external-ppmr-merged/ppmr_corrected_raw.csv \
+            --out-dir /tmp/external-ppmr-merged
+
+      - name: Enforce publication-readiness gate
+        if: steps.merge.outcome == 'success'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/tmp/external-ppmr-merged/native_protocol_comparison.json')
+          x=json.loads(p.read_text())
+          print(json.dumps({
+            'publication_ready':x['publication_ready'],
+            'methods':{
+              k:{
+                'positive_images':v['positive_capacity_images'],
+                'payload_exact_images':v.get('payload_exact_images'),
+                'image_exact_images':v.get('image_exact_images'),
+                'status_counts':v.get('status_counts')
+              } for k,v in x['methods'].items()
+            }
+          },indent=2))
+          if not x['publication_ready']:
+            raise SystemExit('Comparison is NOT publication-ready: at least one external baseline failed exact payload/image recovery on the full 243-image corpus')
+          PY
+
+      - name: Upload corrected PPMR and publication comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-rdhei-243-image-corrected-comparison
+          path: |
+            /tmp/external-ppmr-merged/
+            /tmp/external-baseline-shared/shard_plan.json
+            /tmp/external-baseline-shared/canonical_corpus_verified.json
+          if-no-files-found: warn
+          retention-days: 90
