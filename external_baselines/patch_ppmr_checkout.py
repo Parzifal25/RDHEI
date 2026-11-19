@@ -43,6 +43,27 @@ def patch_encrypt_image(path: Path):
     del lines[prior_ends[-1]]
     write_lines(path, lines)
 
+
+def patch_decrypt_image(path: Path):
+    lines = read_lines(path)
+    matches = [i for i, line in enumerate(lines)
+               if b"[final_debitplane7] = decrypt_All(" in line]
+    assert len(matches) == 1, "Expected exactly one bit-plane-7 decrypt fallback"
+    i7 = matches[0]
+    assert i7 + 1 < len(lines) and b"%---" in lines[i7 + 1], (
+        "Unexpected source context after bit-plane-7 decrypt fallback"
+    )
+    lines.insert(i7 + 1, b"end\\r\\n")
+    calls = [i for i, line in enumerate(lines)
+             if b"[Decrypt_I] = eight_to_one(" in line]
+    assert len(calls) == 1, "Expected exactly one final eight-plane decrypt assembly"
+    ci = calls[0]
+    prior_ends = [i for i in range(max(0, ci - 3), ci)
+                  if lines[i].strip() == b"end"]
+    assert len(prior_ends) == 2, "Expected two branch terminators before final decrypted-plane assembly"
+    del lines[prior_ends[-1]]
+    write_lines(path, lines)
+
 def patch_extract_function(path: Path, func_prefix: bytes, count_name: bytes,
                            data_prefix: bytes, tag_name: bytes):
     lines = read_lines(path)
@@ -107,9 +128,10 @@ def main():
     if dirty:
         raise SystemExit(f"Temporary checkout was not clean before patching: {dirty}")
 
-    names = ["Encrypt_image.m", "Extract_UBdata.m", "Extract_NUBdata.m"]
+    names = ["Encrypt_image.m", "decrypt_image.m", "Extract_UBdata.m", "Extract_NUBdata.m"]
     before = {name: sha256((repo / name).read_bytes()) for name in names}
     patch_encrypt_image(repo / "Encrypt_image.m")
+    patch_decrypt_image(repo / "decrypt_image.m")
     patch_extract_function(
         repo / "Extract_UBdata.m", b"function [exUBD,exUB_t]",
         b"exUB_numData", b"exUB_Data", b"tag_preprocess"
@@ -133,6 +155,11 @@ def main():
                 "file": "Encrypt_image.m",
                 "reason": "Close the bit-plane-7 conditional before the independent bit-plane-8 branch; the upstream nesting could leave final_enbitplane8 undefined.",
                 "scope": "Control-flow repair only; each of the eight planes is still encrypted according to its own tag_preprocess flag."
+            },
+            {
+                "file": "decrypt_image.m",
+                "reason": "The matching decryption routine had the same malformed bit-plane-7/bit-plane-8 nesting as Encrypt_image.m, leaving final_debitplane8 undefined on affected tag patterns.",
+                "scope": "Control-flow repair only; each of the eight planes is still decrypted according to its own tag_preprocess flag."
             },
             {
                 "file": "Extract_UBdata.m",
