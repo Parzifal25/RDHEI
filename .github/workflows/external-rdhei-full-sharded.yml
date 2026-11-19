@@ -1,12 +1,7 @@
 name: External RDHEI 243-image sharded full evaluation
 
 on:
-  push:
-    branches:
-      - research/external-baseline-reproduction
-    paths:
-      - ".github/workflows/external-rdhei-full-sharded.yml"
-      - "external_baselines/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
