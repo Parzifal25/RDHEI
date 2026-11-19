@@ -1,0 +1,30 @@
+name: Cancel redundant legacy external-baseline runs
+
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - ".github/workflows/cancel-redundant-baseline-runs.yml"
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel duplicate legacy full-corpus runs created during workflow edits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for id in 44491198882 44491034802 44490885477 44490880169 44490613908 44490131569 44489857767; do
+            status="$(gh api "repos/Parzifal25/RDHEI/actions/runs/$id" --jq .status)"
+            if [ "$status" != "completed" ]; then
+              echo "Cancelling redundant run $id (status=$status)"
+              gh api --method POST "repos/Parzifal25/RDHEI/actions/runs/$id/cancel" || true
+            else
+              echo "Run $id already completed; leaving it untouched"
+            fi
+          done
