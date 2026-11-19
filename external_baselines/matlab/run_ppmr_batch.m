@@ -1,13 +1,13 @@
 function run_ppmr_batch(list_file, output_csv, recovery_dir)
-% Execute the pinned upstream PPMR pipeline, following Main612.m's operations
-% and original net-rate formula, without GUI plotting or upstream edits.
+% Run the pinned PPMR implementation with compatibility patches confined to
+% the temporary source checkout. The native Main612.m rate expression is kept.
   addpath(fileparts(mfilename('fullpath')));
   list_fid = fopen(list_file, 'r');
   if list_fid < 0, error('Cannot open input list: %s', list_file); end
   out_fid = fopen(output_csv, 'w');
   if out_fid < 0, fclose(list_fid); error('Cannot open CSV: %s', output_csv); end
   if ~exist(recovery_dir, 'dir'), mkdir(recovery_dir); end
-  fprintf(out_fid, 'image_id,attempted_bits,ub_embedded_bits,nub_embedded_bits,gross_embedded_bits,compress_predict_bits,method_native_net_bpp,payload_exact,image_exact,runtime_s,status,error\n');
+  fprintf(out_fid, 'image_id,attempted_bits,ub_embedded_bits,nub_embedded_bits,gross_embedded_bits,compress_predict_bits,method_native_net_bpp,payload_exact,ub_payload_exact,nub_payload_exact,ub_payload_bits,nub_payload_bits,ub_extracted_bits,nub_extracted_bits,active_plane_mask,image_exact,runtime_s,status,error\n');
   while true
     image_path = fgetl(list_fid);
     if ~ischar(image_path), break; end
@@ -18,7 +18,9 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
     image_id = fields{1}; image_path = fields{2};
     attempted_bits = 0; num_emubD = 0; num_NUBD = 0; gross_bits = 0;
     compress_predict_len = 0; native_bpp = NaN;
-    payload_exact = false; image_exact = false; status = 'ERROR'; error_text = '';
+    payload_exact = false; ub_payload_exact = false; nub_payload_exact = false;
+    ub_payload_bits = 0; nub_payload_bits = 0; ub_extracted_bits = 0; nub_extracted_bits = 0;
+    active_plane_mask = ''; image_exact = false; status = 'ERROR'; error_text = '';
     t0 = tic();
     try
       source = imread(image_path);
@@ -31,13 +33,16 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
       attempted_bits = 8 * row * col;
       rand('seed', 0);
       Data = round(rand(1, attempted_bits) * 1);
-      Image_key = 1; Data_key = 2; %#ok<NASGU> % Data_key is unused by the published driver.
+      Image_key = 1; Data_key = 2; %#ok<NASGU> % Data_key is unused by upstream Main612.m.
+
       [typeI1,typeI2,typeI3,typeI4,typeI5,typeI6,typeI7,typeI8, ...
        compress_type_len,recover_start_ub,Predict_error_I,judge_predict, ...
        compress_predict,tag_preprocess,finalem,f, ...
        Process_bitplane1,Process_bitplane2,Process_bitplane3,Process_bitplane4, ...
        Process_bitplane5,Process_bitplane6,Process_bitplane7,Process_bitplane8] = ...
        Preprocess1(Origin_I, block_size);
+      active_plane_mask = sprintf('%d', tag_preprocess);
+
       [bin_NUB_len,final_emUBdata,tag_NUB1,tag_NUB2,tag_NUB3,tag_NUB4, ...
        tag_NUB5,tag_NUB6,tag_NUB7,tag_NUB8,Second_pro_bitplane1, ...
        Second_pro_bitplane2,Second_pro_bitplane3,Second_pro_bitplane4, ...
@@ -46,11 +51,13 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
        finalem,f,block_size,Process_bitplane1,Process_bitplane2, ...
        Process_bitplane3,Process_bitplane4,Process_bitplane5,Process_bitplane6, ...
        Process_bitplane7,Process_bitplane8);
+
       Process_I = eight_to_one(Second_pro_bitplane1,Second_pro_bitplane2, ...
        Second_pro_bitplane3,Second_pro_bitplane4,Second_pro_bitplane5, ...
        Second_pro_bitplane6,Second_pro_bitplane7,Second_pro_bitplane8);
       Encrypt_I = Encrypt_image(Process_I,Image_key,final_emUBdata,f, ...
        tag_preprocess,block_size);
+
       [emubD,num_emubD,num_em_everyub,Stego_bitplane1,Stego_bitplane2, ...
        Stego_bitplane3,Stego_bitplane4,Stego_bitplane5,Stego_bitplane6, ...
        Stego_bitplane7,Stego_bitplane8] = Embed_data(Encrypt_I,block_size, ...
@@ -63,6 +70,7 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
        tag_NUB1,tag_NUB2,tag_NUB3,tag_NUB4,tag_NUB5,tag_NUB6,tag_NUB7,tag_NUB8);
       Stego_I = eight_to_one(final_Stego1,final_Stego2,final_Stego3,final_Stego4, ...
        final_Stego5,final_Stego6,final_Stego7,final_Stego8);
+
       [exUB_Data,exUB_numData] = Extract_UBdata(tag_preprocess,num_emubD, ...
        final_emUBdata,block_size,final_Stego1,final_Stego2,final_Stego3, ...
        final_Stego4,final_Stego5,final_Stego6,final_Stego7,final_Stego8);
@@ -70,11 +78,17 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
        block_size,tag_NUB1,tag_NUB2,tag_NUB3,tag_NUB4,tag_NUB5,tag_NUB6, ...
        tag_NUB7,tag_NUB8,final_Stego1,final_Stego2,final_Stego3, ...
        final_Stego4,final_Stego5,final_Stego6,final_Stego7,final_Stego8);
+
       ub_payload = reshape(Data(1:num_emubD),1,[]);
       ex_ub = reshape(exUB_Data,1,[]);
       nub_payload = reshape(Data(num_emubD+1:num_emubD+num_NUBD),1,[]);
       ex_nub = reshape(exNUB_Data,1,[]);
-      payload_exact = isequal(ub_payload,ex_ub) && isequal(nub_payload,ex_nub);
+      ub_payload_bits = numel(ub_payload); nub_payload_bits = numel(nub_payload);
+      ub_extracted_bits = numel(ex_ub); nub_extracted_bits = numel(ex_nub);
+      ub_payload_exact = isequal(ub_payload,ex_ub);
+      nub_payload_exact = isequal(nub_payload,ex_nub);
+      payload_exact = ub_payload_exact && nub_payload_exact;
+
       Decrypt_I = decrypt_image(Stego_I,Image_key,final_emUBdata,f, ...
        tag_preprocess,block_size);
       [recover_bitplane1,recover_bitplane2,recover_bitplane3,recover_bitplane4, ...
@@ -88,10 +102,12 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
        recover_bitplane2,recover_bitplane3,recover_bitplane4,recover_bitplane5, ...
        recover_bitplane6,recover_bitplane7,recover_bitplane8);
       image_exact = isequal(Origin_I,Recover_I);
+
       gross_bits = num_emubD + num_NUBD;
       compress_predict_len = length(compress_predict);
-      % Preserve the exact expression reported in upstream Main612.m.
+      % Exactly the native net-rate expression from the authors' Main612.m.
       native_bpp = (gross_bits - compress_predict_len - 8 - 16*8 - 16*8) / (row*col);
+
       if image_exact
         imwrite(uint8(Recover_I), fullfile(recovery_dir, [image_id '_recovered.png']));
       end
@@ -99,7 +115,8 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
         status = 'PASS';
       else
         status = 'ROUNDTRIP_FAIL';
-        if ~payload_exact, error_text = 'UB/NUB extracted payload differs from embedded payload'; end
+        if ~ub_payload_exact, error_text = 'UB payload mismatch'; end
+        if ~nub_payload_exact, error_text = [error_text ' NUB payload mismatch']; end
         if ~image_exact, error_text = [error_text ' exact image reconstruction failed']; end
       end
     catch err
@@ -107,10 +124,11 @@ function run_ppmr_batch(list_file, output_csv, recovery_dir)
       error_text = strrep(strrep(err.message, ',', ';'), sprintf('\n'), ' ');
     end
     runtime_s = toc(t0);
-    fprintf(out_fid, '"%s",%.0f,%.0f,%.0f,%.0f,%.0f,%.12g,%d,%d,%.6f,"%s","%s"\n', ...
+    fprintf(out_fid, '"%s",%.0f,%.0f,%.0f,%.0f,%.0f,%.12g,%d,%d,%d,%.0f,%.0f,%.0f,%.0f,"%s",%d,%.6f,"%s","%s"\n', ...
       image_id, attempted_bits, num_emubD, num_NUBD, gross_bits, ...
-      compress_predict_len, native_bpp, payload_exact, image_exact, ...
-      runtime_s, status, error_text);
+      compress_predict_len, native_bpp, payload_exact, ub_payload_exact, ...
+      nub_payload_exact, ub_payload_bits, nub_payload_bits, ub_extracted_bits, ...
+      nub_extracted_bits, active_plane_mask, image_exact, runtime_s, status, error_text);
     fflush(out_fid);
     fprintf('PPMR %s %s UB=%.0f NUB=%.0f net_bpp=%.6f %.2fs\n', ...
       image_id, status, num_emubD, num_NUBD, native_bpp, runtime_s);
