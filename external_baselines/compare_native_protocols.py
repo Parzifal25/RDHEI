@@ -99,7 +99,7 @@ def main():
         multi_status = mr.get("status", "ERROR")
         multi_payload_exact = truth(mr.get("payload_exact"))
         multi_image_exact = truth(mr.get("image_exact"))
-        multi_embedded_bits = int(float(mr.get("embedded_bits") or 0))
+        multi_embedded_bits = int(float(mr.get("method_native_net_payload_bits") or mr.get("gross_embedded_bits_as_returned_by_source") or 0))
         multi_native_bpp = multi_embedded_bits / pixels if multi_status == "PASS" else None
         reported_multi_bpp = number(mr.get("method_native_net_bpp"))
         if multi_status == "PASS" and (reported_multi_bpp is None or abs(multi_native_bpp - reported_multi_bpp) > 1e-8):
