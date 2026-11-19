@@ -1,0 +1,156 @@
+name: Aggregate existing external RDHEI shards
+
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - ".github/workflows/external-rdhei-aggregate-existing.yml"
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Completed full-sharded evaluation run to aggregate"
+        required: true
+        default: "44365203650"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout reproduction branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/external-baseline-reproduction
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install analysis dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy
+
+      - name: Download shared verified corpus from source run
+        uses: actions/download-artifact@v4
+        with:
+          name: external-rdhei-full-shared-corpus
+          path: /tmp/external-baseline-shared
+          run-id: ${{ inputs.source_run_id || '44365203650' }}
+          github-token: ${{ github.token }}
+
+      - name: Download shard artifacts into distinct artifact directories
+        uses: actions/download-artifact@v4
+        with:
+          pattern: external-rdhei-shard-*
+          path: /tmp/external-baseline-all-shards
+          merge-multiple: false
+          run-id: ${{ inputs.source_run_id || '44365203650' }}
+          github-token: ${{ github.token }}
+
+      - name: Merge and validate all 40 shard ledgers
+        id: merge
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import re
+          from collections import Counter
+          from pathlib import Path
+
+          base = Path("/tmp/external-baseline-all-shards")
+          out = Path("/tmp/external-baseline-merged")
+          out.mkdir(parents=True, exist_ok=True)
+
+          expected_dirs = {f"external-rdhei-shard-{i:02d}" for i in range(40)}
+          actual_dirs = {p.name for p in base.iterdir() if p.is_dir()}
+          result = {
+              "source_run_id": "${{ inputs.source_run_id || '44365203650' }}",
+              "artifact_directory_count": len(actual_dirs),
+              "missing_artifact_directories": sorted(expected_dirs - actual_dirs),
+              "unexpected_artifact_directories": sorted(actual_dirs - expected_dirs),
+          }
+
+          if actual_dirs != expected_dirs:
+              (out / "merge_validation.json").write_text(json.dumps(result, indent=2) + "\n")
+              print(json.dumps(result, indent=2))
+              raise SystemExit("Expected exactly the 40 named shard artifact directories")
+
+          for artifact_dir in sorted(base.iterdir()):
+              required = ["multi_msb_huffman.csv", "ppmr.csv", "shard_validation.json"]
+              missing = [name for name in required if not (artifact_dir / name).is_file()]
+              if missing:
+                  raise SystemExit(f"{artifact_dir.name} is missing required outputs: {missing}")
+              validation = json.loads((artifact_dir / "shard_validation.json").read_text())
+              if validation.get("valid") is False or validation.get("complete") is False:
+                  raise SystemExit(f"{artifact_dir.name} reports an invalid shard: {validation}")
+
+          methods = [
+              ("multi", "multi_msb_huffman.csv", out / "multi_msb_huffman_raw.csv"),
+              ("ppmr", "ppmr.csv", out / "ppmr_raw.csv"),
+          ]
+          for method, filename, dest in methods:
+              rows = []
+              source_files = []
+              for artifact_dir in sorted(base.iterdir()):
+                  p = artifact_dir / filename
+                  source_files.append(str(p))
+                  with p.open(newline="") as f:
+                      rows.extend(csv.DictReader(f))
+
+              ids = [row["image_id"] for row in rows]
+              counts = Counter(ids)
+              duplicates = sorted(image_id for image_id, count in counts.items() if count > 1)
+              summary = {
+                  "shard_files": len(source_files),
+                  "rows": len(rows),
+                  "unique_images": len(counts),
+                  "duplicates": duplicates,
+                  "missing_image_count": max(0, 243 - len(counts)),
+                  "complete": len(rows) == 243 and len(counts) == 243 and not duplicates,
+              }
+              result[method] = summary
+
+              if rows:
+                  fieldnames = list(rows[0])
+                  if any(list(row) != fieldnames for row in rows):
+                      raise SystemExit(f"{method}: inconsistent CSV columns across shards")
+                  with dest.open("w", newline="") as f:
+                      writer = csv.DictWriter(f, fieldnames=fieldnames)
+                      writer.writeheader()
+                      writer.writerows(rows)
+
+          (out / "merge_validation.json").write_text(json.dumps(result, indent=2) + "\n")
+          print(json.dumps(result, indent=2))
+
+          if not all(result[m]["complete"] for m in ("multi", "ppmr")):
+              raise SystemExit("Full 243-image shard merge is incomplete; see merge_validation.json")
+          PY
+
+      - name: Build full aggregate and corpus-group statistics
+        if: steps.merge.outcome == 'success'
+        run: |
+          python external_baselines/analyze_results.py \
+            --canonical /tmp/external-baseline-shared/canonical_corpus_verified.json \
+            --multi /tmp/external-baseline-merged/multi_msb_huffman_raw.csv \
+            --ppmr /tmp/external-baseline-merged/ppmr_raw.csv \
+            --out-dir /tmp/external-baseline-merged
+
+      - name: Upload recovered consolidated evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-rdhei-243-image-full-results-aggregated
+          path: |
+            /tmp/external-baseline-merged/
+            /tmp/external-baseline-shared/shard_plan.json
+            /tmp/external-baseline-shared/dataset_validation.json
+          if-no-files-found: warn
+          retention-days: 90
