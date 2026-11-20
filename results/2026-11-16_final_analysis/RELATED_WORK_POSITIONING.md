@@ -1,6 +1,6 @@
 # Related-work positioning and novelty boundary
 
-**Checked:** 2026-11-16. Focused prior-art map, not a systematic review. Complete the final reference audit before submission.
+**Checked:** 2026-11-20. Focused prior-art map, not a systematic review. Two external methods have now been reproduced on the same 243-image native grayscale corpus; other closest methods remain untested head-to-head. Complete the final reference audit before submission.
 
 ## Closest prior art
 
@@ -15,6 +15,8 @@
 | Hung et al. (2026), D4-symmetry bidirectional pixel shifting and context-aware recovery, *Applied Sciences* 16(20), 10343, [doi:10.3390/app162010343](https://doi.org/10.3390/app162010343) | D4-symmetry bidirectional pixel shifts and context-aware recovery for high-capacity RDHEI. | A contemporary recovery alternative that should be discussed and, where feasible, compared. |
 | Tram & Nguyen (published 9 Nov 2026), overlapping block partitioning and shared-MSB encoding, *CTU Journal of Innovation and Sustainable Development* 18, Special Issue ISDS, 1–10, [doi:10.22144/ctujoisd.2026.049](https://doi.org/10.22144/ctujoisd.2026.049) | Overlapping blocks and shared-MSB encoding. | Very recent prior art; do not imply overlapping/block-sharing mechanisms are new. |
 | Peng et al. (published 8 Aug 2026), dual-stage bit-plane compression and CP-ABE recovery authorization, *Scientific Reports*, [doi:10.1038/s41598-026-65778-w](https://doi.org/10.1038/s41598-026-65778-w) | RRBE-based scheme using predictors, global compression of consecutive all-zero high-order bit planes, adaptive hierarchical block variable-length coding of remaining bit planes, block rearrangement by embedding capacity, and ciphertext-policy attribute-based recovery authorization. Evaluated on BOSSBase, BOWS-2 and UCID. | Highly relevant modern RRBE/bit-plane comparator and a multi-user authorization design not covered by the current protocol. The published abstract establishes the method and datasets, but detailed numeric results should be extracted from the full paper before any numerical comparison. |
+| Yin, Xiang & Zhang (2020), Multi-MSB prediction + Huffman coding, *IEEE Transactions on Multimedia* 22(4), 874–884, [doi:10.1109/TMM.2019.2936314](https://doi.org/10.1109/TMM.2019.2936314) | Adaptive multi-MSB prediction; Huffman-coded location information; stream-cipher encryption; multi-MSB substitution. Public implementation pinned and executed on the same 243 native grayscale images. | This reproduction: 243/243 exact payload and host recoveries; positive net payload on 243/243; mean usable native net rate 2.088477 bpp; pooled usable rate 1.973505 bpp. | Same image set and exact-recovery gate; original method's carrier geometry, encryption order and native accounting remain different from EDR2. |
+| Yin, She, Tang & Luo (2021), pixel prediction and multi-MSB planes rearrangement (PPMR), *Signal Processing* 187, 108146, [doi:10.1016/j.sigpro.2021.108146](https://doi.org/10.1016/j.sigpro.2021.108146) | Pixel prediction, uniform/non-uniform block classification, multi-MSB-plane rearrangement and separate UB/NUB embedding. Public implementation pinned and executed on the same 243 native grayscale images with four disclosed temporary compatibility corrections. | This corrected reproduction: 243/243 exact payload and host recoveries; positive net payload on 238/243; mean usable native net rate 2.228173 bpp; pooled usable rate 2.118172 bpp. | Result must be called corrected PPMR, not unmodified upstream execution; patch provenance and native rate expression are disclosed. Not a same-packet-cost or same-security-model comparison with EDR2. |
 
 ## What can and cannot be claimed
 
@@ -32,27 +34,26 @@ The narrow technical claim is a **specific context-invariance condition**: with 
 
 Additional engineering/evaluation contributions are maximum-signed-net four-phase selection with explicit metadata/bootstrap-backup accounting, an in-band authenticated packet/receiver input contract, and an evaluated RGB extension with all 24 channel-phase assignments and authenticated blend metadata. These are implementation claims unless a systematic search establishes stronger novelty.
 
-## Critical performance comparison gap
+## Completed matched-corpus comparison and remaining gap
 
-- Native grayscale EDR2 gives pooled signed net 0.059821 bpp over the 243-image corpus (negative outcomes retained) and positive capacity on 163/243 images.
-- The separate matched predictor comparison reports mean signed net 0.021603 bpp for v4 under the step-4 / 16-phase grid.
-- BCAGC reports average rates of 4.1472, 4.0565 and 3.4465 bpp on BOSSbase, BOWS-2 and UCID. These rates cannot be treated as direct head-to-head results without reconciling datasets, encryption/embedding order and all metadata, backup and authentication costs. The difference in scale nevertheless requires explanation and controlled replication.
-- Yi & Zhou report 4.5 bpp at ε=255, whereas exact recovery is reported at ε=1. Do not cite 4.5 bpp as an exact-recovery point.
+The following direct reproductions are now complete:
 
-Do not describe the current system as high-capacity or state-of-the-art until same-dataset, same-overhead and exact-recovery comparisons support that conclusion.
+- Native grayscale EDR2: positive signed net capacity on 163/243 images; pooled signed net 0.059821 bpp; unweighted mean signed net 0.110539 bpp; 978/978 exact receiver trials among accepted images.
+- Multi-MSB prediction + Huffman: 243/243 exact payload and host recoveries; positive native net payload on 243/243 images; mean usable net 2.088477 bpp; pooled usable 1.973505 bpp.
+- Corrected PPMR: 243/243 exact payload and host recoveries; positive native net payload on 238/243 images; mean usable net 2.228173 bpp; pooled usable 2.118172 bpp.
 
-## Required work before submission
+The 243 source-file and decoded-pixel hashes match exactly across all three methods. The final corpus labels are 239 natural and four constructed; the 29 provenance/correlation clusters are unchanged and were used for 10,000-replicate paired cluster bootstrap (seed 20261119).
 
-1. Reproduce Yi & Zhou's exact-recovery ε=1 case and the ε>1 capacity/distortion trade-off separately; use the same dataset and payload accounting if assumptions permit.
-2. Reproduce Ping et al.'s asymmetric CNN/adaptive-mean scheme or provide a detailed source-verified comparison if code is unavailable.
-3. Compare with BCAGC on a common subset; normalize headers, maps, backup bits, authentication overhead and exact image/payload recovery.
-4. Compare with Cheng et al.'s masked-autoencoder design without conflating its VRAE/polar-code receiver with our RRBE-style protocol.
-5. Obtain the full Peng et al. (2026) article and add a normalized capacity, security and complexity comparison for its dual-stage bit-plane compression and CP-ABE architecture.
-6. Assess whether D4-symmetry and overlapping/shared-MSB methods can be reproduced.
-7. Search patents, conferences, preprints and terminology variants around masked-predictor synchronization, independent sets/checkerboard phases and deterministic learned prediction before asserting novelty.
+The native-protocol comparison does not support a capacity-superiority claim for EDR2. Its usable mean rate is 0.143220 bpp, compared with 2.088477 bpp for Multi-MSB+Huffman and 2.228173 bpp for corrected PPMR. Paired usable-rate differences (baseline minus EDR2) were +1.945257 bpp [95% cluster-bootstrap interval 1.683675, 2.241206] for Multi-MSB+Huffman and +2.084953 bpp [1.769685, 2.403087] for corrected PPMR. Corrected PPMR exceeded Multi-MSB+Huffman by +0.139695 bpp on average [0.049659, 0.213056], but was lower on 40 of 243 images. These are per-image paired mean differences under the methods' own native accounting, not identical packet-cost comparisons.
+
+The 4.5 bpp ACBP point reported by Yi and Zhou is at ε=255, whereas exact recovery is reported at ε=1. Do not cite 4.5 bpp as an exact-recovery point. Zhou et al. report 4.1472, 4.0565 and 3.4465 bpp on BOSSBase, BOWS-2 and UCID for BCAGC. Published rates remain contextual, not head-to-head, unless data, embedding/encryption order and all auxiliary, backup and authentication costs are normalized.
+
+The remaining direct-comparison gap is ACBP/PRDHEI at its exact-recovery operating point, Ping et al.'s asymmetric CNN/adaptive-mean scheme, Cheng et al.'s pixel-level masked-autoencoder scheme, BCAGC, and the recent Peng et al. dual-stage bit-plane/CP-ABE method. Their mechanisms and relevance should remain in related work, but none should be described as reproduced in this study.
 
 ## Sources consulted
 
+- [Yin, Xiang & Zhang, 2020 — IEEE Signal Processing Society](https://signalprocessingsociety.org/publications-resources/ieee-transactions-multimedia/2020/04/reversible-data-hiding-encrypted-images)
+- [Yin, She, Tang & Luo, 2021 — DOI](https://doi.org/10.1016/j.sigpro.2021.108146)
 - [Yi & Zhou, 2018 — ScienceDirect](https://www.sciencedirect.com/science/article/pii/S0165168418301427)
 - [Ping et al., 2024 — ScienceDirect](https://www.sciencedirect.com/science/article/pii/S0957417424001350)
 - [Cheng et al., 2025 — ScienceDirect](https://www.sciencedirect.com/science/article/pii/S0165168424002846)
