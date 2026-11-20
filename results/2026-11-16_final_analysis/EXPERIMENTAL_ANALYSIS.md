@@ -206,13 +206,40 @@ Evidence supports the following carefully scoped statements:
 6. The benchmark exposes a major CPU-runtime cost for CNN inference relative to the classical methods.
 7. The implementation includes authenticated packet checks and domain-separated key derivation, but the project does not yet possess an independent cryptographic security audit or formal proof.
 
-## 8. External literature comparison gap
+## 8. External baseline comparison and remaining literature gap
 
-The current predictor comparison is limited to MED, GAP, a simplified CALIC-style implementation and five CNN checkpoints. It omits the closest checkerboard ACBP, asymmetric-CNN/adaptive-mean RDHEI, pixel-level masked-autoencoder RDHEI and BCAGC methods. This is a material gap.
+The earlier absence of any direct external RDHEI reproduction has now been partly closed. Two published methods were executed on the same 243 hash-verified native 8-bit grayscale USC-SIPI images used by EDR2:
 
-Yi and Zhou's 2018 ACBP predicts three-quarters of pixels from a one-quarter reference set and uses adaptive bit-level embedding; the 4.5 bpp point is at ε=255, whereas exact reversibility is reported at ε=1. Ping et al. (2024) already use an asymmetric CNN predictor for RDHEI. Cheng et al. (2025) use a pixel-level masked autoencoder in VRAE RDHEI. Zhou et al. (2026) report 4.1472, 4.0565 and 3.4465 bpp on BOSSbase, BOWS-2 and UCID for BCAGC. Peng et al. (2026) describe a further RRBE design using prediction errors, dual-stage bit-plane compression, adaptive hierarchical block variable-length coding, capacity-aware block rearrangement and CP-ABE recovery authorization, also evaluated on BOSSBase, BOWS-2 and UCID. The numeric results for Peng et al. must be extracted from the full article before comparison. Published rates cannot be directly compared with our signed-net measurements without reconciling datasets, embedding/encryption order and every header, directory, backup and authentication cost. The large numerical gap makes normalized replication a high-priority requirement.
+1. **Multi-MSB prediction and Huffman coding** (Yin, Xiang and Zhang, 2020), using the public implementation pinned to commit `1e69ae2713dededa56595ff09255cda1e17896d9`.
+2. **Pixel prediction and multi-MSB planes rearrangement (PPMR)** (Yin et al., 2021), using the public implementation pinned to commit `21f397890289049798ced0f98d1482d629f93b06` and four disclosed compatibility corrections applied only in a temporary checkout.
 
-The narrow novelty candidate is deterministic local inference-input invariance of the frozen centre-masked 3×3 CNN under a separated step-2 phase, together with explicit four-phase net-overhead selection. The quarter-grid/checkerboard idea, bit replacement, CNN predictors for RDHEI and masked-pixel prediction are prior art. A first-of-kind or state-of-the-art claim is unsupported by current evidence.
+Both external methods produced 243/243 exact payload extractions and 243/243 exact host-image reconstructions. Multi-MSB+Huffman achieved positive native net payload on 243/243 images; corrected PPMR achieved positive native net payload on 238/243. EDR2 achieved positive signed net capacity on 163/243 images and passed 978/978 exact receiver trials among its accepted images.
+
+| Method | Positive-net images | Exact payload / host recovery | Mean usable net bpp, all 243 | Pooled usable net bpp |
+|---|---:|---:|---:|---:|
+| EDR2 native step-2 | 163/243 (67.1%) | 978/978 receiver trials on accepted images | 0.143220 | 0.095496 |
+| Multi-MSB prediction + Huffman | 243/243 (100%) | 243/243; 243/243 | 2.088477 | 1.973505 |
+| Corrected PPMR | 238/243 (97.9%) | 243/243; 243/243 | 2.228173 | 2.118172 |
+
+Usable net bpp is the per-image native net payload rate clipped to zero where the native net budget is nonpositive; the mean weights each of the 243 images equally, whereas the pooled rate divides total usable payload bits by total corpus pixels. EDR2's signed net mean, retaining negative outcomes, is 0.110539 bpp and its pooled signed rate is 0.059821 bpp. The corresponding PPMR mean native signed rate before clipping its five nonpositive outcomes is 2.223645 bpp.
+
+Paired differences were computed on the same image IDs. The 95% intervals below use 10,000 bootstrap replicates of the 29 provenance/correlation clusters (seed 20261119); related images within a sampled cluster move together.
+
+| Paired difference in usable net rate | Mean difference (bpp) | 95% cluster-bootstrap interval | Baseline higher / equal / lower |
+|---|---:|---:|---:|
+| Multi-MSB+Huffman − EDR2 | 1.945257 | [1.683675, 2.241206] | 243 / 0 / 0 |
+| Corrected PPMR − EDR2 | 2.084953 | [1.769685, 2.403087] | 237 / 5 / 1 |
+| Corrected PPMR − Multi-MSB+Huffman | 0.139695 | [0.049659, 0.213056] | 203 / 0 / 40 |
+
+These results show a substantial same-corpus capacity gap between EDR2 and the two reproduced methods under their respective native constructions. They do not establish EDR2 superiority. The external algorithms retain their own carrier geometry, encryption order, auxiliary-information structure and original net-rate formulas; EDR2 charges its in-band authenticated header, compressed directory, tag-carrier opportunity cost and bootstrap-byte backup. This is therefore a **matched-corpus, native-protocol comparison**, not a same-packet-cost or same-security-model leaderboard.
+
+The PPMR result must be labelled **corrected PPMR**. Four source changes were made only in the temporary pinned checkout: the encryption and decryption plane-7/plane-8 conditional boundaries were separated, and UB/NUB extraction was changed to concatenate the actually active bit planes in ascending order. Before/after SHA-256 hashes and exact reasons are archived. The public upstream repository was not modified. No EDR2 checkpoint was modified and no model was retrained. This disclosure is essential to interpreting the reproduction.
+
+The 243 source-file and decoded-pixel hashes match the final EDR2 corpus manifest exactly. The external-run package initially carried earlier 232-natural/11-constructed labels; the final EDR2 manifest labels 239 as natural and four as constructed. Only those classification and broad corpus-group labels were reconciled; the 29 provenance/correlation cluster IDs used for bootstrap inference were preserved unchanged.
+
+The remaining head-to-head literature gap is narrower but not closed. Yi and Zhou's ACBP/checkerboard method, Ping et al.'s asymmetric-CNN/adaptive-mean scheme, Cheng et al.'s pixel-level masked-autoencoder scheme, and the BCAGC/other recent bit-plane methods have not been reproduced in this experiment. The 4.5 bpp ACBP point is reported at ε=255, while exact reversibility is reported at ε=1; those operating points must not be conflated. Zhou et al. (2026) report 4.1472, 4.0565 and 3.4465 bpp on BOSSBase, BOWS-2 and UCID for BCAGC. Peng et al. (2026) describe dual-stage bit-plane compression, adaptive hierarchical block coding, capacity-aware rearrangement and CP-ABE recovery authorization. Published rates remain contextual only unless the dataset, embedding/encryption order and overhead definitions are normalized.
+
+The narrow novelty candidate remains deterministic local inference-input invariance of the frozen centre-masked 3×3 CNN under a separated step-2 phase, combined with explicit four-phase net-overhead selection. Quarter-grid/checkerboard occupancy, bit replacement, CNN prediction for RDHEI, masked-pixel prediction, adaptive coding and generic phase selection are prior art. A first-of-kind or state-of-the-art claim is not supported by the present study.
 
 ## 9. Remaining experimental work before submission
 
