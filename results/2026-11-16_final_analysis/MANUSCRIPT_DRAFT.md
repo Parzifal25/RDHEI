@@ -31,6 +31,8 @@ Ren et al. (2025) proposed an RDHEI scheme combining an improved gradient-adjust
 
 Recent RRBE systems also exploit global zero high-order bit-plane runs, adaptive hierarchical block variable-length coding, capacity-aware block rearrangement and CP-ABE-based recovery authorization on BOSSBase, BOWS-2 and UCID [14]. The accessible article abstract establishes the method and datasets but does not state a numerical rate; no rate is inferred here.
 
+**Table 1.** Closest published RDHEI comparators and the boundary of comparison.
+
 | Closest published comparator | Core mechanism and evaluation reported by the source | Numerical result quoted here | Comparability boundary |
 |---|---|---|---|
 | Yi and Zhou (2018), ACBP/PRDHEI [11] | Checkerboard reference set predicts three-quarters of pixels; adaptive bit-level embedding replaces bits. | Fully reversible at ε=1. At ε=255, maximum 4.5 bpp with recovered-image average PSNR above 32 dB. | The 4.5-bpp point is not lossless; it must not be compared as an exact-recovery capacity. |
@@ -39,10 +41,12 @@ Recent RRBE systems also exploit global zero high-order bit-plane runs, adaptive
 | Ren et al. (2025) [15] | ISGAP prediction-error compression and plaintext/ciphertext authentication; 100 images each from BOSSBase and BOWS-2. | Average 3.39 bpp and 3.27 bpp, respectively. | Dataset, predictor, embedding path and rate accounting differ from EDR2. |
 | Zhou et al. (2026), BCAGC [5] | Bit-plane classification and adaptive group coding; BOSSBase, BOWS-2 and UCID. | Average 4.1472, 4.0565 and 3.4465 bpp, respectively. | The published rates are not matched to EDR2's USC-SIPI corpus or signed net-capacity ledger. |
 | Peng et al. (2026) [14] | Dual-stage bit-plane compression, adaptive hierarchical block variable-length coding, block rearrangement and CP-ABE recovery authorization; BOSSBase, BOWS-2 and UCID. | No numerical rate reproduced in this draft. | Highly relevant bit-plane/RRBE comparator; detailed full-paper tables still require extraction and protocol normalization. |
+| Yin, Xiang and Zhang (2020), Multi-MSB+Huffman [17] | Multi-MSB prediction with Huffman-coded location information and encrypted-domain data embedding. Public implementation reproduced on the same 243-image USC-SIPI corpus. | 2.088477 mean usable bpp; 1.973505 pooled usable bpp; 243/243 exact payload and host recoveries. | Direct matched-corpus reproduction using the native method rate; carrier geometry and overhead expression are not identical to EDR2. |
+| Yin et al. (2021), PPMR [18] | Pixel prediction, multi-MSB planes rearrangement and UB/NUB block embedding. Public implementation reproduced on the same 243-image corpus with four disclosed temporary compatibility corrections. | 2.228173 mean usable bpp; 2.118172 pooled usable bpp; 243/243 exact payload and host recoveries. | Direct matched-corpus result labelled corrected PPMR; not an unmodified-source result or same-packet-cost comparison. |
 
-These published values are a literature-side comparison, not a matched experiment. EDR2 reports signed net capacity after in-band directory, authentication-carrier and bootstrap-restoration costs; published embedding-rate definitions and dataset protocols may differ. No claim of quantitative superiority is made. A head-to-head ranking requires reimplementing or obtaining the comparator code and evaluating all methods on the same native images with the same exact-recovery and overhead rules.
+The published rates in the first six rows are literature-side context, not matched experiments. The final two rows are direct reproductions on the same 243 native images as EDR2. They retain their respective native rate expressions and carrier geometries, so the comparison is paired by image but is not a same-packet-cost or same-security-model leaderboard. EDR2 charges its in-band directory, authentication-carrier and bootstrap-restoration costs; the external methods retain their original auxiliary-data and reservation conventions. No claim of quantitative superiority is made for EDR2.
 
-The candidate contribution here is narrower: a deterministic local input-invariance condition for a frozen, centre-masked 3×3 CNN under a step-2 separated candidate-centre phase, coupled to an overhead-aware four-phase signed-net selection rule. The project also provides an authenticated in-band packet and an evaluated RGB variant. These are candidate contributions to defend with direct comparison; they are not evidence that the general checkerboard, CNN, masking or bit-replacement ideas are first-of-kind.
+The candidate contribution here is narrower: a deterministic local input-invariance condition for a frozen, centre-masked 3×3 CNN under a step-2 separated candidate-centre phase, coupled to an overhead-aware four-phase signed-net selection rule. The project also provides an authenticated in-band packet, two direct external reproductions on the same 243-image corpus, and an evaluated RGB variant. These are candidate contributions to defend; they are not evidence that the general checkerboard, CNN, masking or bit-replacement ideas are first-of-kind.
 
 The second design concern is accounting. Gross replaceable bits are not payload capacity. The protocol charges the ordinary slots lost to the in-band header/directory/tag carriers and the additional bits required to preserve the original bootstrap candidate bytes. We therefore use signed net capacity and explicitly report the terms in its accounting identity.
 
@@ -56,7 +60,8 @@ The evidence-supported contributions are:
 2. **Adaptive phase selection under explicit signed net-capacity accounting.** The owner evaluates each phase and selects the greatest signed net payload after metadata-carrier opportunity cost and bootstrap restoration bits. The authenticated header location identifies the selected phase without a phase sidecar.
 3. **An in-band EDR2 packet and receiver contract.** Recovery information is stored in the marked encrypted image; the receiver's per-image semantic inputs are the marked image, master key and nonce. The packet uses separated key domains and an authentication tag checked before label-directory decompression.
 4. **A matched grayscale predictor/ablation study and native end-to-end evaluation.** Classical predictors and five fixed CNN checkpoints are evaluated under a common comparison grid; native EDR2 is separately tested over the curated grayscale corpus.
-5. **An exploratory RGB extension.** A phase-staggered RGB variant combines a frozen spatial CNN predictor with a deterministic cross-channel regression predictor, and exhaustively tests the 24 ordered channel phase assignments and four blend values.
+5. **A matched-corpus external-protocol comparison.** Public Multi-MSB+Huffman and corrected PPMR implementations are evaluated on the same 243 native grayscale images with exact payload and host recovery checks and explicitly disclosed native rate definitions.
+6. **An exploratory RGB extension.** A phase-staggered RGB variant combines a frozen spatial CNN predictor with a deterministic cross-channel regression predictor, and exhaustively tests the 24 ordered channel phase assignments and four blend values.
 
 These are implementation and evaluation contributions. The paper does not claim that CNN-based RDH, RRBE, MSB replacement, prediction-error classification, adaptive block/phase selection, compressed in-band maps, RGB prediction or phase assignment are individually new. The novelty boundary against recent RDHEI work must be supported by a careful prior-art comparison and not by a claim of first use.
 
@@ -166,6 +171,8 @@ The tested settings are \(a/d\in\{0,1/4,2/4,3/4\}\). The R3D2 packet authenticat
 
 The grayscale corpus contains 243 curated, unique, native 8-bit USC-SIPI images. The five source volumes were acquired as native TIFF archives. The preparation pipeline retains only single-frame, two-dimensional, 8-bit grayscale images without resizing, cropping, recompression or colour conversion. The final native EDR2 allowlist pins archive and file SHA-256 values, source archive members, dimensions, catalogue group and curation rationale. The allowlist contains 245 candidate files before exact decoded-pixel deduplication; two duplicate pixel arrays are removed, leaving 243 evaluated images. The native EDR2 and matched-predictor runs have exactly the same 243 decoded-pixel SHA-256 values. An earlier matched-run manifest labelled 232 records natural and 11 constructed; the final native allowlist applies the more restrictive catalogue interpretation and labels 239 natural and four constructed. The matched predictor's natural/constructed subgroup values in this manuscript have been recomputed against the final native labels, while the 29-cluster bootstrap retains the matched-run provenance clusters for the same image set.
 
+**Table 2.** Final grayscale corpus strata after hash-based deduplication and catalogue reconciliation.
+
 | Grayscale corpus stratum | Images |
 |---|---:|
 | Texture scans and mosaics (natural-labelled) | 58 |
@@ -241,21 +248,25 @@ The 3×3 model contains 46,881 parameters and 122,816 MACs per candidate patch. 
 
 ### 5.5 External RDHEI baseline comparison
 
-Table 5 and Figure 10 report the same-corpus native-protocol comparison. Exact recovery counts and capacity-positive counts are separate: a method may reconstruct an image and extract its attempted payload exactly while its native overhead expression still yields a nonpositive net payload budget. Usable capacity is set to zero in such cases.
+Tables 3-4 and Figure 10 report the same-corpus native-protocol results. Exact recovery counts and capacity-positive counts are separate: a method may reconstruct an image and extract its attempted payload exactly while its native overhead expression still yields a nonpositive net payload budget. Usable capacity is set to zero in such cases.
 
-| Method | Positive-net images | Exact payload extraction | Exact host reconstruction | Mean usable net bpp (243 images) | Pooled usable net bpp |
+**Table 3.** Matched-corpus capacity and exact-recovery summary. Mean and median columns are per-image usable net bpp; pooled bpp is total usable payload bits divided by total corpus pixels.
+
+| Method | Positive images | Exact recoveries | Mean bpp | Median bpp | Pooled bpp |
 |---|---:|---:|---:|---:|---:|
-| EDR2 native step-2 | 163/243 (67.1%) | 978/978 receiver trials on accepted images | 978/978 receiver trials on accepted images | 0.143220 | 0.095496 |
-| Multi-MSB prediction + Huffman | 243/243 (100%) | 243/243 | 243/243 | 2.088477 | 1.973505 |
-| Corrected PPMR | 238/243 (97.9%) | 243/243 | 243/243 | 2.228173 | 2.118172 |
+| EDR2 (native step-2) | 163/243 (67.1%) | 978/978 accepted trials | 0.1432 | 0.0471 | 0.0955 |
+| Multi-MSB + Huffman | 243/243 (100%) | 243/243 images | 2.0885 | 1.9419 | 1.9735 |
+| Corrected PPMR | 238/243 (97.9%) | 243/243 images | 2.2282 | 2.1460 | 2.1182 |
 
-For EDR2, the mean signed net rate over all 243 images, retaining negative outcomes, is 0.110539 bpp; the pooled signed rate is 0.059821 bpp. The higher mean usable rate (0.143220 bpp) results from setting the 80 nonpositive outcomes to zero rather than retaining negative values. The corresponding external-method mean native rates are 2.088477 bpp for Multi-MSB+Huffman and 2.223645 bpp for PPMR before clipping its five nonpositive outcomes to zero.
+For EDR2, the mean signed net rate over all 243 images, retaining negative outcomes, is 0.110540 bpp; the pooled signed rate is 0.059821 bpp. The higher mean usable rate (0.143220 bpp) results from setting the 80 nonpositive outcomes to zero rather than retaining negative values. The corresponding external-method mean native rates are 2.088477 bpp for Multi-MSB+Huffman and 2.223645 bpp for PPMR before clipping its five nonpositive outcomes to zero. The median usable rates were 0.047054 bpp for EDR2, 1.941940 bpp for Multi-MSB+Huffman and 2.146011 bpp for corrected PPMR. On the corpus mean, the two external rates were approximately 14.6× and 15.6× the EDR2 usable mean, respectively; these ratios are descriptive of the native implementations and do not remove the different accounting conventions.
 
-| Paired difference in usable net rate | Mean difference (bpp) | 95% cluster-bootstrap interval | Images baseline higher / equal / lower |
+**Table 4.** Paired differences in usable net rate, with 95% confidence intervals from 10,000 cluster-bootstrap replicates.
+
+| Paired comparison | Mean difference (bpp) | 95% cluster-bootstrap CI | Higher / equal / lower images |
 |---|---:|---:|---:|
-| Multi-MSB+Huffman − EDR2 | 1.945257 | [1.683675, 2.241206] | 243 / 0 / 0 |
+| Multi-MSB + Huffman − EDR2 | 1.945257 | [1.683675, 2.241206] | 243 / 0 / 0 |
 | Corrected PPMR − EDR2 | 2.084953 | [1.769685, 2.403087] | 237 / 5 / 1 |
-| Corrected PPMR − Multi-MSB+Huffman | 0.139695 | [0.049659, 0.213056] | 203 / 0 / 40 |
+| Corrected PPMR − Multi-MSB + Huffman | 0.139695 | [0.049659, 0.213056] | 203 / 0 / 40 |
 
 These intervals resample the 29 provenance/correlation clusters as blocks, preserving related image families within each sampled cluster. They should not be interpreted as 243 independent observations. The estimates show that the two reproduced methods provide substantially higher usable net payload under their native constructions and accounting than EDR2 on this corpus. This is an important capacity limitation of EDR2, not evidence of superiority. The PPMR-Multi difference is smaller; the bootstrap interval for its mean paired difference is above zero, but PPMR is not higher on every image.
 
