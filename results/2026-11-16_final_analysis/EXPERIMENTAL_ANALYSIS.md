@@ -241,12 +241,15 @@ The remaining head-to-head literature gap is narrower but not closed. Yi and Zho
 
 The narrow novelty candidate remains deterministic local inference-input invariance of the frozen centre-masked 3×3 CNN under a separated step-2 phase, combined with explicit four-phase net-overhead selection. Quarter-grid/checkerboard occupancy, bit replacement, CNN prediction for RDHEI, masked-pixel prediction, adaptive coding and generic phase selection are prior art. A first-of-kind or state-of-the-art claim is not supported by the present study.
 
-## 9. Remaining experimental work before submission
+## 9. Remaining work before submission
 
-- Produce a locked manuscript dataset table that includes image-size distribution, source/provenance family, grayscale/RGB exclusions and licences/copyright checks.
-- Run an externally reviewed security assessment covering custom key derivation, nonce management, authentication order, tampering, hider key custody and failure behaviour.
-- Add adversarial robustness tests: truncated/oversized packet fields, malformed zlib streams, corrupted tag/header/directory, payload length boundaries, phase ambiguity, wrong key/nonce, and mutation of every authenticated region.
-- Quantify end-to-end throughput and memory for the active EDR2 protocol, separately from full-map predictor-only timing.
-- Conduct a true paired RGB fixed-versus-adaptive ablation report with per-image paired deltas and uncertainty estimates; preserve failure cases and report feasibility, not only conditional means.
-- Confirm canonical baseline implementations and describe simplifications; ideally add a full CALIC implementation or rename the comparison explicitly throughout.
-- Verify image rights and citation requirements before reproducing USC-SIPI source imagery.
+The core grayscale corpus evaluation, predictor ablations, RGB feasibility evaluation, active-protocol runtime measurement, parser robustness campaign, and two same-corpus external-baseline reproductions are complete. No further model training or full-corpus baseline execution is required for the current manuscript.
+
+The remaining work is review and publication hygiene rather than another core experiment:
+
+- Complete an independent cryptographic review covering key derivation, nonce lifecycle, authentication order, hider key custody and failure behaviour. Current tests are implementation-level evidence, not a formal proof or certification.
+- Verify all bibliographic metadata and claims against primary publisher records; clearly distinguish methods reproduced here from literature-only comparators.
+- Complete item-level rights checks before reproducing USC-SIPI source photographs in the paper or supplement. Derived charts and tables may be used, but source image licensing is not inferred from database access.
+- Obtain a human subject-matter review of the protocol assumptions, mathematical statements, PPMR compatibility patches, rate definitions and conclusions.
+- Treat additional ACBP, asymmetric-CNN, masked-autoencoder and BCAGC reproductions as optional future comparative work, not blockers to reporting the two completed external baselines. Any later comparison must keep native-protocol rate definitions and exact-recovery conditions explicit.
+
