@@ -252,13 +252,13 @@ Tables 3-4 and Figure 10 report the same-corpus native-protocol results. Exact r
 
 **Table 3.** Matched-corpus capacity and exact-recovery summary. Mean and median columns are per-image usable net bpp; pooled bpp is total usable payload bits divided by total corpus pixels.
 
-| Method | Positive images | Exact recoveries | Mean bpp | Median bpp | Pooled bpp |
+| Method | Positive images | Exact recoveries | Mean usable bpp (SD) | Median [Q1, Q3] | Pooled usable bpp |
 |---|---:|---:|---:|---:|---:|
-| EDR2 (native step-2) | 163/243 (67.1%) | 978/978 accepted trials | 0.1432 | 0.0471 | 0.0955 |
-| Multi-MSB + Huffman | 243/243 (100%) | 243/243 images | 2.0885 | 1.9419 | 1.9735 |
-| Corrected PPMR | 238/243 (97.9%) | 243/243 images | 2.2282 | 2.1460 | 2.1182 |
+| EDR2 (native step-2) | 163/243 (67.1%) | 978/978 accepted trials | 0.1432 (0.2126) | 0.0471 [0.0000, 0.1950] | 0.0955 |
+| Multi-MSB + Huffman | 243/243 (100%) | 243/243 images | 2.0885 (0.8895) | 1.9419 [1.6220, 2.2902] | 1.9735 |
+| Corrected PPMR | 238/243 (97.9%) | 243/243 images | 2.2282 (0.9651) | 2.1460 [1.7440, 2.5567] | 2.1182 |
 
-For EDR2, the mean signed net rate over all 243 images, retaining negative outcomes, is 0.110540 bpp; the pooled signed rate is 0.059821 bpp. The higher mean usable rate (0.143220 bpp) results from setting the 80 nonpositive outcomes to zero rather than retaining negative values. The corresponding external-method mean native rates are 2.088477 bpp for Multi-MSB+Huffman and 2.223645 bpp for PPMR before clipping its five nonpositive outcomes to zero. The median usable rates were 0.047054 bpp for EDR2, 1.941940 bpp for Multi-MSB+Huffman and 2.146011 bpp for corrected PPMR. On the corpus mean, the two external rates were approximately 14.6× and 15.6× the EDR2 usable mean, respectively; these ratios are descriptive of the native implementations and do not remove the different accounting conventions.
+For EDR2, the mean signed net rate over all 243 images, retaining negative outcomes, is 0.110540 bpp; the pooled signed rate is 0.059821 bpp. The 95% cluster-bootstrap intervals for mean usable rate were 0.0614-0.2504 bpp for EDR2, 1.7586-2.4860 bpp for Multi-MSB+Huffman and 1.8531-2.6457 bpp for corrected PPMR. The corresponding cluster-bootstrap intervals for positive-capacity coverage were 50.2%-82.4%, 100%-100% and 93.5%-100%, respectively. The higher mean usable rate (0.143220 bpp) results from setting the 80 nonpositive outcomes to zero rather than retaining negative values. The corresponding external-method mean native rates are 2.088477 bpp for Multi-MSB+Huffman and 2.223645 bpp for PPMR before clipping its five nonpositive outcomes to zero. The median usable rates were 0.047054 bpp for EDR2, 1.941940 bpp for Multi-MSB+Huffman and 2.146011 bpp for corrected PPMR. On the corpus mean, the two external rates were approximately 14.6× and 15.6× the EDR2 usable mean, respectively; these ratios are descriptive of the native implementations and do not remove the different accounting conventions.
 
 **Table 4.** Paired differences in usable net rate, with 95% confidence intervals from 10,000 cluster-bootstrap replicates.
 
