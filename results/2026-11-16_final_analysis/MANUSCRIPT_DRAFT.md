@@ -1,14 +1,18 @@
-# Context-Invariant CNN Prediction for Reversible Data Hiding in Encrypted Images: An Adaptive Four-Phase Protocol
+# Context-Invariant CNN Prediction for Reversible Data Hiding in Encrypted Images: Protocol, Full-Corpus Evaluation, and Native-Protocol Baselines
 
-**Manuscript draft — 2026-11-16**  
-**Status:** evidence-aligned working draft; not submission-ready.  
-**Author and affiliation details:** to be completed by the authors.
+**Manuscript draft — 2026-11-20**  
+**Status:** updated with the completed 243-image external-baseline comparison; still requires author, reference, rights, and independent security review before submission.  
+**Author and affiliation details:** to be confirmed by the authors.
 
 ## Abstract
 
-This work investigates a convolutional-neural-network (CNN) predictor for reversible data hiding in encrypted images (RDHEI), with an emphasis on synchronizing prediction at the receiver while accounting explicitly for in-band recovery overhead. The grayscale EDR2 protocol uses a frozen residual CNN with a 3×3 masked neighbourhood and a step-2 safe lattice. Four maximum-density lattice phases are evaluated independently; the selected phase maximizes signed net payload after the encrypted header, compressed label directory, authentication tag, carrier opportunity cost and bootstrap-byte backup are accounted for. The selected phase is implicitly indicated by the authenticated in-band header location, and the receiver requires only the marked encrypted image, a 32-byte master key and a 128-bit nonce as per-image semantic inputs.
+This paper studies a convolutional-neural-network (CNN) predictor for reversible data hiding in encrypted images (RDHEI), focusing on receiver-side prediction synchronization and explicit accounting for in-band recovery overhead. The grayscale EDR2 protocol uses a frozen residual CNN with a masked 3×3 neighbourhood and a step-2 safe lattice. Four maximum-density lattice phases are evaluated independently, and the owner selects the phase with the greatest signed net payload after charging the encrypted header, compressed label directory, authentication-tag carrier opportunity cost, and bootstrap-byte backup. The selected phase is indicated by authenticated in-band framing; the receiver's per-image semantic inputs are the marked encrypted image, a 32-byte master key, and a 128-bit nonce.
 
-On a curated 243-image native grayscale USC-SIPI corpus, the native EDR2 gate produced positive signed net capacity for 163 images and passed 978/978 exact image/payload round-trip trials among accepted positive-capacity cases. A separate matched predictor comparison on the same curated images found that the proposed 3×3 checkpoint achieved 133/243 positive-capacity outcomes and mean candidate MAE 4.813, outperforming MED, GAP and a simplified CALIC-style predictor on those measures, but not the 5×5 no-weighted-loss CNN ablation, which achieved 140 positive cases and MAE 4.623. The 3×3 model was selected for its smaller compute footprint rather than best predictive accuracy. A separate RGB prototype evaluated 51 native RGB images, four spatial/cross-channel blend weights and all 24 ordered phase assignments. Seven images achieved positive net capacity under at least one blend, and all 162 exact-recovery trials over positive image/blend pairs passed. A reproducible CPU benchmark measured the 3×3 full-map predictor at 708.5 ms for a synthetic 512×512 input, approximately 185 times the measured MED runtime. A separate native-image end-to-end benchmark on USC-SIPI image 5.2.08.tiff measured a mean 2.506 s (10 repeats) for the active owner-to-receiver pipeline, with 10/10 exact image and full-payload recoveries and a sampled incremental RSS peak of 16.59 MiB. A 20,000-input coverage-guided parser campaign completed without a reported crash, alongside deterministic adversarial packet tests. The RGB extension remains exploratory with sparse positive capacity. These results establish implementation-level recovery and robustness evidence under the tested conditions; independent cryptographic review and formal security analysis remain necessary.
+On a curated corpus of 243 hash-verified native 8-bit grayscale USC-SIPI images, EDR2 achieved positive signed net capacity on 163 images and passed 978/978 exact image-and-payload receiver trials among accepted positive-capacity images. In a separate matched predictor study, the proposed 3×3 checkpoint achieved 133/243 positive-net outcomes and mean candidate MAE 4.8130; it improved on MED, GAP, and a simplified CALIC-style implementation under that study's common step-4/16-phase grid, but did not outperform the 5×5 no-weighted-loss CNN ablation, which achieved 140 positive outcomes and MAE 4.6233. The 3×3 model is retained as a smaller model/compute trade-off, not as the most accurate predictor.
+
+Two external RDHEI methods were also evaluated on the same 243 exact source files and decoded pixel arrays. Multi-MSB prediction with Huffman coding achieved 243/243 exact payload and host recoveries, positive native net payload on 243/243 images, a mean usable rate of 2.0885 bpp, and a pooled usable rate of 1.9735 bpp. Corrected PPMR achieved 243/243 exact payload and host recoveries, positive native net payload on 238/243 images, a mean usable rate of 2.2282 bpp, and a pooled usable rate of 2.1182 bpp. EDR2's corresponding mean and pooled usable rates were 0.1432 and 0.0955 bpp. These are matched-corpus, native-protocol results rather than a same-packet-cost leaderboard: each implementation retains its own embedding construction and native overhead expression. PPMR used four disclosed, narrowly scoped compatibility corrections in a temporary copy of its pinned upstream source.
+
+A separate RGB research prototype evaluated 51 native RGB images, four spatial/cross-channel blend settings, and all 24 ordered channel-phase assignments. Seven images achieved positive net capacity under at least one blend, and all 162 exact-recovery trials over positive image/blend pairs passed. A reproducible CPU benchmark measured the 3×3 full-map predictor at 708.5 ms for a synthetic 512×512 input, about 185 times the measured MED runtime. A native-image end-to-end benchmark on USC-SIPI image 5.2.08.tiff measured a mean 2.506 s over ten repeats, with 10/10 exact recoveries and a sampled incremental RSS peak of 16.59 MiB. A 20,000-input coverage-guided parser campaign completed without a reported crash, alongside deterministic adversarial packet tests. The RGB extension remains exploratory. The work establishes implementation-level evidence under the tested conditions; it does not establish state-of-the-art capacity, a formal security proof, or independent cryptographic certification.
 
 **Keywords:** reversible data hiding; encrypted images; CNN prediction; safe lattice; bit-plane replacement; in-band metadata; exact recovery; RGB image processing.
 
@@ -184,6 +188,10 @@ The separate RGB corpus contains 51 distinct native 8-bit RGB images: 37 aerial-
 
 The matched grayscale predictor comparison includes MED, GAP, a simplified CALIC-style predictor and CNN variants v1–v5. All methods use the same step-4 / 16-phase comparison grid for that experiment. The histogram-shift reference is reported separately because its embedding construction and encryption order differ.
 
+Two external encrypted-image RDH baselines were separately reproduced on the native 243-image grayscale corpus: (i) Multi-MSB prediction and Huffman coding, pinned to upstream commit `1e69ae2713dededa56595ff09255cda1e17896d9`; and (ii) pixel prediction and multi-MSB planes rearrangement (PPMR), pinned to upstream commit `21f397890289049798ced0f98d1482d629f93b06`. Each implementation was run on the exact same 243 hash-verified source TIFFs without resizing or colour conversion. The original method-specific embedding and rate calculations were retained; no CNN training or EDR2 checkpoint modification was performed.
+
+For Multi-MSB+Huffman, the reported payload is the actual number of secret bits returned as embedded by the pinned implementation after its location-map side information and reference-pixel reservations. For PPMR, the native `Main612.m` rate expression was retained: gross UB and NUB embedded bits less the compressed prediction-map length and the stated fixed overhead of `8 + 16×8 + 16×8` bits, divided by the image pixel count. The PPMR source required four documented compatibility corrections in a temporary checkout only: independent bit-plane-7/8 control-flow boundaries in encryption and decryption, and active-plane-order corrections in UB and NUB extraction. These changes and before/after source hashes are archived. Results are therefore labelled **corrected PPMR**, not unmodified upstream execution.
+
 The CNN variants comprise:
 - v1: 5×5 residual CNN;
 - v2: 5×5 CNN without residual connection;
@@ -193,11 +201,17 @@ The CNN variants comprise:
 
 No training or fine-tuning was performed during the reported end-to-end evaluations.
 
-### 4.3 End-to-end correctness
+### 4.3 External-baseline reproduction protocol
 
-The native grayscale EDR2 gate tested accepted images at multiple payload sizes (978 total receiver trials). The RGB gate tested nine payload sizes for every positive image/blend pair, creating 162 receiver subprocesses. A round-trip passes only when both restored image pixels and extracted payload bits match exactly.
+The two external methods were run on the identical 243-image native grayscale corpus used by EDR2. The corpus package pins source-file SHA-256 and decoded-pixel SHA-256 values, and the final joined ledger verifies all 243 identities per method. Multi-MSB+Huffman was executed from its pinned source in GNU Octave. PPMR was executed from its pinned source with the four temporary compatibility changes described above; each change is disclosed with SHA-256 hashes. The 40 deterministic PPMR shards were merged only after per-shard and corpus-wide image-ID validation. Both external methods were required to pass exact payload extraction and exact original-host reconstruction for every image. No model was retrained and the frozen EDR2 checkpoint was not modified.
 
-### 4.4 Complexity benchmark
+For aggregate comparison, the common operational estimand is usable native net payload bpp per image: nonpositive net capacity is assigned zero, and any failed exact-recovery row would also be assigned zero. EDR2 signed net bpp is separately retained, including negative outcomes. We report the unweighted mean over all 243 images and the pooled rate (total usable payload bits divided by total pixels). Paired differences use the same image IDs and a cluster bootstrap over the 29 provenance/correlation clusters (10,000 replicates; seed 20261119). Because the algorithms retain their own published carrier geometry and native overhead expression, this is a matched-corpus native-protocol comparison, not a controlled same-packet-cost or same-security-model comparison.
+
+### 4.4 End-to-end correctness
+
+The native grayscale EDR2 gate tested accepted images at multiple payload sizes (978 total receiver trials). The RGB gate tested nine payload sizes for every positive image/blend pair, creating 162 receiver subprocesses. The external-baseline tests additionally required one exact payload and host recovery per image. A round-trip passes only when both restored image pixels and extracted payload bits match exactly.
+
+### 4.5 Complexity benchmark
 
 The corrected predictor benchmark used a deterministic synthetic 512×512 input, four CPU threads, five warmups and ten timed repetitions per method, each method in a fresh process. Convolutional and linear MACs were counted from actual layer output shapes; one MAC was reported as two FLOPs. A separate active EDR2 end-to-end benchmark used the native USC-SIPI image 5.2.08.tiff (512×512), two warmups and ten measured repeats on four CPU threads. It included prediction/directory preparation, reservation and encryption, encrypted-domain embedding, authentication, extraction and reconstruction, but excluded process startup, checkpoint loading and file I/O.
 
@@ -221,9 +235,33 @@ Across directory-fit image/blend pairs, adaptive selection among all 24 ordered 
 
 At 3/4, all positive examples came from the miscellaneous-colour group (7/14), with no positive aerial-colour image (0/37). The 0/4 fit-only mean bpp was 1.557 over three images; the 3/4 mean was 0.367 over seven images. The blend study thus shows a change in feasible-image coverage, not uniform capacity improvement.
 
-### 5.4 Complexity
+### 5.5 Complexity
 
 The 3×3 model contains 46,881 parameters and 122,816 MACs per candidate patch. On the synthetic 512×512 CPU input its mean predictor time was 708.479 ms, while MED was 3.826 ms (approximately 185.2× slower). In the separate native-image EDR2 run on 5.2.08.tiff, mean end-to-end time was 2.5060 s (sample SD 0.1036 s; median 2.5131 s). Stage means were 1.5115 s for prediction/directory preparation, 0.1157 s for reservation/encryption, 0.0699 s for encrypted-domain embedding/authentication, and 0.8089 s for receiver authentication/extraction/recovery. The benchmark inserted the full measured net capacity of 39,655 bits (0.151272 bpp) in each measured trial, recovered image and payload exactly in 10/10 trials, and used 10 distinct benchmark nonces. Process RSS was 382.56 MiB at baseline and 399.15 MiB at sampled peak (increment 16.59 MiB). This single-image, warmed CPU benchmark is not a corpus-wide deployment latency claim.
+
+### 5.4 External RDHEI baseline comparison
+
+Table 5 reports the same-corpus native-protocol comparison. Exact recovery counts and capacity-positive counts are separate: a method may reconstruct an image and extract its attempted payload exactly while its native overhead expression still yields a nonpositive net payload budget. Usable capacity is set to zero in such cases.
+
+| Method | Positive-net images | Exact payload extraction | Exact host reconstruction | Mean usable net bpp (243 images) | Pooled usable net bpp |
+|---|---:|---:|---:|---:|---:|
+| EDR2 native step-2 | 163/243 (67.1%) | 978/978 receiver trials on accepted images | 978/978 receiver trials on accepted images | 0.143220 | 0.095496 |
+| Multi-MSB prediction + Huffman | 243/243 (100%) | 243/243 | 243/243 | 2.088477 | 1.973505 |
+| Corrected PPMR | 238/243 (97.9%) | 243/243 | 243/243 | 2.228173 | 2.118172 |
+
+For EDR2, the mean signed net rate over all 243 images, retaining negative outcomes, is 0.110539 bpp; the pooled signed rate is 0.059821 bpp. The higher mean usable rate (0.143220 bpp) results from setting the 80 nonpositive outcomes to zero rather than retaining negative values. The corresponding external-method mean native rates are 2.088477 bpp for Multi-MSB+Huffman and 2.223645 bpp for PPMR before clipping its five nonpositive outcomes to zero.
+
+| Paired difference in usable net rate | Mean difference (bpp) | 95% cluster-bootstrap interval | Images baseline higher / equal / lower |
+|---|---:|---:|---:|
+| Multi-MSB+Huffman − EDR2 | 1.945257 | [1.683675, 2.241206] | 243 / 0 / 0 |
+| Corrected PPMR − EDR2 | 2.084953 | [1.769685, 2.403087] | 237 / 5 / 1 |
+| Corrected PPMR − Multi-MSB+Huffman | 0.139695 | [0.049659, 0.213056] | 203 / 0 / 40 |
+
+These intervals resample the 29 provenance/correlation clusters as blocks, preserving related image families within each sampled cluster. They should not be interpreted as 243 independent observations. The estimates show that the two reproduced methods provide substantially higher usable net payload under their native constructions and accounting than EDR2 on this corpus. This is an important capacity limitation of EDR2, not evidence of superiority. The PPMR-Multi difference is smaller; the bootstrap interval for its mean paired difference is above zero, but PPMR is not higher on every image.
+
+The corpus contains 239 natural-labelled images and four constructed texture mosaics after reconciliation with the final EDR2 manifest. The external-run source and decoded-pixel hashes match the final manifest for all 243 images; only the broad classification/corpus-group metadata was updated. The original 29 cluster IDs were preserved. The group-level summary is supplied as supplementary evidence; small groups, particularly the four constructed controls and single aerial image, are descriptive only.
+
+The comparison has limits. Multi-MSB+Huffman, PPMR and EDR2 retain different carrier geometries, encryption orders, auxiliary-information structures and native rate definitions. Thus, the experiment is a matched-corpus comparison of implemented native protocols, not an identical packet-cost/security-model leaderboard. The PPMR compatibility corrections are disclosed above and in the accompanying source-hash manifest. The closest ACBP, asymmetric-CNN, masked-autoencoder, and bit-plane/group-coding methods were not reproduced in this experiment and remain untested head-to-head.
 
 ## 6. Security and limitations
 
@@ -235,11 +273,13 @@ The active EDR2 code combines HKDF-derived key domains, AES-256-CTR and HMAC-SHA
 
 The RGB receiver's file-access test patches Python open functions. It is not an OS sandbox. Run #79's top-level source-read count was corrected after identifying a serialized-empty-array aggregation bug: all 162 per-case records contain empty source-read arrays and false source-access flags. No independent cryptographic audit or side-channel assessment has been completed.
 
-The RGB capacity coverage is sparse. The matched predictor baseline includes a simplified CALIC-style implementation. The work has not been directly compared against the closest checkerboard ACBP, asymmetric-CNN RDHEI, PLMAE or BCAGC methods; published rates use different protocols and accounting. The novelty and capacity positioning therefore remain provisional until controlled comparisons are completed. The grayscale corpus includes correlated sequences/texture groups. Complexity timings are CPU- and implementation-specific, and the sampled RSS method may miss transients. The present work has no GPU timing or fully measured active-protocol end-to-end throughput benchmark.
+The RGB capacity coverage is sparse, despite successful exact recovery on positive image/blend cases. The matched predictor baseline includes a simplified CALIC-style implementation, not full canonical CALIC. Two external methods—Multi-MSB+Huffman and corrected PPMR—have now been directly reproduced on the same 243 native grayscale images. Other close methods, including ACBP, asymmetric-CNN RDHEI, pixel-level masked-autoencoder RDHEI and BCAGC, were not reproduced and must not be described as head-to-head comparisons. The three-method capacity comparison remains native-protocol: carrier geometry, encryption order, security model and overhead expressions differ. PPMR required four compatibility corrections in a temporary upstream checkout; these are disclosed, but they mean its result is not an unmodified-source reproduction. The grayscale corpus includes correlated sequences and texture groups, addressed through 29-cluster bootstrap resampling. Complexity timings are CPU- and implementation-specific, and sampled RSS may miss transient peaks. No independent cryptographic audit, formal security proof, cross-platform inference-determinism study, or side-channel assessment has been completed.
 
 ## 7. Conclusion
 
-The native grayscale EDR2 implementation demonstrates positive net payload for a majority of the curated 243-image grayscale set and exact recovery across every attempted positive-capacity trial. The matched predictor experiment indicates that the proposed 3×3 CNN improves on the classical predictors tested, while a 5×5 no-weighted-loss ablation achieves better prediction accuracy and matched capacity coverage. The 3×3 choice is a model-size/compute trade-off, with an important CPU-runtime penalty. The RGB extension verifies the mechanics of authenticated, exact recovery in positive-capacity cases, but its coverage on the tested corpus remains limited. Further work should prioritize a third-party security review, improved RGB feasibility, and end-to-end runtime optimisation.
+EDR2 establishes an authenticated, self-contained grayscale RDHEI implementation using a frozen 3×3 CNN whose prediction inputs remain invariant under the selected step-2 carrier geometry. On the curated 243-image USC-SIPI grayscale corpus, EDR2 produced positive signed net capacity on 163 images and passed 978/978 exact receiver trials across accepted images and tested payload sizes. The separate matched predictor study showed that v4 improves on MED, GAP and the simplified CALIC-style implementation under its common comparison grid, while the v5×5 no-weighted-loss ablation remains more accurate and has higher matched positive-capacity coverage. The 3×3 checkpoint is a size/compute trade-off and carries a substantial CPU cost.
+
+The same 243 native images were also evaluated using pinned Multi-MSB+Huffman and corrected PPMR implementations. Both methods achieved exact payload and host recovery on all 243 images. Their mean usable rates were 2.088477 and 2.228173 bpp, respectively, compared with 0.143220 bpp for EDR2 under the defined usable-rate estimand. The methods retain different native carrier and overhead constructions, so these results establish a substantial same-corpus capacity gap but not a strict same-packet-cost ranking. The PPMR corrections and source hashes are disclosed. The 51-image RGB prototype achieved positive net capacity on seven images under at least one blend and passed all 162 exact-recovery trials on positive image/blend cases; its coverage remains exploratory. The implementation and parser tests provide evidence for the tested conditions, but independent cryptographic review, broader prior-art comparisons, cross-platform determinism assessment, and human expert review remain necessary before submission.
 
 ## References
 
@@ -276,6 +316,10 @@ The native grayscale EDR2 implementation demonstrates positive net payload for a
 
 [16] USC-SIPI, “USC-SIPI Image Database — Copyright Information,” [https://sipi.usc.edu/database/copyright.php](https://sipi.usc.edu/database/copyright.php), accessed 16 November 2026.
 
+[17] Z. Yin, Y. Xiang and X. Zhang, “Reversible data hiding in encrypted images based on multi-MSB prediction and Huffman coding,” *IEEE Transactions on Multimedia*, vol. 22, no. 4, pp. 874–884, 2020, doi: [10.1109/TMM.2019.2936314](https://doi.org/10.1109/TMM.2019.2936314).
+
+[18] Z. Yin, X. She, J. Tang and B. Luo, “Reversible data hiding in encrypted images based on pixel prediction and multi-MSB planes rearrangement,” *Signal Processing*, vol. 187, article 108146, 2021, doi: [10.1016/j.sigpro.2021.108146](https://doi.org/10.1016/j.sigpro.2021.108146).
+
 ## Figure captions and source files
 
 All nine plots are editable SVGs in the sibling `figures/` directory. The plotted values come from the committed CSV tables.
@@ -298,5 +342,7 @@ All nine plots are editable SVGs in the sibling `figures/` directory. The plotte
 - [ ] Replace figure placeholders with the final figure set and validate image licensing.
 - [ ] Check every table cell against the committed CSV and the immutable workflow artifacts.
 - [ ] Have the custom cryptographic construction independently reviewed.
-- [ ] Add end-to-end active-protocol runtime/memory results and a fuller RGB comparison if these are retained as major claims.
+- [x] Add end-to-end active-protocol runtime/memory results, native RGB evaluation, and two same-corpus external-baseline reproductions.
+- [ ] Complete an independent cryptographic review and verify the final reference metadata and item-level image rights.
+- [ ] Human-review the protocol, results, compatibility patches and claims before submission.
 - [ ] Obtain a human subject-matter review before submission.
