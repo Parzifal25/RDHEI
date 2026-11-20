@@ -215,13 +215,13 @@ The earlier absence of any direct external RDHEI reproduction has now been partl
 
 Both external methods produced 243/243 exact payload extractions and 243/243 exact host-image reconstructions. Multi-MSB+Huffman achieved positive native net payload on 243/243 images; corrected PPMR achieved positive native net payload on 238/243. EDR2 achieved positive signed net capacity on 163/243 images and passed 978/978 exact receiver trials among its accepted images.
 
-| Method | Positive-net images | Exact payload / host recovery | Mean usable net bpp, all 243 | Pooled usable net bpp |
-|---|---:|---:|---:|---:|
-| EDR2 native step-2 | 163/243 (67.1%) | 978/978 receiver trials on accepted images | 0.143220 | 0.095496 |
-| Multi-MSB prediction + Huffman | 243/243 (100%) | 243/243; 243/243 | 2.088477 | 1.973505 |
-| Corrected PPMR | 238/243 (97.9%) | 243/243; 243/243 | 2.228173 | 2.118172 |
+| Method | Positive-net images | Exact payload / host recovery | Mean usable bpp (SD) | Median [Q1, Q3] | Pooled usable bpp |
+|---|---:|---:|---:|---:|---:|
+| EDR2 native step-2 | 163/243 (67.1%) | 978/978 trials on accepted images | 0.143220 (0.212649) | 0.047054 [0, 0.194963] | 0.095496 |
+| Multi-MSB prediction + Huffman | 243/243 (100%) | 243/243; 243/243 | 2.088477 (0.889454) | 1.941940 [1.621965, 2.290194] | 1.973505 |
+| Corrected PPMR | 238/243 (97.9%) | 243/243; 243/243 | 2.228173 (0.965064) | 2.146011 [1.743958, 2.556665] | 2.118172 |
 
-Usable net bpp is the per-image native net payload rate clipped to zero where the native net budget is nonpositive; the mean weights each of the 243 images equally, whereas the pooled rate divides total usable payload bits by total corpus pixels. EDR2's signed net mean, retaining negative outcomes, is 0.110539 bpp and its pooled signed rate is 0.059821 bpp. The corresponding PPMR mean native signed rate before clipping its five nonpositive outcomes is 2.223645 bpp.
+Usable net bpp is the per-image native net payload rate clipped to zero where the native net budget is nonpositive; the mean weights each of the 243 images equally, whereas the pooled rate divides total usable payload bits by total corpus pixels. EDR2's signed net mean, retaining negative outcomes, is 0.110539 bpp and its pooled signed rate is 0.059821 bpp. The 95% cluster-bootstrap intervals for mean usable rate were 0.061387-0.250383 bpp for EDR2, 1.758568-2.485983 bpp for Multi-MSB+Huffman and 1.853144-2.645694 bpp for corrected PPMR. The corresponding intervals for positive-capacity coverage were 50.2%-82.4%, 100%-100% and 93.5%-100%, respectively. The corresponding PPMR mean native signed rate before clipping its five nonpositive outcomes is 2.223645 bpp.
 
 Paired differences were computed on the same image IDs. The 95% intervals below use 10,000 bootstrap replicates of the 29 provenance/correlation clusters (seed 20261119); related images within a sampled cluster move together.
 
