@@ -235,11 +235,11 @@ Across directory-fit image/blend pairs, adaptive selection among all 24 ordered 
 
 At 3/4, all positive examples came from the miscellaneous-colour group (7/14), with no positive aerial-colour image (0/37). The 0/4 fit-only mean bpp was 1.557 over three images; the 3/4 mean was 0.367 over seven images. The blend study thus shows a change in feasible-image coverage, not uniform capacity improvement.
 
-### 5.5 Complexity
+### 5.4 Complexity
 
 The 3×3 model contains 46,881 parameters and 122,816 MACs per candidate patch. On the synthetic 512×512 CPU input its mean predictor time was 708.479 ms, while MED was 3.826 ms (approximately 185.2× slower). In the separate native-image EDR2 run on 5.2.08.tiff, mean end-to-end time was 2.5060 s (sample SD 0.1036 s; median 2.5131 s). Stage means were 1.5115 s for prediction/directory preparation, 0.1157 s for reservation/encryption, 0.0699 s for encrypted-domain embedding/authentication, and 0.8089 s for receiver authentication/extraction/recovery. The benchmark inserted the full measured net capacity of 39,655 bits (0.151272 bpp) in each measured trial, recovered image and payload exactly in 10/10 trials, and used 10 distinct benchmark nonces. Process RSS was 382.56 MiB at baseline and 399.15 MiB at sampled peak (increment 16.59 MiB). This single-image, warmed CPU benchmark is not a corpus-wide deployment latency claim.
 
-### 5.4 External RDHEI baseline comparison
+### 5.5 External RDHEI baseline comparison
 
 Table 5 reports the same-corpus native-protocol comparison. Exact recovery counts and capacity-positive counts are separate: a method may reconstruct an image and extract its attempted payload exactly while its native overhead expression still yields a nonpositive net payload budget. Usable capacity is set to zero in such cases.
 
