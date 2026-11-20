@@ -1,0 +1,45 @@
+name: Package EDR2 manuscript source and figures
+
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - "results/2026-11-16_final_analysis/MANUSCRIPT_DRAFT.md"
+      - "results/2026-11-16_final_analysis/figures/*.svg"
+      - ".github/workflows/package-edr2-manuscript-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout EDR2 manuscript source
+        uses: actions/checkout@v4
+        with:
+          ref: research/external-baseline-reproduction
+
+      - name: Collect exact manuscript and vector figures
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/edr2-source/figures /tmp/edr2-source/supporting
+          cp results/2026-11-16_final_analysis/MANUSCRIPT_DRAFT.md /tmp/edr2-source/
+          cp results/2026-11-16_final_analysis/figures/*.svg /tmp/edr2-source/figures/
+          cp results/2026-11-16_final_analysis/EXPERIMENTAL_ANALYSIS.md /tmp/edr2-source/supporting/
+          cp results/2026-11-16_final_analysis/RELATED_WORK_POSITIONING.md /tmp/edr2-source/supporting/
+          cp results/2026-11-16_final_analysis/README.md /tmp/edr2-source/supporting/
+          git rev-parse HEAD > /tmp/edr2-source/source_commit.txt
+          sha256sum /tmp/edr2-source/MANUSCRIPT_DRAFT.md > /tmp/edr2-source/source_sha256.txt
+          sha256sum /tmp/edr2-source/figures/*.svg >> /tmp/edr2-source/source_sha256.txt
+          test "$(find /tmp/edr2-source/figures -name '*.svg' | wc -l)" -eq 10
+
+      - name: Upload exact source package
+        uses: actions/upload-artifact@v4
+        with:
+          name: EDR2-Manuscript-Source-and-Figures-2026-11-20
+          path: /tmp/edr2-source/
+          if-no-files-found: error
+          retention-days: 90
