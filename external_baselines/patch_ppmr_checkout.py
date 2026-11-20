@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Apply hash-pinned compatibility/correctness repairs to a temporary PPMR checkout.
+"""Apply explicit, hash-pinned PPMR compatibility repairs to a temporary checkout.
 
-Only the temporary checkout is modified. Exact source context and replacement counts
-are checked; the pinned upstream repository is never changed.
+The upstream repository is untouched. This script reconstructs the two malformed
+MSB-plane-7/8 conditionals explicitly rather than relying on positional end removal.
 """
 import argparse
 import hashlib
@@ -21,61 +21,79 @@ def read_lines(path: Path):
 def write_lines(path: Path, lines):
     path.write_bytes(b"".join(lines))
 
-def patch_encrypt_image(path: Path):
+def patch_plane7_plane8(path: Path, variable_prefix: bytes, plane7_input: bytes,
+                        plane8_input: bytes, assembly_prefix: bytes):
     lines = read_lines(path)
-    matches = [i for i, line in enumerate(lines)
-               if b"[final_enbitplane7] = encrypt_All(" in line]
-    assert len(matches) == 1, "Expected exactly one bit-plane-7 fallback"
-    i7 = matches[0]
-    assert i7 + 1 < len(lines) and b"%---" in lines[i7 + 1], (
-        "Unexpected source context after bit-plane-7 fallback"
+    i7 = [i for i, line in enumerate(lines)
+          if line.strip().startswith(b"if tag_preprocess(7)==1")]
+    f7 = [i for i, line in enumerate(lines)
+          if plane7_input in line]
+    i8 = [i for i, line in enumerate(lines)
+          if line.strip().startswith(b"if tag_preprocess(8)==1")]
+    f8 = [i for i, line in enumerate(lines)
+          if plane8_input in line]
+    assemble = [i for i, line in enumerate(lines)
+                if line.lstrip().startswith(assembly_prefix)]
+    assert all(len(x) == 1 for x in (i7, f7, i8, f8, assemble)), (
+        f"{path.name}: expected unique plane-7/8 branch markers"
     )
-    lines.insert(i7 + 1, b"end\r\n")
-    calls = [i for i, line in enumerate(lines)
-             if b"[Encrypt_I] = eight_to_one(" in line]
-    assert len(calls) == 1, "Expected exactly one final eight-plane assembly"
-    ci = calls[0]
-    prior_ends = [i for i in range(max(0, ci - 3), ci)
-                  if lines[i].strip() == b"end"]
-    assert len(prior_ends) == 2, "Expected two branch terminators before final bit-plane assembly"
-    # The inserted end closes plane 7. The first original end closes plane 8;
-    # the second original end was the now-redundant outer plane-7 terminator.
-    del lines[prior_ends[-1]]
-    write_lines(path, lines)
-
-
-def patch_decrypt_image(path: Path):
-    lines = read_lines(path)
-    matches = [i for i, line in enumerate(lines)
-               if b"[final_debitplane7] = decrypt_All(" in line]
-    assert len(matches) == 1, "Expected exactly one bit-plane-7 decrypt fallback"
-    i7 = matches[0]
-    assert i7 + 1 < len(lines) and b"%---" in lines[i7 + 1], (
-        "Unexpected source context after bit-plane-7 decrypt fallback"
+    i7, f7, i8, f8, assemble = i7[0], f7[0], i8[0], f8[0], assemble[0]
+    assert i7 < f7 < i8 < f8 < assemble, (
+        f"{path.name}: unexpected plane-7/8 source order"
     )
-    lines.insert(i7 + 1, b"end\\r\\n")
-    calls = [i for i, line in enumerate(lines)
-             if b"[Decrypt_I] = eight_to_one(" in line]
-    assert len(calls) == 1, "Expected exactly one final eight-plane decrypt assembly"
-    ci = calls[0]
-    prior_ends = [i for i in range(max(0, ci - 3), ci)
-                  if lines[i].strip() == b"end"]
-    assert len(prior_ends) == 2, "Expected two branch terminators before final decrypted-plane assembly"
-    del lines[prior_ends[-1]]
-    write_lines(path, lines)
+
+    # The upstream plane-7 ELSE accidentally contains the entire plane-8 IF.
+    # Reconstruct the block boundaries:
+    #   plane 7: if ... else ... end
+    #   plane 8: if ... else ... end
+    # followed immediately by final plane assembly and the function terminator.
+    end8_candidates = [
+        i for i in range(f8 + 1, assemble)
+        if lines[i].strip() == b"end"
+    ]
+    assert len(end8_candidates) == 2, (
+        f"{path.name}: expected the plane-8 end and the erroneous outer plane-7 end; "
+        f"found {end8_candidates}"
+    )
+    end8 = end8_candidates[0]
+    redundant_outer_end = end8_candidates[1]
+    between = [line for line in lines[end8 + 1:assemble] if line.strip()]
+    assert len(between) == 1 and between[0].strip() == b"end", (
+        f"{path.name}: unexpected source between plane-8 branch and assembly"
+    )
+    newline = next((b"\r\n" if b"\r\n" in line else b"\n"
+                    for line in lines if line.endswith((b"\r\n", b"\n"))), b"\n")
+    # Keep every original byte except: close plane 7 immediately after its ELSE
+    # fallback, and drop the now-redundant original outer END after plane 8.
+    repaired = (
+        lines[:f7 + 1]
+        + [b"end" + newline]
+        + lines[f7 + 1:redundant_outer_end]
+        + lines[redundant_outer_end + 1:]
+    )
+    # The preceding slice still contains the plane-8 closing END, and the
+    # assembly now follows it directly. Confirm branch order after reconstruction.
+    new_i8 = [i for i, line in enumerate(repaired)
+              if line.strip().startswith(b"if tag_preprocess(8)==1")]
+    new_assembly = [i for i, line in enumerate(repaired)
+                    if line.lstrip().startswith(assembly_prefix)]
+    assert len(new_i8) == len(new_assembly) == 1 and new_i8[0] < new_assembly[0]
+    assert repaired[new_assembly[0] - 1].strip() == b"end", (
+        f"{path.name}: plane-8 conditional is not closed immediately before assembly"
+    )
+    write_lines(path, repaired)
 
 def patch_extract_function(path: Path, func_prefix: bytes, count_name: bytes,
                            data_prefix: bytes, tag_name: bytes):
     lines = read_lines(path)
     starts = [
         i for i, line in enumerate(lines)
-        if line.strip().split(b"=", 1)[0].strip() == count_name
-        and b"=" in line
+        if line.strip().split(b"=", 1)[0].strip() == count_name and b"=" in line
     ]
     funcs = [i for i, line in enumerate(lines)
              if line.lstrip().startswith(func_prefix)]
     assert len(starts) == 1 and len(funcs) == 1 and starts[0] < funcs[0], (
-        f"Unexpected function layout in {path.name}: count declarations={starts}, function declarations={funcs}"
+        f"Unexpected extraction function layout in {path.name}"
     )
     start_i, next_func_i = starts[0], funcs[0]
     end_i = next_func_i - 1
@@ -98,7 +116,6 @@ def patch_extract_function(path: Path, func_prefix: bytes, count_name: bytes,
     ]
     for arr, cnt in zip(arrays, counts):
         replacement.append(arr + b" = " + arr + b"(1:" + cnt + b");" + newline)
-
     parts_name = data_prefix + b"_parts"
     replacement.extend([
         parts_name + b" = {" + b",".join(arrays) + b"};" + newline,
@@ -130,8 +147,19 @@ def main():
 
     names = ["Encrypt_image.m", "decrypt_image.m", "Extract_UBdata.m", "Extract_NUBdata.m"]
     before = {name: sha256((repo / name).read_bytes()) for name in names}
-    patch_encrypt_image(repo / "Encrypt_image.m")
-    patch_decrypt_image(repo / "decrypt_image.m")
+
+    patch_plane7_plane8(
+        repo / "Encrypt_image.m", b"final_enbitplane",
+        b"[final_enbitplane7] = encrypt_All(",
+        b"[final_enbitplane8] = encrypt_All(",
+        b"[Encrypt_I] = eight_to_one("
+    )
+    patch_plane7_plane8(
+        repo / "decrypt_image.m", b"final_debitplane",
+        b"[final_debitplane7] = decrypt_All(",
+        b"[final_debitplane8] = decrypt_All(",
+        b"[Decrypt_I] = eight_to_one("
+    )
     patch_extract_function(
         repo / "Extract_UBdata.m", b"function [exUBD,exUB_t]",
         b"exUB_numData", b"exUB_Data", b"tag_preprocess"
@@ -140,10 +168,10 @@ def main():
         repo / "Extract_NUBdata.m", b"function [exNUBD1,exNUB_t1]",
         b"exNUB_numData", b"exNUB_Data", b"tag_preprocess"
     )
+
     after = {name: sha256((repo / name).read_bytes()) for name in names}
     if before == after:
-        raise SystemExit("No source hashes changed; expected three compatibility patches")
-
+        raise SystemExit("No source hashes changed; expected four compatibility patches")
     patch = {
         "repository": "edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement",
         "pinned_commit": PINNED_COMMIT,
@@ -153,23 +181,23 @@ def main():
         "patches": [
             {
                 "file": "Encrypt_image.m",
-                "reason": "Close the bit-plane-7 conditional before the independent bit-plane-8 branch; the upstream nesting could leave final_enbitplane8 undefined.",
-                "scope": "Control-flow repair only; each of the eight planes is still encrypted according to its own tag_preprocess flag."
+                "reason": "The bit-plane-8 conditional was nested inside bit-plane 7. The corrected source closes plane 7 before opening the independent plane-8 branch.",
+                "scope": "Control-flow correction; same upstream per-plane operations and cryptographic functions."
             },
             {
                 "file": "decrypt_image.m",
-                "reason": "The matching decryption routine had the same malformed bit-plane-7/bit-plane-8 nesting as Encrypt_image.m, leaving final_debitplane8 undefined on affected tag patterns.",
-                "scope": "Control-flow repair only; each of the eight planes is still decrypted according to its own tag_preprocess flag."
+                "reason": "The paired decryption function had the same malformed nesting. The corrected source closes plane 7 before opening the independent plane-8 branch.",
+                "scope": "Control-flow correction; restores the inverse per-plane operation ordering."
             },
             {
                 "file": "Extract_UBdata.m",
-                "reason": "Concatenate extracted UB payloads from the actual active planes in ascending plane order; upstream concatenated the first m planes where m was only the number of active planes.",
-                "scope": "Extraction ordering now follows the traversal order in Embed_data.m."
+                "reason": "The upstream code concatenated the first m planes, although m is only the number of active planes. The corrected code concatenates the actual active planes in ascending plane order.",
+                "scope": "Extraction order now matches Embed_data.m traversal."
             },
             {
                 "file": "Extract_NUBdata.m",
-                "reason": "Concatenate extracted NUB payloads from the actual active planes in ascending plane order; upstream concatenated the first m planes where m was only the number of active planes.",
-                "scope": "Extraction ordering now follows the traversal order in Embed_NUBdata.m."
+                "reason": "The upstream code concatenated the first m planes, although m is only the number of active planes. The corrected code concatenates the actual active planes in ascending plane order.",
+                "scope": "Extraction order now matches Embed_NUBdata.m traversal."
             }
         ],
         "sha256_before": before,
