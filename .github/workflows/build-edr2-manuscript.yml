@@ -1,0 +1,116 @@
+name: Build EDR2 manuscript review draft
+
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - "results/2026-11-16_final_analysis/MANUSCRIPT_DRAFT.md"
+      - "results/2026-11-16_final_analysis/figures/*.svg"
+      - ".github/workflows/build-edr2-manuscript.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout evidence and manuscript branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/external-baseline-reproduction
+
+      - name: Install Pandoc, XeLaTeX, fonts and SVG renderer
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            pandoc librsvg2-bin texlive-xetex texlive-latex-recommended \
+            texlive-latex-extra texlive-fonts-recommended fonts-liberation poppler-utils
+          pandoc --version | head -n 2
+          xelatex --version | head -n 2
+          rsvg-convert --version
+
+      - name: Prepare figure fallbacks and self-contained build source
+        run: |
+          set -euo pipefail
+          ROOT="results/2026-11-16_final_analysis"
+          mkdir -p /tmp/edr2-manuscript-build/figures
+          for svg in "$ROOT"/figures/*.svg; do
+            base="$(basename "${svg%.svg}")"
+            rsvg-convert --width 1800 "$svg" -o "/tmp/edr2-manuscript-build/figures/$base.png"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          src=Path("results/2026-11-16_final_analysis/MANUSCRIPT_DRAFT.md").read_text(encoding="utf-8")
+          src=src.replace("(figures/","(figures/")
+          src=src.replace(".svg)",".png)")
+          Path("/tmp/edr2-manuscript-build/MANUSCRIPT_DRAFT.md").write_text(src,encoding="utf-8")
+          figures=list(Path("/tmp/edr2-manuscript-build/figures").glob("*.png"))
+          assert len(figures)==10, f"Expected 10 rendered figures, got {len(figures)}"
+          print("Prepared",len(figures),"figure fallbacks")
+          PY
+
+      - name: Build editable DOCX
+        run: |
+          pandoc /tmp/edr2-manuscript-build/MANUSCRIPT_DRAFT.md \
+            --from=markdown+pipe_tables+tex_math_dollars+tex_math_single_backslash+raw_tex+link_attributes \
+            --standalone \
+            --resource-path=/tmp/edr2-manuscript-build \
+            --metadata title="Context-Invariant CNN Prediction for Reversible Data Hiding in Encrypted Images" \
+            --metadata lang="en-US" \
+            --output=/tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.docx
+
+      - name: Build typeset PDF
+        run: |
+          pandoc /tmp/edr2-manuscript-build/MANUSCRIPT_DRAFT.md \
+            --from=markdown+pipe_tables+tex_math_dollars+tex_math_single_backslash+raw_tex+link_attributes \
+            --standalone \
+            --pdf-engine=xelatex \
+            --resource-path=/tmp/edr2-manuscript-build \
+            --metadata title="Context-Invariant CNN Prediction for Reversible Data Hiding in Encrypted Images" \
+            --metadata lang="en-US" \
+            -V mainfont="Liberation Serif" \
+            -V monofont="Liberation Mono" \
+            -V geometry:a4paper,margin=22mm \
+            -V fontsize=10pt \
+            -V colorlinks=true \
+            -V linkcolor=blue \
+            -V urlcolor=blue \
+            -V papersize=a4 \
+            --output=/tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf
+
+      - name: Validate PDF and DOCX outputs
+        run: |
+          set -euo pipefail
+          test -s /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.docx
+          test -s /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf
+          pdfinfo /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf | tee /tmp/edr2-manuscript-build/pdfinfo.txt
+          pages="$(pdfinfo /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf | awk '/^Pages:/ {print $2}')"
+          test -n "$pages" && test "$pages" -gt 10
+          pdftotext -layout /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf /tmp/edr2-manuscript-build/pdf_text_check.txt
+          grep -q "Corrected PPMR" /tmp/edr2-manuscript-build/pdf_text_check.txt
+          grep -q "Multi-MSB" /tmp/edr2-manuscript-build/pdf_text_check.txt
+          grep -q "243/243" /tmp/edr2-manuscript-build/pdf_text_check.txt
+          echo "PDF pages=$pages"
+
+      - name: Render PDF pages for review
+        run: |
+          mkdir -p /tmp/edr2-manuscript-build/pdf_pages
+          pdftoppm -png -r 100 /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf /tmp/edr2-manuscript-build/pdf_pages/page
+          test "$(find /tmp/edr2-manuscript-build/pdf_pages -name '*.png' | wc -l)" -eq "$(pdfinfo /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf | awk '/^Pages:/ {print $2}')"
+
+      - name: Upload editable manuscript and PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: EDR2-Manuscript-Review-Draft-2026-11-20
+          path: |
+            /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.docx
+            /tmp/edr2-manuscript-build/EDR2_Manuscript_Review_Draft.pdf
+            /tmp/edr2-manuscript-build/MANUSCRIPT_DRAFT.md
+            /tmp/edr2-manuscript-build/pdfinfo.txt
+            /tmp/edr2-manuscript-build/pdf_text_check.txt
+          if-no-files-found: error
+          retention-days: 90
