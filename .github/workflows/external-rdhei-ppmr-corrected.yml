@@ -65,8 +65,91 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  evaluate-shard:
+
+  smoke:
     needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout isolated reproduction branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/external-baseline-reproduction
+
+      - name: Download immutable shared corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: external-rdhei-ppmr-corrected-shared
+          path: /tmp/external-baseline-shared
+
+      - name: Install GNU Octave and required packages
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends octave octave-statistics octave-image
+
+      - name: Clone and patch pinned PPMR source
+        run: |
+          git clone --quiet https://github.com/edu-yinzhaoxia/RDH-EI-based-on-pixel-prediction-and-multi-MSB-planes-rearrangement.git /tmp/ppmr-smoke-src
+          git -C /tmp/ppmr-smoke-src checkout --quiet --detach 21f397890289049798ced0f98d1482d629f93b06
+          python external_baselines/patch_ppmr_checkout.py --repo /tmp/ppmr-smoke-src --output /tmp/ppmr-smoke-patch.json
+
+      - name: Preflight-parse all modified MATLAB functions
+        run: |
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/ppmr-smoke-src')); names={'Encrypt_image','decrypt_image','Extract_UBdata','Extract_NUBdata'}; for k=1:numel(names); try; feval(names{k}); catch e; m=lower(e.message); if !isempty(strfind(m,'syntax error')) || !isempty(strfind(m,'parse error')); rethrow(e); endif; end_try_catch; endfor; disp('All four patched functions parse without syntax errors');"
+
+      - name: Run one real 256x256 end-to-end PPMR smoke image
+        run: |
+          python external_baselines/materialize_shard_list.py --shared-dir /tmp/external-baseline-shared --shard 0 --output /tmp/ppmr-smoke-all.tsv
+          python - <<'PY'
+          from pathlib import Path
+          rows=Path('/tmp/ppmr-smoke-all.tsv').read_text().splitlines()
+          selected=[row for row in rows if row.startswith('sequences__6.2.29\t')]
+          assert len(selected)==1, f"Expected one 256x256 smoke image, found {len(selected)}"
+          Path('/tmp/ppmr-smoke-one.tsv').write_text(selected[0]+'\n')
+          print(selected[0])
+          PY
+          mkdir -p /tmp/ppmr-smoke-recovered
+          octave --no-gui --quiet --eval "pkg load image; pkg load statistics; addpath(genpath('/tmp/ppmr-smoke-src')); addpath(genpath('external_baselines/matlab')); run_ppmr_batch('/tmp/ppmr-smoke-one.tsv','/tmp/ppmr-smoke.csv','/tmp/ppmr-smoke-recovered');"
+
+      - name: Require exact smoke payload and host-image recovery
+        run: |
+          python - <<'PY'
+          import csv,json
+          from pathlib import Path
+          with Path('/tmp/ppmr-smoke.csv').open(newline='') as f: rows=list(csv.DictReader(f))
+          assert len(rows)==1, f"Expected one smoke result row, got {len(rows)}"
+          row=rows[0]
+          result={
+            "image_id":row["image_id"],
+            "status":row["status"],
+            "payload_exact":row["payload_exact"],
+            "ub_payload_exact":row["ub_payload_exact"],
+            "nub_payload_exact":row["nub_payload_exact"],
+            "image_exact":row["image_exact"],
+            "native_net_bpp":row["method_native_net_bpp"],
+            "error":row["error"]
+          }
+          print(json.dumps(result,indent=2))
+          assert row["status"]=="PASS", f"PPMR smoke failed: {row['error']}"
+          assert row["payload_exact"]=="1" and row["image_exact"]=="1"
+          assert row["ub_payload_exact"]=="1" and row["nub_payload_exact"]=="1"
+          assert row["method_native_net_bpp"] not in ("NaN","nan","")
+          PY
+
+      - name: Upload the smoke-run validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-rdhei-ppmr-corrected-smoke
+          path: |
+            /tmp/ppmr-smoke.csv
+            /tmp/ppmr-smoke-patch.json
+            /tmp/ppmr-smoke-recovered/
+          if-no-files-found: warn
+          retention-days: 30
+
+  evaluate-shard:
+    needs: [prepare, smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -166,8 +249,8 @@ jobs:
           retention-days: 30
 
   aggregate:
-    needs: [prepare, evaluate-shard]
-    if: always()
+    needs: [prepare, smoke, evaluate-shard]
+    if: always() && needs.smoke.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
