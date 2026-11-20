@@ -1,0 +1,26 @@
+name: Cancel obsolete PPMR run without smoke gate
+
+on:
+  push:
+    branches:
+      - research/external-baseline-reproduction
+    paths:
+      - ".github/workflows/cancel-obsolete-pre-smoke.yml"
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel the pre-smoke full evaluation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status="$(gh api repos/Parzifal25/RDHEI/actions/runs/44717467445 --jq .status)"
+          if [ "$status" != "completed" ]; then
+            gh api --method POST repos/Parzifal25/RDHEI/actions/runs/44717467445/cancel
+          fi
+          echo "Pre-smoke run checked; smoke-gated run remains the only full-corpus candidate."
