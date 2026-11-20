@@ -241,7 +241,7 @@ The 3×3 model contains 46,881 parameters and 122,816 MACs per candidate patch. 
 
 ### 5.5 External RDHEI baseline comparison
 
-Table 5 reports the same-corpus native-protocol comparison. Exact recovery counts and capacity-positive counts are separate: a method may reconstruct an image and extract its attempted payload exactly while its native overhead expression still yields a nonpositive net payload budget. Usable capacity is set to zero in such cases.
+Table 5 and Figure 10 report the same-corpus native-protocol comparison. Exact recovery counts and capacity-positive counts are separate: a method may reconstruct an image and extract its attempted payload exactly while its native overhead expression still yields a nonpositive net payload budget. Usable capacity is set to zero in such cases.
 
 | Method | Positive-net images | Exact payload extraction | Exact host reconstruction | Mean usable net bpp (243 images) | Pooled usable net bpp |
 |---|---:|---:|---:|---:|---:|
@@ -320,19 +320,49 @@ The same 243 native images were also evaluated using pinned Multi-MSB+Huffman an
 
 [18] Z. Yin, X. She, J. Tang and B. Luo, “Reversible data hiding in encrypted images based on pixel prediction and multi-MSB planes rearrangement,” *Signal Processing*, vol. 187, article 108146, 2021, doi: [10.1016/j.sigpro.2021.108146](https://doi.org/10.1016/j.sigpro.2021.108146).
 
-## Figure captions and source files
+## Figures and source files
 
-All nine plots are editable SVGs in the sibling `figures/` directory. The plotted values come from the committed CSV tables.
+The manuscript uses ten editable SVG figures retained in the sibling `figures/` directory. For DOCX/PDF generation, the build process rasterises these SVGs at high resolution; the vector originals remain the figure source of record.
 
-1. **Figure 1.** Positive-net coverage in the matched grayscale predictor comparison. All predictor implementations use the common step-4 / 16-phase grid; the histogram-shift reference is omitted from the direct comparison because it uses a different embedding path.
-2. **Figure 2.** Mean candidate MAE in the matched grayscale predictor comparison. Lower values indicate lower prediction error; CNN v3 is the strongest CNN on this metric.
-3. **Figure 3.** Cluster-bootstrap intervals for the positive-net coverage difference (v4 minus each comparator), resampling the 29 curator-defined correlation clusters.
-4. **Figure 4.** Number of native RGB images with positive signed net capacity under each tested spatial/cross-channel blend, out of 51.
-5. **Figure 5.** Mean signed RGB net bpp conditional on encrypted bootstrap-directory fit. The sample count is shown because the denominators differ substantially.
-6. **Figure 6.** Mean full-map predictor runtime for the 512×512 CPU benchmark. The horizontal axis is in milliseconds.
-7. **Figure 7.** CNN parameter count against measured predictor runtime for the five CNN checkpoints.
-8. **Figure 8.** Descriptive grayscale v4 positive-net coverage by broad corpus label and image resolution.
-9. **Figure 9.** Mean per-image gain from adaptive selection among 24 ordered RGB channel-phase assignments relative to the fixed assignment (0,1,2), conditional on a fitted bootstrap directory.
+### Figure 1. Positive-net coverage in the matched grayscale predictor comparison
+
+![Positive-net coverage in the matched grayscale predictor comparison. All predictor implementations use the common step-4/16-phase grid; the histogram-shift reference is omitted from the direct comparison because it uses a different embedding path.](figures/fig01_gray_positive_net_coverage.svg)
+
+### Figure 2. Mean candidate MAE in the matched grayscale predictor comparison
+
+![Mean candidate MAE in the matched grayscale predictor comparison. Lower values indicate lower prediction error; CNN v3 is the strongest CNN on this metric.](figures/fig02_gray_candidate_mae.svg)
+
+### Figure 3. Cluster-bootstrap intervals for matched predictor coverage
+
+![Cluster-bootstrap intervals for the positive-net coverage difference (v4 minus each comparator), resampling the 29 curator-defined correlation clusters.](figures/fig03_gray_cluster_bootstrap_coverage.svg)
+
+### Figure 4. Native RGB positive-capacity coverage by blend
+
+![Number of native RGB images with positive signed net capacity under each tested spatial/cross-channel blend, out of 51.](figures/fig04_rgb_positive_coverage_by_blend.svg)
+
+### Figure 5. Mean signed RGB net bpp conditional on directory fit
+
+![Mean signed RGB net bpp conditional on encrypted bootstrap-directory fit. The sample count is shown because denominators differ substantially.](figures/fig05_rgb_conditional_net_bpp.svg)
+
+### Figure 6. Predictor runtime
+
+![Mean full-map predictor runtime for the 512×512 CPU benchmark.](figures/fig06_predictor_runtime.svg)
+
+### Figure 7. CNN parameter count against predictor runtime
+
+![CNN parameter count against measured predictor runtime for the five CNN checkpoints.](figures/fig07_cnn_parameters_vs_runtime.svg)
+
+### Figure 8. Grayscale v4 positive-net coverage by corpus stratum
+
+![Descriptive grayscale v4 positive-net coverage by broad corpus label and image resolution.](figures/fig08_gray_stratified_coverage.svg)
+
+### Figure 9. Adaptive RGB phase-assignment gain
+
+![Mean per-image gain from adaptive selection among 24 ordered RGB channel-phase assignments relative to the fixed assignment (0,1,2), conditional on a fitted bootstrap directory.](figures/fig09_rgb_adaptive_phase_gain.svg)
+
+### Figure 10. Same-corpus native-protocol baseline comparison
+
+![Mean usable net bpp and pooled usable net bpp for EDR2, Multi-MSB+Huffman, and corrected PPMR on the same 243 images. The methods retain their native capacity accounting, so this is not a same-packet-cost leaderboard.](figures/fig10_external_baseline_comparison.svg)
 
 ## Submission checklist
 
