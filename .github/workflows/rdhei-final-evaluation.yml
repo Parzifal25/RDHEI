@@ -7,6 +7,7 @@ on:
       - "self_contained_rdhei_feasibility_20261022/**"
       - "models/**"
       - "tests/rdhei_integrity_regression.py"
+      - "tests/channel_error_robustness.py"
       - "tests/storage_efficiency_smoke.py"
       - "scripts/storage_efficiency.py"
       - ".github/workflows/rdhei-final-evaluation.yml"
@@ -28,6 +29,27 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Run authenticated protocol tamper tests
         run: python tests/rdhei_integrity_regression.py
+
+  channel-error-robustness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install protocol dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pillow pycryptodome scipy
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Run channel-error experiment
+        run: python tests/channel_error_robustness.py
+      - name: Upload channel-error report
+        uses: actions/upload-artifact@v4
+        with:
+          name: channel-error-robustness
+          path: tests/channel_error_results.json
 
   scalability-benchmark:
     runs-on: ubuntu-latest
