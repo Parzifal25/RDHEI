@@ -7,6 +7,8 @@ on:
       - "self_contained_rdhei_feasibility_20261022/**"
       - "models/**"
       - "tests/rdhei_integrity_regression.py"
+      - "tests/storage_efficiency_smoke.py"
+      - "scripts/storage_efficiency.py"
       - ".github/workflows/rdhei-final-evaluation.yml"
   workflow_dispatch:
 
@@ -54,3 +56,15 @@ jobs:
         with:
           name: scalability-${{ matrix.size }}
           path: results/ci_scalability_${{ matrix.size }}/
+
+  storage-accounting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install storage accounting dependencies
+        run: pip install numpy pillow pycryptodome
+      - name: Smoke test storage accounting
+        run: python tests/storage_efficiency_smoke.py
