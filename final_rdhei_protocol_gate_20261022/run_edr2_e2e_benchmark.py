@@ -88,7 +88,7 @@ def run_once(original: np.ndarray, run_index: int) -> dict:
         "payload_bits": int(len(payload)),
         "net_capacity_bits": int(prepared["net"]),
         "signed_net_bpp": float(prepared["net"] / original.size),
-        "selected_phase": int(prepared["phase"]),
+        "selected_codec": str(prepared.get("mode", prepared.get("codec", "unknown"))),
         "exact_image_recovery": True,
         "exact_payload_recovery": True,
         **stages,
