@@ -9,8 +9,8 @@ import protocol, wire
 MASTER = bytes(range(32))
 NONCE = 0x123456789ABCDEF00123456789ABCDEF
 def fixture():
-    rng = np.random.default_rng(20261121)
-    return rng.integers(80, 176, (512, 512), dtype=np.uint8)
+    yy, xx = np.indices((512, 512), dtype=np.uint16)
+    return (96 + ((3 * yy + 5 * xx + (yy // 16) * 7) % 32)).astype(np.uint8)
 def expect_reject(label, mutated, capability):
     try:
         wire.inspect(mutated, capability)
@@ -22,7 +22,7 @@ def main():
     prepared = protocol.prepare(original)
     if prepared["net"] <= 0: raise RuntimeError("fixture has no positive net capacity")
     reserved, owner = protocol.reserve(original, MASTER, NONCE, prepared=prepared)
-    capability = wire.hider_keys(owner["hider"])
+    capability = owner
     payload = np.random.default_rng(77).integers(0, 2, prepared["net"], dtype=np.uint8)
     marked = wire.embed(reserved, payload, capability)
     recovered, extracted = protocol.receive(marked, MASTER, NONCE)
