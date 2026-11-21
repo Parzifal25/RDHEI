@@ -28,9 +28,7 @@ def main():
     bits=np.load(a.payload_bits,allow_pickle=False)
     if bits.ndim!=1 or np.any((bits!=0)&(bits!=1)):
         raise ValueError("payload file must contain a 1-D binary array")
-    with Image.open(original_path) as im:
-        original=np.asarray(im)
-    raw=original.tobytes(order="C")
+    raw=original_path.read_bytes()
     key=bytes(range(32)); nonce=bytes(range(16))
     cipher=AES.new(key,AES.MODE_CTR,nonce=b"",initial_value=int.from_bytes(nonce,"big"))
     ciphertext=cipher.encrypt(raw)
@@ -41,14 +39,14 @@ def main():
     report={
       "payload_bits":int(len(bits)),
       "payload_packed_bytes":payload_bytes,
-      "original_raw_pixel_bytes":len(raw),
+      "original_serialized_file_bytes":len(raw),
       "baseline":{"encrypted_original_bytes":len(ciphertext),"separate_payload_bytes":payload_bytes,"nonce_and_auth_metadata_bytes":48,"total_bytes":baseline_bytes},
       "marked_artifact":{"marked_image_bytes":marked_path.stat().st_size,"sidecar_bytes":sum(x.stat().st_size for x in sidecars),"sidecars":[{"path":str(x),"bytes":x.stat().st_size} for x in sidecars],"total_bytes":marked_bytes},
       "storage_saving_bytes":baseline_bytes-marked_bytes,
       "storage_saving_percent":100*(baseline_bytes-marked_bytes)/baseline_bytes if baseline_bytes else None,
       "marked_total_bytes_per_payload_bit":marked_bytes/len(bits) if len(bits) else None,
       "baseline_total_bytes_per_payload_bit":baseline_bytes/len(bits) if len(bits) else None,
-      "note":"Baseline is a declared accounting model; disclose image format and all sidecars. Compare equal payload lengths and include all required protocol metadata."
+      "note":"Baseline encrypts the original serialized file bytes (same lossless file representation) and stores the packed payload separately. Compare equal payload lengths and include all required protocol metadata/sidecars."
     }
     Path(a.output).write_text(json.dumps(report,indent=2)+"\n")
     print(json.dumps(report,indent=2))
