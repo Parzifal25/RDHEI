@@ -68,9 +68,8 @@ def run_once(original: np.ndarray, run_index: int) -> dict:
     )
     stages["reserve_and_encrypt_seconds"] = time.perf_counter() - started
 
-    hider_capability = wire.hider_keys(owner_capability["hider"])
     started = time.perf_counter()
-    marked = wire.embed(reserved, payload, hider_capability)
+    marked = wire.embed(reserved, payload, owner_capability)
     stages["encrypted_domain_embed_and_reauthenticate_seconds"] = time.perf_counter() - started
 
     started = time.perf_counter()
