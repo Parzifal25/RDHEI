@@ -4,7 +4,8 @@ from pathlib import Path
 import sys, struct
 import numpy as np
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE))
+PROTOCOL_DIR = HERE.parent / "final_rdhei_protocol_gate_20261022"
+sys.path.insert(0, str(PROTOCOL_DIR))
 import protocol, wire
 MASTER = bytes(range(32))
 NONCE = 0x123456789ABCDEF00123456789ABCDEF
