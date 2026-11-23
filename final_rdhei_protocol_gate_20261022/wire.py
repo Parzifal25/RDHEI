@@ -194,7 +194,12 @@ def _inspect_phase(a, capability, header_stage, phase):
     expected = (len(y) + 1) // 2
     if mode:
         dec = zlib.decompressobj()
-        raw = dec.decompress(data, expected + 1)
+        try:
+            raw = dec.decompress(data, expected + 1)
+        except zlib.error as exc:
+            # Malformed compressed metadata is a packet-format rejection, not
+            # an uncaught decompressor exception at the public receiver boundary.
+            raise ValueError("invalid bounded compressed directory") from exc
         if len(raw) != expected or not dec.eof or dec.unused_data or dec.unconsumed_tail:
             raise ValueError("invalid bounded compressed directory")
     else:
