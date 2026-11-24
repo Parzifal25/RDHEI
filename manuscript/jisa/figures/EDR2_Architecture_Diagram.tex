@@ -1,4 +1,4 @@
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
@@ -6,51 +6,51 @@
   flow/.style={-{Latex[length=2mm]},thick,draw=black!75},
   panel/.style={draw=black!65,dashed,rounded corners=1.5mm,thick},
   owner/.style={draw=blue!55!black,fill=blue!5,rounded corners=2mm,thick,
-    text width=1.55cm,minimum height=1.16cm,align=center,inner sep=3pt},
-  ownerwide/.style={owner,text width=1.78cm},
+    text width=1.42cm,minimum height=1.15cm,align=center,inner sep=3pt},
+  ownerwide/.style={owner,text width=1.62cm},
   cnn/.style={draw=blue!65!black,fill=blue!8,rounded corners=2mm,thick,
-    text width=1.65cm,minimum height=1.16cm,align=center,inner sep=3pt},
+    text width=1.45cm,minimum height=1.15cm,align=center,inner sep=3pt},
   select/.style={draw=orange!75!black,fill=yellow!16,rounded corners=2mm,thick,
-    text width=1.35cm,minimum height=1.16cm,align=center,inner sep=3pt},
+    text width=1.25cm,minimum height=1.15cm,align=center,inner sep=3pt},
   hider/.style={draw=green!45!black,fill=green!7,rounded corners=2mm,thick,
-    text width=1.78cm,minimum height=1.16cm,align=center,inner sep=3pt},
+    text width=2.30cm,minimum height=1.28cm,align=center,inner sep=4pt},
   receiver/.style={draw=violet!65!black,fill=violet!6,rounded corners=2mm,thick,
-    text width=1.85cm,minimum height=1.2cm,align=center,inner sep=3pt},
-  receiverwide/.style={receiver,text width=2.10cm},
+    text width=1.85cm,minimum height=1.20cm,align=center,inner sep=3pt},
+  receiverwide/.style={receiver,text width=2.20cm},
   neutral/.style={draw=black!55,fill=black!3,rounded corners=2mm,thick,
-    text width=1.78cm,minimum height=1.2cm,align=center,inner sep=3pt},
+    text width=1.75cm,minimum height=1.20cm,align=center,inner sep=3pt},
   roleowner/.style={draw=blue!30,fill=blue!10,rounded corners=2mm,thick,
     minimum height=0.42cm,align=center,font=\small\bfseries},
   rolehider/.style={draw=green!30!black,fill=green!10,rounded corners=2mm,thick,
     minimum height=0.42cm,align=center,font=\small\bfseries}
 ]
-% ------------------------------------------------------------------
-% (a) Owner preparation and encrypted-domain data hiding.
-% ------------------------------------------------------------------
-\draw[panel] (-0.25,0.12) rectangle (17.75,4.04);
-\node[anchor=west,font=\small\bfseries] at (-0.02,3.82)
+% (a) Content-owner reservation and encrypted-domain data hiding.
+\draw[panel] (-0.25,0.05) rectangle (18.25,3.95);
+\node[anchor=west,font=\small\bfseries] at (-0.02,3.72)
   {(a) Embedding process (content owner and independent data hider)};
-\node[roleowner,minimum width=12.25cm] at (6.15,3.35)
+\node[roleowner,minimum width=12.55cm] at (6.25,3.22)
   {Content owner: reserve room before encryption (RRBE)};
-\node[rolehider,minimum width=4.55cm] at (15.20,3.35)
+\node[rolehider,minimum width=5.05cm] at (15.55,3.22)
   {Independent data hider: encrypted domain};
 
-\node[owner] (plain) at (0.82,1.72)
+\node[owner] (plain) at (0.78,1.68)
   {\textbf{Plaintext image}\\Native 8-bit\\grayscale $I$};
-\node[cnn] (predict) at (2.92,1.72)
-  {\textbf{Centre-masked}\\residual CNN\\$3\\times3$};
-\node[ownerwide] (labels) at (5.12,1.72)
+\node[cnn] (predict) at (2.55,1.68)
+  {\textbf{Centre-masked}\\residual CNN\\$3\times3$};
+\node[ownerwide] (labels) at (4.45,1.68)
   {\textbf{Prediction}\\and 15-class\\allocation labels $L$};
-\node[owner] (phase) at (7.25,1.72)
+\node[owner] (phase) at (6.35,1.68)
   {\textbf{Evaluate four}\\step-2 phases\\$q=0,1,2,3$};
-\node[select] (choose) at (9.18,1.72)
+\node[select] (choose) at (8.08,1.68)
   {\textbf{Select phase}\\$q^*=\\arg\\max_q N_q$\\reject if $N_q\\leq0$};
-\node[ownerwide] (bootstrap) at (11.45,1.72)
-  {\textbf{Build bootstrap}\\Compress directory;\\$H=52+L$; backup\\$B=8H$; reserve zeros};
-\node[ownerwide] (imageenc) at (13.82,1.72)
+\node[ownerwide] (bootstrap) at (10.05,1.68)
+  {\textbf{Build bootstrap}\\Compress directory;\\$H=52+L$; account for\\$F$ and backup $B=8H$};
+\node[ownerwide] (imageenc) at (12.02,1.68)
   {\textbf{Encrypt image}\\AES-256-CTR; install\\encrypted header,\\directory and HMAC};
-\node[hider] (authhider) at (15.85,1.72)
-  {\textbf{Authenticate}\\bootstrap HMAC;\\decrypt and validate\\bounded directory};
+\node[hider] (hiderproc) at (15.05,1.68)
+  {\textbf{Authenticate and embed}\\Verify bootstrap HMAC;\\decrypt/validate directory;\\encrypt payload with dedicated\\AES-256-CTR subkey; embed\\ciphertext and update final HMAC};
+\node[owner,text width=1.38cm] (markedout) at (17.55,1.68)
+  {\textbf{Marked}\\encrypted\\image $I_{emb}$};
 
 \draw[flow] (plain.east) -- (predict.west);
 \draw[flow] (predict.east) -- (labels.west);
@@ -58,56 +58,48 @@
 \draw[flow] (phase.east) -- (choose.west);
 \draw[flow] (choose.east) -- (bootstrap.west);
 \draw[flow] (bootstrap.east) -- (imageenc.west);
-\draw[flow] (imageenc.east) -- (authhider.west);
+\draw[flow] (imageenc.east) -- node[above,font=\tiny]{reserved encrypted image} (hiderproc.west);
+\draw[flow] (hiderproc.east) -- (markedout.west);
 
-\node[hider,text width=2.05cm,minimum height=1.16cm] (payloadenc) at (17.00,1.72)
-  {\textbf{Payload embedding}\\Encrypt with dedicated\\AES-256-CTR subkey;\\insert ciphertext; update\\final header and HMAC};
-% The final hider stage is placed at the right edge and connected from
-% bootstrap authentication with a compact, two-stage hand-off.
-\draw[flow] (authhider.east) -- (payloadenc.west);
-\node[font=\tiny,align=center] at (13.82,0.78)
-  {Reserved encrypted image};
-\node[font=\tiny,align=center] at (17.00,0.78)
-  {Marked encrypted image $I_{emb}$};
-
-% ------------------------------------------------------------------
-% (b) Receiver-side authentication, payload extraction and exact host
-%     reconstruction. Authentication precedes directory decoding/CNN.
-% ------------------------------------------------------------------
-\draw[panel] (-0.25,-5.52) rectangle (17.75,-0.18);
+% (b) Receiver: authenticate first, then decode the directory and branch
+% into payload extraction and exact host reconstruction.
+\draw[panel] (-0.25,-5.62) rectangle (18.25,-0.15);
 \node[anchor=west,font=\small\bfseries] at (-0.02,-0.43)
   {(b) Extraction and exact recovery (authorised receiver)};
 
-\node[receiver] (marked) at (1.05,-2.78)
+\node[receiver] (marked) at (0.95,-2.75)
   {\textbf{Marked encrypted}\\image $I_{emb}$\\Master key $K$\\Nonce $V$};
-\node[receiverwide] (probe) at (3.88,-2.78)
-  {\textbf{Phase discovery}\\Probe four header locations;\\check framing and bounds;\\verify HMAC before directory\\decompression or CNN inference};
-\node[neutral] (directory) at (6.75,-2.78)
-  {\textbf{Directory recovery}\\Decrypt and decompress\\authenticated label directory;\\reconstruct slot map};
-\node[neutral] (payloadout) at (9.72,-1.55)
-  {\textbf{Payload extraction}\\Read ciphertext from mapped\\slots; decrypt with payload\\subkey and check padding};
-\node[hider,text width=1.55cm] (message) at (12.35,-1.55)
+\node[receiverwide] (probe) at (3.72,-2.75)
+  {\textbf{Phase discovery and authentication}\\Probe four public header locations;\\check framing and bounds; verify HMAC\\before directory decryption/decompression\\or CNN inference};
+\node[neutral] (directory) at (6.55,-2.75)
+  {\textbf{Directory recovery}\\Decrypt and decompress\\authenticated label directory $L$;\\rebuild the ordinary slot stream};
+
+\node[hider,text width=2.00cm,minimum height=1.12cm] (payloadout) at (9.62,-1.48)
+  {\textbf{Payload extraction}\\Read ciphertext from mapped slots;\\decrypt with payload subkey;\\check payload padding};
+\node[owner,text width=1.42cm] (message) at (12.05,-1.48)
   {\textbf{Recovered}\\payload $M$};
 
-\node[receiverwide] (restorezero) at (9.72,-4.18)
-  {\textbf{Prepare host recovery}\\Restore known-zero reservation\\positions; decrypt image with\\AES-256-CTR};
-\node[cnn,text width=2.30cm,minimum height=1.2cm] (inverse) at (13.00,-4.18)
-  {\textbf{Pixel reconstruction}\\Frozen masked CNN-$3\\times3$ prediction; inverse\\codebook using labels $L$;\\restore bootstrap-byte backup};
-\node[owner,text width=1.50cm] (host) at (16.40,-4.18)
-  {\textbf{Recovered host}\\Exact original\\grayscale image};
+\node[receiverwide] (restorezero) at (9.62,-4.20)
+  {\textbf{Prepare host recovery}\\Restore known-zero reservation positions;\\decrypt image with AES-256-CTR};
+\node[cnn,text width=2.00cm] (predictrec) at (12.45,-4.20)
+  {\textbf{CNN prediction}\\Frozen centre-masked\\CNN-$3\times3$ gives\\prediction $\hat p$};
+\node[neutral,text width=2.15cm] (inverse) at (15.05,-4.20)
+  {\textbf{Exact inversion}\\Use authenticated labels $L$\\and $\hat p$ to recover pixels;\\restore original bootstrap bytes};
+\node[owner,text width=1.42cm] (host) at (17.55,-4.20)
+  {\textbf{Recovered}\\original host\\$I_{rec}$};
 
 \draw[flow] (marked.east) -- (probe.west);
-\draw[flow] (probe.east) -- node[above,font=\tiny]{exactly one phase} (directory.west);
-\draw[flow] (directory.east) -- ++(0.35,0) |- (payloadout.west);
+\draw[flow] (probe.east) -- node[above,font=\tiny]{exactly one valid phase} (directory.west);
+\draw[flow] (directory.east) -- ++(0.30,0) |- (payloadout.west);
 \draw[flow] (payloadout.east) -- (message.west);
-\draw[flow] (directory.east) -- ++(0.35,0) |- (restorezero.west);
-\draw[flow] (restorezero.east) -- (inverse.west);
+\draw[flow] (directory.east) -- ++(0.30,0) |- (restorezero.west);
+\draw[flow] (restorezero.east) -- (predictrec.west);
+\draw[flow] (predictrec.east) -- (inverse.west);
 \draw[flow] (inverse.east) -- (host.west);
-
-\node[font=\tiny,align=center] at (8.95,-5.12)
-  {All image-dependent recovery metadata is carried in-band; no per-image sidecar map is required.};
+\node[font=\tiny,align=center] at (8.95,-5.17)
+  {Receiver-side recovery information is carried in-band; no per-image sidecar label or phase map is required.};
 \end{tikzpicture}%
 }
-\caption{Detailed EDR2 architecture. The content owner selects a step-2 phase and reserves room before AES-256-CTR image encryption. The independent hider authenticates the bootstrap, embeds an encrypted payload in the reserved ciphertext-domain slots and updates the final HMAC. The receiver authenticates the in-band phase header before directory decompression or CNN inference, then extracts the payload and reconstructs the original grayscale host.}
+\caption{EDR2 architecture. The content owner evaluates four step-2 phases, selects the largest positive signed-net budget, prepares the compressed bootstrap and backup, and encrypts the reserved grayscale image. The independent hider authenticates the bootstrap, encrypts and embeds the user payload in reserved ciphertext-domain slots, and updates the final HMAC. The receiver probes the four public header locations and verifies HMAC before directory processing or CNN inference, then extracts the payload and reconstructs the original host.}
 \label{fig:system-overview}
 \end{figure}
