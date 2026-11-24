@@ -1,34 +1,40 @@
-\documentclass[tikz,border=5pt]{standalone}
+\documentclass[tikz,border=7pt]{standalone}
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage{amsmath,amssymb}
-\usetikzlibrary{arrows.meta,positioning,calc,fit,patterns}
+\usetikzlibrary{arrows.meta,positioning,calc,fit}
 \begin{document}
 \begin{tikzpicture}[
+  x=0.72cm,y=0.72cm,transform shape,
   font=\sffamily,
-  line/.style={-Latex,thick},
-  owner/.style={draw=blue!65!black,fill=blue!4,rounded corners=2mm,thick,minimum width=4.8cm,minimum height=1.25cm,align=center},
-  hider/.style={draw=orange!75!black,fill=orange!5,rounded corners=2mm,thick,minimum width=4.8cm,minimum height=1.05cm,align=center},
-  receiver/.style={draw=green!50!black,fill=green!5,rounded corners=2mm,thick,minimum width=4.8cm,minimum height=1.25cm,align=center},
-  note/.style={font=\scriptsize,align=center,text width=4.4cm}
+  flow/.style={-Latex,very thick,draw=black!70},
+  mainbox/.style={draw=#1,fill=#1!5,rounded corners=2mm,thick,
+    text width=4.55cm,minimum height=1.45cm,align=center,inner sep=5pt},
+  infobox/.style={draw=gray!60,fill=gray!5,rounded corners=2mm,
+    text width=4.55cm,minimum height=1.35cm,align=center,inner sep=5pt},
 ]
-\node[owner] (owner) at (0,2.5) {\textbf{Content owner}\\Frozen centre-masked CNN-3$\times$3\\Evaluate four step-2 phases};
-\node[draw=blue!65!black,fill=blue!2,rounded corners=1.5mm,minimum width=4.6cm,minimum height=1.0cm,align=center] (packet) at (6,2.5) {\textbf{Reserved encrypted image}\\20-byte header + encrypted directory\\32-byte HMAC tag + bootstrap backup};
-\node[hider] (hider) at (12,2.5) {\textbf{Independent hider}\\Verify bootstrap; insert encrypted payload\\Update final header and HMAC};
-\node[receiver] (receiver) at (18,2.5) {\textbf{Authorised receiver}\\Marked image + master key + nonce\\Probe four phases; authenticate; recover};
-\draw[line] (owner.east) -- node[above,font=\scriptsize,align=center]{choose $q^\star=\arg\max_q N_q$\\encrypt and reserve} (packet.west);
-\draw[line] (packet.east) -- node[above,font=\scriptsize]{image + hider key capability} (hider.west);
-\draw[line] (hider.east) -- node[above,font=\scriptsize]{marked encrypted image} (receiver.west);
+\node[font=\bfseries\large] at (9,2.0) {EDR2: prediction-context invariance and authenticated phase discovery};
 
-\node[draw=gray!65,rounded corners=2mm,fill=gray!5,minimum width=4.8cm,minimum height=1.05cm,align=center] (geometry) at (0,-0.1) {\textbf{Spatial non-interference}\\Mask the candidate centre;\\other mutable centres are $\|\cdot\|_\infty\geq2$};
-\node[draw=gray!65,rounded corners=2mm,fill=gray!5,minimum width=4.8cm,minimum height=1.05cm,align=center] (accounting) at (6,-0.1) {\textbf{Signed net accounting}\\$N_q=G_{0,q}-F_q-8H_q$\\reject if $N_q\leq0$};
-\node[draw=gray!65,rounded corners=2mm,fill=gray!5,minimum width=4.8cm,minimum height=1.05cm,align=center] (auth) at (12,-0.1) {\textbf{Packet integrity}\\HKDF-separated keys; AES-CTR\\HMAC checked before directory decode};
-\node[draw=gray!65,rounded corners=2mm,fill=gray!5,minimum width=4.8cm,minimum height=1.05cm,align=center] (exact) at (18,-0.1) {\textbf{Exact reconstruction}\\978/978 accepted-case trials\\243-image grayscale evaluation};
-\draw[dashed,gray,-Latex] (geometry.north) -- (owner.south);
-\draw[dashed,gray,-Latex] (accounting.north) -- (packet.south);
-\draw[dashed,gray,-Latex] (auth.north) -- (hider.south);
-\draw[dashed,gray,-Latex] (exact.north) -- (receiver.south);
+\node[mainbox=blue] (owner) at (0,0) {\textbf{Content owner}\\Frozen centre-masked CNN-$3\times3$\\Evaluate four step-2 phases\\Select maximum signed net payload};
+\node[mainbox=blue] (reserved) at (6,0) {\textbf{Reserved encrypted image}\\20-byte header\\Encrypted label directory\\32-byte HMAC tag and bootstrap backup};
+\node[mainbox=orange] (hider) at (12,0) {\textbf{Independent hider}\\Authenticate bootstrap\\Insert encrypted payload\\Update final header and HMAC};
+\node[mainbox=green!50!black] (receiver) at (18,0) {\textbf{Authorised receiver}\\Marked image + master key + nonce\\Probe four phases and authenticate\\Extract payload and recover image};
 
-\node[font=\bfseries\large] at (9,4.4) {EDR2: prediction-context invariance and authenticated phase discovery};
-\node[font=\scriptsize,text=gray] at (9,-1.5) {Measured outcome: 163/243 positive-net images; mean usable 0.1432 bpp; pooled usable 0.0955 bpp.};
+\draw[flow] (owner.east) -- (reserved.west);
+\draw[flow] (reserved.east) -- (hider.west);
+\draw[flow] (hider.east) -- (receiver.west);
+
+\node[infobox] (geometry) at (0,-3.25) {\textbf{Spatial non-interference}\\Candidate centre is masked; all other mutable centres satisfy $\|a-b\|_\infty\geq2$.};
+\node[infobox] (budget) at (6,-3.25) {\textbf{Signed net accounting}\\$N_q=G_{0,q}-F_q-8H_q$. Reject if $N_q\leq0$.};
+\node[infobox] (integrity) at (12,-3.25) {\textbf{Packet integrity}\\HKDF-separated keys; AES-CTR encryption; HMAC verified before directory decoding.};
+\node[infobox] (evidence) at (18,-3.25) {\textbf{Measured evidence}\\243 grayscale images; 163 positive-net; 978/978 exact accepted-case trials.};
+
+\draw[dashed,gray!75,-Latex] (owner.south) -- (geometry.north);
+\draw[dashed,gray!75,-Latex] (reserved.south) -- (budget.north);
+\draw[dashed,gray!75,-Latex] (hider.south) -- (integrity.north);
+\draw[dashed,gray!75,-Latex] (receiver.south) -- (evidence.north);
+
+\node[font=\scriptsize,text=gray!80!black] at (9,-4.8)
+{Mean usable rate 0.1432 bpp; pooled usable rate 0.0955 bpp.};
 \end{tikzpicture}
 \end{document}
