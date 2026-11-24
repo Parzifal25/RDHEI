@@ -55,7 +55,7 @@
 \address[inst1]{[Department, institution, city, country]}
 
 \begin{abstract}
-Prediction-based reversible data hiding in encrypted images (RDHEI) requires sender and receiver prediction contexts to remain compatible after embedding. This paper presents the proposed system, a reserve-room-before-encryption grayscale protocol using a frozen residual CNN with a centre-masked $3\times3$ input patch. Candidate centres lie on one of four step-2 phases; within a phase, distinct mutable centres are separated by at least two pixels in Chebyshev distance. Masking the candidate centre therefore makes each predictor input invariant to writes at all selected carrier centres. The owner selects the phase with the greatest signed net payload after charging the compressed label directory, bootstrap-carrier opportunity cost and original-bootstrap backup. A phase-bound HMAC header identifies the selected phase in-band, without image-dependent sidecar maps. On 243 hash-verified native 8-bit grayscale USC-SIPI images, 163 images had positive net capacity and 978/978 receiver trials on those accepted images recovered both host and payload exactly. Mean and pooled usable rates were 0.1432 and 0.0955 bpp. Relative to fixed phase 0, adaptive selection improved the net budget on 192 images, tied on 51 and never reduced it, but added only two positive-capacity cases. Same-corpus Multi-MSB+Huffman and corrected PPMR reproductions achieved much higher rates under their native accounting. A separate matched-grid study found that a $5\times5$ CNN ablation outperformed the selected $3\times3$ model in prediction MAE and positive-net coverage. the proposed system is therefore presented as a specific synchronization and packet/recovery construction, not a state-of-the-art capacity or predictor claim.
+Prediction-based reversible data hiding in encrypted images (RDHEI) requires sender and receiver prediction contexts to remain compatible after embedding. This paper presents the proposed system, a reserve-room-before-encryption grayscale protocol using a frozen residual CNN with a centre-masked $3\times3$ input patch. Candidate centres lie on one of four step-2 phases; within a phase, distinct mutable centres are separated by at least two pixels in Chebyshev distance. Masking the candidate centre therefore makes each predictor input invariant to writes at all selected carrier centres. The owner selects the phase with the greatest signed net payload after charging the compressed label directory, bootstrap-carrier opportunity cost and original-bootstrap backup. A phase-bound HMAC header identifies the selected phase in-band, without image-dependent sidecar maps. On 243 hash-verified native 8-bit grayscale USC-SIPI images, 163 images had positive net capacity and 978/978 receiver trials on those accepted images recovered both host and payload exactly. Mean and pooled usable rates were 0.1432 and 0.0955 bpp. Relative to fixed phase 0, adaptive selection improved the net budget on 192 images, tied on 51 and never reduced it, but added only two positive-capacity cases. Same-corpus Multi-MSB+Huffman and corrected PPMR reproductions achieved much higher rates under their native accounting. A separate matched-grid study found that a $5\times5$ CNN ablation outperformed the selected $3\times3$ model in prediction MAE and positive-net coverage. Accordingly, the proposed system is presented as a specific synchronization and packet/recovery construction, not a state-of-the-art capacity or predictor claim.
 \end{abstract}
 
 \begin{keyword}
@@ -85,7 +85,7 @@ The paper makes four bounded contributions:
 \item A reproducible evaluation on 243 native grayscale images, including phase ablation, predictor comparisons, native-protocol external reproductions, exact-recovery trials, parser robustness and runtime measurements.
 \end{enumerate}
 
-The claims have important boundaries. Checkerboard sampling, MSB replacement, prediction-error coding, CNN prediction for RDHEI, masked image prediction, compressed auxiliary maps, authenticated RDHEI and adaptive block selection have prior art \cite{yi2018,puteaux2018,yin2020,yin2021,ren2023,sui2023,ping2024,ren2025auth,ankur2025,huang2025bfe,ren2026abpde}. \ProposedSystem does not claim any of these as independently new. Nor does it claim a formal cryptographic proof, independent cryptographic certification, resistance to a malicious authorised hider, or state-of-the-art capacity.
+The claims have important boundaries. Checkerboard sampling, MSB replacement, prediction-error coding, CNN prediction for RDHEI, masked image prediction, compressed auxiliary maps, authenticated RDHEI and adaptive block selection have prior art \cite{yi2018,puteaux2018,yin2020,yin2021,ren2023,sui2023,ping2024,ren2025auth,ankur2025,huang2025bfe,ren2026abpde}. The proposed system does not claim any of these as independently new. Nor does it claim a formal cryptographic proof, independent cryptographic certification, resistance to a malicious authorised hider, or state-of-the-art capacity.
 
 \section{Related work}
 \label{sec:related}
@@ -104,7 +104,7 @@ Ping et al. introduce an asymmetric CNN-based predictor and an adaptive-mean sec
 
 \subsection{Authentication and recovery integrity}
 
-Ren et al. combine prediction-error compression with image and ciphertext authentication in RDHEI \cite{ren2025auth}. This is particularly relevant because it demonstrates that authentication is already part of the RDHEI literature. \ProposedSystem uses HKDF-derived subkeys, AES-256-CTR and HMAC-SHA256 in its packet implementation. These standard cryptographic mechanisms are not claimed as new. AES-CTR does not itself provide integrity; the HMAC is a separate packet-authentication layer. The authenticated hider key is held by the authorised data hider, so a malicious authorised hider is outside the present threat model.
+Ren et al. combine prediction-error compression with image and ciphertext authentication in RDHEI \cite{ren2025auth}. This is particularly relevant because it demonstrates that authentication is already part of the RDHEI literature. The proposed system uses HKDF-derived subkeys, AES-256-CTR and HMAC-SHA256 in its packet implementation. These standard cryptographic mechanisms are not claimed as new. AES-CTR does not itself provide integrity; the HMAC is a separate packet-authentication layer. The authenticated hider key is held by the authorised data hider, so a malicious authorised hider is outside the present threat model.
 
 \subsection{Recent JISA RDHEI methods}
 
@@ -120,7 +120,7 @@ The JISA comparisons sharpen the publication risk: even where the rate definitio
 
 \subsection{Novelty boundary and research question}
 
-The narrow research question is: under what spatial condition do arbitrary writes to selected carrier centres leave every input patch of a fixed centre-masked radius-one predictor unchanged, and how can the phase be located by the receiver without per-image sidecar metadata? \ProposedSystem provides a proof for one fixed $3\times3$ predictor and four step-2 phases. The signed-net phase selection and authenticated packet are necessary parts of the implemented composition, not claims of independently unprecedented adaptive partitioning, in-band metadata or authentication.
+The narrow research question is: under what spatial condition do arbitrary writes to selected carrier centres leave every input patch of a fixed centre-masked radius-one predictor unchanged, and how can the phase be located by the receiver without per-image sidecar metadata? The proposed system provides a proof for one fixed $3\times3$ predictor and four step-2 phases. The signed-net phase selection and authenticated packet are necessary parts of the implemented composition, not claims of independently unprecedented adaptive partitioning, in-band metadata or authentication.
 
 \section{System model and protocol requirements}
 \label{sec:model}
@@ -361,7 +361,7 @@ For image $j$, let $N_j$ be its signed net payload and $P_j=H_jW_j$ its pixel co
 
 \subsection{Predictor comparison}
 
-The predictor-only comparison uses a common step-4 grid with 16 phases and a three-pixel border so that the largest tested $7\times7$ predictor and classical predictors use the same candidate positions. This experiment evaluates prediction MAE and positive-net coverage under a shared comparison grid. It is separate from native \ProposedSystem, which uses its step-2/four-phase grid. The CALIC reference is a simplified CALIC-style predictor, not a full canonical CALIC implementation. The compared learned models are frozen checkpoints; the $5\times5$ no-weighted-loss model is included as an ablation.
+The predictor-only comparison uses a common step-4 grid with 16 phases and a three-pixel border so that the largest tested $7\times7$ predictor and classical predictors use the same candidate positions. This experiment evaluates prediction MAE and positive-net coverage under a shared comparison grid. It is separate from the native implementation, which uses its step-2/four-phase grid. The CALIC reference is a simplified CALIC-style predictor, not a full canonical CALIC implementation. The compared learned models are frozen checkpoints; the $5\times5$ no-weighted-loss model is included as an ablation.
 
 \subsection{External native-protocol replications}
 
@@ -371,7 +371,7 @@ The paired comparison checks exact source-file and decoded-pixel hashes. The fin
 
 \subsection{Correctness, security tests and runtime}
 
-The native the proposed system ledger records six payload cases for each positive-net image: empty, one-bit, short, partial, near-maximum and full measured-capacity. The total is $163\times6=978$ receiver trials. Image and payload equality are checked independently.
+The grayscale evaluation ledger records six payload cases for each positive-net image: empty, one-bit, short, partial, near-maximum and full measured-capacity. The total is $163\times6=978$ receiver trials. Image and payload equality are checked independently.
 
 The finite-domain mapping audit enumerates all 65,536 prediction/original pairs and 396,032 valid payload words under positive allocations. A 20,000-input Atheris parser-fuzz campaign reports zero crashes, with 121 coverage counters and 188 feature counters. Deterministic malformed-packet and mutation tests additionally exercise header bounds, reserved bytes, directory codec/length handling, authentication failures, wrong key/nonce cases and bounded compressed-directory rejection. These are implementation robustness tests, not a formal cryptographic proof.
 
@@ -380,9 +380,9 @@ Two performance measurements have different scopes and are kept separate. The pr
 \section{Results}
 \label{sec:results}
 
-\subsection{Native the proposed system grayscale capacity and exact recovery}
+\subsection{Native grayscale capacity and exact recovery}
 
-The native the proposed system capacity ledger contains 243 images. Positive signed net capacity was obtained for 163 images (67.08\%); 80 images were rejected because the signed net budget was non-positive. The mean signed net rate over all images was 0.11054 bpp, the mean usable rate was 0.14322 bpp and the pooled usable rate was 0.09550 bpp. The median per-image usable rate was 0.04705 bpp, with first quartile 0 and third quartile 0.19497 bpp. The mean usable-rate cluster-bootstrap 95\% interval was 0.06139--0.25038 bpp; the positive-coverage interval was 50.19--82.39\%.
+The capacity ledger contains 243 images. Positive signed net capacity was obtained for 163 images (67.08\%); 80 images were rejected because the signed net budget was non-positive. The mean signed net rate over all images was 0.11054 bpp, the mean usable rate was 0.14322 bpp and the pooled usable rate was 0.09550 bpp. The median per-image usable rate was 0.04705 bpp, with first quartile 0 and third quartile 0.19497 bpp. The mean usable-rate cluster-bootstrap 95\% interval was 0.06139--0.25038 bpp; the positive-coverage interval was 50.19--82.39\%.
 
 All 978 receiver trials on the positive-capacity subset recovered both the original image and payload exactly. This result applies to the six tested payload cases on the 163 accepted images; it does not imply that every one of the 243 images could carry a positive payload.
 
@@ -406,7 +406,7 @@ Coverage-guided parser fuzzing & 20,000 Atheris inputs. & Zero crashes; 121 cove
 
 \begin{table}[t]
 \centering
-\caption{Native the proposed system net-capacity results over the full 243-image corpus.}
+\caption{Net-capacity results over the full 243-image corpus.}
 \label{tab:capacity}
 \small
 \begin{tabular}{lr}
@@ -455,7 +455,7 @@ Signed net payload $N_{\mathrm{net}}$ & 18,295 & 0.11054 & 0.05982\\
 
 \begin{table}[t]
 \centering
-\caption{the proposed system capacity by image dimension. Mean usable rate is the arithmetic per-image mean; pooled usable rate divides total usable bits by total pixels.}
+\caption{Capacity by image dimension. Mean usable rate is the arithmetic per-image mean; pooled usable rate divides total usable bits by total pixels.}
 \label{tab:resolution}
 \small
 \begin{tabular}{lrrrr}
@@ -471,7 +471,7 @@ $1024\times1024$ & 29 & 10 & 34.48\% & 0.01564 / 0.01564\\
 
 \begin{table}[t]
 \centering
-\caption{the proposed system capacity by final curation label.}
+\caption{Capacity by final curation label.}
 \label{tab:classification}
 \small
 \begin{tabular}{lrrrr}
@@ -490,7 +490,7 @@ Table~\ref{tab:phases} compares each fixed phase with the adaptive maximum-net r
 
 \begin{table}[t]
 \centering
-\caption{Fixed-phase and adaptive the proposed system outcomes.}
+\caption{Fixed-phase and adaptive phase-selection outcomes.}
 \label{tab:phases}
 \small
 \begin{tabular}{lrrrr}
@@ -533,11 +533,11 @@ Adaptive maximum signed net & 163/243 & 0.11054 & 0.14322 & 0.09550\\
 
 \subsection{Matched-grid predictor comparison}
 
-The predictor comparison uses the common step-4/16-phase grid and must not be interpreted as the native step-2/four-phase the proposed system experiment. The CNN predictors reduced candidate MAE relative to MED, GAP and the simplified CALIC-style baseline. However, the selected CNN-3$\times$3 checkpoint did not achieve the best learned-predictor MAE or positive-net coverage. The CNN-5$\times$5 no-weighted-loss ablation achieved MAE 4.6233 and 140/243 positive-net outcomes, compared with 4.8130 and 133/243 for the CNN-3$\times$3 the proposed system checkpoint. Thus the smaller model is retained for the radius-one synchronization construction, not because it is the most accurate predictor.
+The predictor comparison uses the common step-4/16-phase grid and must not be interpreted as the native step-2/four-phase experiment. The CNN predictors reduced candidate MAE relative to MED, GAP and the simplified CALIC-style baseline. However, the selected CNN-3$\times$3 checkpoint did not achieve the best learned-predictor MAE or positive-net coverage. The CNN-5$\times$5 no-weighted-loss ablation achieved MAE 4.6233 and 140/243 positive-net outcomes, compared with 4.8130 and 133/243 for the CNN-3$\times$3 checkpoint. Thus the smaller model is retained for the radius-one synchronization construction, not because it is the most accurate predictor.
 
 \begin{table}[t]
 \centering
-\caption{Predictor comparison on a common step-4/16-phase grid. Positive-net outcomes and MAE are measured within this separate predictor study; they are not native the proposed system step-2/four-phase capacity results.}
+\caption{Predictor comparison on a common step-4/16-phase grid. Positive-net outcomes and MAE are measured within this separate predictor study; they are not native step-2/four-phase capacity results.}
 \label{tab:predictors}
 \small
 \begin{tabular}{lrrr}
@@ -550,7 +550,7 @@ Simplified CALIC-style & 8.2021 & 49/243 & 20.16\%\\
 CNN-5$\times$5 residual & 4.6324 & 138/243 & 56.79\%\\
 CNN-5$\times$5 no residual & 4.6573 & 139/243 & 57.20\%\\
 CNN-5$\times$5 no weighted loss & 4.6233 & 140/243 & 57.61\%\\
-CNN-3$\times$3 the proposed system checkpoint & 4.8130 & 133/243 & 54.73\%\\
+CNN-3$\times$3 checkpoint & 4.8130 & 133/243 & 54.73\%\\
 CNN-7$\times$7 residual & 4.6882 & 140/243 & 57.61\%\\
 \bottomrule
 \end{tabular}
@@ -578,7 +578,7 @@ CNN-7$\times$7 residual & 4.6882 & 140/243 & 57.61\%\\
 \addplot coordinates {(4.6882,140)};\addlegendentry{CNN-7$\times$7}
 \end{axis}
 \end{tikzpicture}
-\caption{Predictor MAE against positive-net outcomes under the common step-4 comparison grid. The the proposed system CNN-3$\times$3 point is highlighted; the 5$\times$5 no-weighted-loss ablation is better on both reported measures.}
+\caption{Predictor MAE against positive-net outcomes under the common step-4 comparison grid. The proposed CNN-3$\times$3 model is highlighted; the 5$\times$5 no-weighted-loss ablation is better on both reported measures.}
 \label{fig:predictor}
 \end{figure}
 
@@ -595,7 +595,7 @@ Table~\ref{tab:external} reports the 243-image native-protocol comparison. All t
 \toprule
 Method & Positive images & Mean usable bpp & Pooled usable bpp & Exact recoveries\\
 \midrule
-the proposed system step-2/four-phase & 163/243 & 0.14322 & 0.09550 & 978/978 accepted-case trials\\
+Proposed system, step-2/four-phase & 163/243 & 0.14322 & 0.09550 & 978/978 accepted-case trials\\
 Multi-MSB+Huffman & 243/243 & 2.08848 & 1.97350 & 243/243 host and payload\\
 Corrected PPMR & 238/243 & 2.22817 & 2.11817 & 243/243 host and payload\\
 \bottomrule
@@ -606,7 +606,7 @@ The external results must be interpreted with their source-level distinctions. M
 
 \subsection{Runtime and memory}
 
-The original predictor-only benchmark measured the CNN-3$\times$3 at 708.479 ms for a full $512\times512$ prediction map and MED at 3.826 ms on the same synthetic grayscale input using the four-thread comparison harness. This is approximately 185.2 times slower than MED. The CNN contains 46,881 parameters and requires 122,816 MACs per patch (245,632 FLOPs under the convention of two FLOPs per MAC). The predictor-only benchmark evaluates 262,144 image positions and therefore counts approximately 64.39 billion Conv2d/Linear FLOPs, excluding patch extraction, memory copies, normalisation and nonlinear operations. By contrast, the native the proposed system step-2 lattice contains 65,025 candidate patches per phase on a $512\times512$ image. Its predictor arithmetic is 7.986 billion MACs (15.972 billion FLOPs) for one phase and 31.944 billion MACs (63.889 billion FLOPs) for the owner's four-phase selection. These are operation-count estimates from the frozen model, not independently timed per-phase measurements.
+The original predictor-only benchmark measured the CNN-3$\times$3 at 708.479 ms for a full $512\times512$ prediction map and MED at 3.826 ms on the same synthetic grayscale input using the four-thread comparison harness. This is approximately 185.2 times slower than MED. The CNN contains 46,881 parameters and requires 122,816 MACs per patch (245,632 FLOPs under the convention of two FLOPs per MAC). The predictor-only benchmark evaluates 262,144 image positions and therefore counts approximately 64.39 billion Conv2d/Linear FLOPs, excluding patch extraction, memory copies, normalisation and nonlinear operations. By contrast, the native step-2 lattice contains 65,025 candidate patches per phase on a $512\times512$ image. Its predictor arithmetic is 7.986 billion MACs (15.972 billion FLOPs) for one phase and 31.944 billion MACs (63.889 billion FLOPs) for the owner's four-phase selection. These are operation-count estimates from the frozen model, not independently timed per-phase measurements.
 
 A later vectorised sliding-window patch extractor was validated against the original slice-and-stack implementation. The extracted patch arrays were identical and the optimisation sweep found zero rounded-prediction mismatches under the tested settings. The optimised active configuration uses two CPU threads and a batch size of 2,048. On one native $512\times512$ USC-SIPI image, the full in-memory E2E pipeline measured 1.114019 s mean (standard deviation 0.058079 s; median 1.120437 s) across ten repeats, embedding 39,655 bits (0.151272 bpp) each time with 10/10 exact image and payload recoveries. Mean stage times were 0.582318 s for prediction/directory preparation, 0.070166 s for reservation/encryption, 0.043262 s for encrypted-domain embedding/authentication and 0.418273 s for receiver authentication/extraction/recovery. Sampled RSS increased by 10.87 MiB. This is a single-image warmed CPU benchmark, not a multi-resolution scalability study.
 
@@ -622,7 +622,7 @@ Measurement & Value & Scope and limitation\\
 MED predictor & 3.826 ms mean & Synthetic $512\times512$ input; four threads; predictor-only.\\
 CNN-3$\times$3 predictor & 708.479 ms mean & Same original predictor-only comparison harness; approximately 185.2$\times$ MED.\\
 CNN-3$\times$3 complexity & 46,881 params; 122,816 MAC/patch & Conv2d and Linear MACs; non-matrix operations excluded.\\
-the proposed system lattice operations & 7.986B MAC/phase; 31.944B MAC/all four phases & 65,025 candidate patches per phase on a $512\times512$ image; estimated, not timed separately.\\
+Lattice operations & 7.986B MAC/phase; 31.944B MAC/all four phases & 65,025 candidate patches per phase on a $512\times512$ image; estimated, not timed separately.\\
 Optimised E2E & 1.114019 s mean; SD 0.058079 s & One native $512\times512$ image; two warm-ups and ten measured repeats; model resident.\\
 E2E stages & 0.5823 / 0.0702 / 0.0433 / 0.4183 s & Prediction+directory / reserve+encrypt / embed+authenticate / receiver.\\
 E2E memory & +10.87 MiB sampled RSS & 5-ms sampling; transient peaks may be missed.\\
@@ -639,7 +639,7 @@ The implementation tests support four separate statements. First, the stated geo
 
 \subsection{Cryptographic interpretation}
 
-HKDF context separation prevents accidental reuse of one derived key across image encryption, staged headers, directory, payload and authentication. AES-256-CTR provides confidentiality only under the required unique-key/nonce discipline; it is malleable and is not treated as an integrity mechanism. The implementation uses the standard CTR mode and HMAC construction, with per-domain keys derived through HKDF-SHA256 \cite{nist2001,rfc2104,rfc5869}. The HMAC-SHA256 tag authenticates the marked packet against parties lacking the authentication key. Since the authorised hider has that key, it can recompute a valid tag after changing the packet; the proposed system therefore trusts the hider. The owner-to-hider key handoff is assumed confidential and authenticated. No formal cryptographic reduction, side-channel analysis, nonce-misuse test suite or independent cryptographic audit is claimed.
+HKDF context separation prevents accidental reuse of one derived key across image encryption, staged headers, directory, payload and authentication. AES-256-CTR provides confidentiality only under the required unique-key/nonce discipline; it is malleable and is not treated as an integrity mechanism. The implementation uses the standard CTR mode and HMAC construction, with per-domain keys derived through HKDF-SHA256 \cite{nist2001,rfc2104,rfc5869}. The HMAC-SHA256 tag authenticates the marked packet against parties lacking the authentication key. Since the authorised hider has that key, it can recompute a valid tag after changing the packet; the protocol therefore trusts the hider. The owner-to-hider key handoff is assumed confidential and authenticated. No formal cryptographic reduction, side-channel analysis, nonce-misuse test suite or independent cryptographic audit is claimed.
 
 \subsection{Main limitations}
 
@@ -658,7 +658,7 @@ The principal limitations are:
 
 \subsection{JISA suitability and rejection risk}
 
-The system falls within multimedia security, but its strongest possible JISA argument is the concrete connection between a local predictor's receptive field, a deterministic carrier geometry, authenticated in-band phase discovery and a receiver-side recovery contract. Elsevier describes JISA as a journal for original, practice-driven information-security research and explicitly lists multimedia security and forensics among its topics. Its journal description also cautions against formal-only work without implementation or empirical testing, and routine AI/ML applications without a substantial security contribution \cite{jisaScope}. the proposed system includes an implementation and empirical validation, but the current results do not show high payload capacity and the narrow novelty may be judged incremental beside recent JISA methods. A submission should be attempted only if the authors can complete the checkpoint training provenance, strengthen the prior-art distinction with full-text review, and defend why the synchronization property constitutes a nontrivial security/engineering contribution despite the payload gap. The present manuscript does not recommend a high-capacity or state-of-the-art framing.
+The system falls within multimedia security, but its strongest possible JISA argument is the concrete connection between a local predictor's receptive field, a deterministic carrier geometry, authenticated in-band phase discovery and a receiver-side recovery contract. Elsevier describes JISA as a journal for original, practice-driven information-security research and explicitly lists multimedia security and forensics among its topics. Its journal description also cautions against formal-only work without implementation or empirical testing, and routine AI/ML applications without a substantial security contribution \cite{jisaScope}. the implementation includes empirical validation, but the current results do not show high payload capacity and the narrow novelty may be judged incremental beside recent JISA methods. A submission should be attempted only if the authors can complete the checkpoint training provenance, strengthen the prior-art distinction with full-text review, and defend why the synchronization property constitutes a nontrivial security/engineering contribution despite the payload gap. The present manuscript does not recommend a high-capacity or state-of-the-art framing.
 
 \section{Conclusion}
 \label{sec:conclusion}
