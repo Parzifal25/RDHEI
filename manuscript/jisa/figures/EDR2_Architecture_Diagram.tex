@@ -38,13 +38,13 @@
 \node[cnn] (predict) at (2.55,1.68)
   {\textbf{Centre-masked}\\residual CNN\\$3\times3$};
 \node[ownerwide] (labels) at (4.45,1.68)
-  {\textbf{Prediction}\\and 15-class\\allocation labels $L$};
+  {\textbf{Prediction}\\and 15-class\\allocation labels $\\mathcal{L}$};
 \node[owner] (phase) at (6.35,1.68)
   {\textbf{Evaluate four}\\step-2 phases\\$q=0,1,2,3$};
 \node[select] (choose) at (8.08,1.68)
   {\textbf{Select phase}\\$q^*=\\arg\\max_q N_q$\\reject if $N_q\\leq0$};
 \node[ownerwide] (bootstrap) at (10.05,1.68)
-  {\textbf{Build bootstrap}\\Compress directory;\\$H=52+L$; account for\\$F$ and backup $B=8H$};
+  {\textbf{Build bootstrap}\\Compress $\\mathcal{L}$; length $L$;\\$H=52+L$; charge $F$ and\\backup $B=8H$};
 \node[ownerwide] (imageenc) at (12.02,1.68)
   {\textbf{Encrypt image}\\AES-256-CTR; install\\encrypted header,\\directory and HMAC};
 \node[hider] (hiderproc) at (15.05,1.68)
@@ -72,7 +72,7 @@
 \node[receiverwide] (probe) at (3.72,-2.75)
   {\textbf{Phase discovery and authentication}\\Probe four public header locations;\\check framing and bounds; verify HMAC\\before directory decryption/decompression\\or CNN inference};
 \node[neutral] (directory) at (6.55,-2.75)
-  {\textbf{Directory recovery}\\Decrypt and decompress\\authenticated label directory $L$;\\rebuild the ordinary slot stream};
+  {\textbf{Directory recovery}\\Decrypt and decompress\\authenticated label directory $\\mathcal{L}$;\\rebuild the ordinary slot stream};
 
 \node[hider,text width=2.00cm,minimum height=1.12cm] (payloadout) at (9.62,-1.48)
   {\textbf{Payload extraction}\\Read ciphertext from mapped slots;\\decrypt with payload subkey;\\check payload padding};
@@ -84,7 +84,7 @@
 \node[cnn,text width=2.00cm] (predictrec) at (12.45,-4.20)
   {\textbf{CNN prediction}\\Frozen centre-masked\\CNN-$3\times3$ gives\\prediction $\hat p$};
 \node[neutral,text width=2.15cm] (inverse) at (15.05,-4.20)
-  {\textbf{Exact inversion}\\Use authenticated labels $L$\\and $\hat p$ to recover pixels;\\restore original bootstrap bytes};
+  {\textbf{Exact inversion}\\Use authenticated labels $\\mathcal{L}$\\and $\hat p$ to recover pixels;\\restore original bootstrap bytes};
 \node[owner,text width=1.42cm] (host) at (17.55,-4.20)
   {\textbf{Recovered}\\original host\\$I_{rec}$};
 
