@@ -1,0 +1,6 @@
+Highlights
+- A masked 3x3 CNN receives invariant inputs on a step-2 carrier lattice.
+- Four phases are selected by signed net payload after bootstrap costs.
+- An in-band HMAC-bound header identifies the selected phase without a map sidecar.
+- 243-image evaluation yields 163 positive-net cases and 978/978 exact trials.
+- EDR2's usable rate is lower than both reproduced native-protocol baselines.
