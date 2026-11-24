@@ -21,7 +21,7 @@ The paper therefore makes no high-capacity, state-of-the-art or superiority clai
 5. **Figure/image rights:** use original vector schematics or verify rights for any USC-SIPI examples shown in a paper figure. Current submission figures are vector diagrams/charts rather than copyrighted source images.
 6. **Author declarations:** supply names, affiliations, corresponding-author contact, CRediT contributions, funding, acknowledgements and competing-interest declaration.
 7. **Final reference audit:** independently verify every author list, title, year, volume/article number and DOI against publisher records; the connected Scite MCP plan is inactive, so Scite's citation-context/retraction audit has not been run.
-8. **Final supervisor review:** have a subject expert audit the mathematical statement, code-to-paper protocol mapping, inverse mapping, net-capacity accounting, results and nearest prior art.
+8. **AI-use declaration:** confirm the ChatGPT assistance statement is accurate and that all authors have reviewed and edited the material, verified claims/references and accept full responsibility. Elsevier requires such a declaration for generative-AI use in manuscript preparation.\n9. **Final supervisor review:** have a subject expert audit the mathematical statement, code-to-paper protocol mapping, inverse mapping, net-capacity accounting, results and nearest prior art.
 
 ## Format and build status
 
