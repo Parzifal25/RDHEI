@@ -404,6 +404,24 @@ All 978 receiver trials on the positive-capacity subset recovered both the origi
 
 \begin{table}[t]
 \centering
+\caption{Implementation correctness and parser-robustness evidence. Passing tests support the implemented cases; they are not formal cryptographic proofs.}
+\label{tab:robustness}
+\small
+\begin{tabularx}{\textwidth}{p{2.8cm}p{5.1cm}p{2.3cm}Y}
+\toprule
+Test family & Coverage & Result & Interpretation\\
+\midrule
+Finite inverse-map enumeration & 65,536 original/prediction pairs and 396,032 positive-allocation payload words. & Zero mapping failures. & Exhaustive check of the implemented 8-bit codebook domain.\\
+Full-corpus receiver tests & Six payload sizes for each of the 163 positive-net images. & 978/978 exact host and payload recoveries. & Exactness is established for these accepted image/payload cases, not for the 80 non-positive cases.\\
+Phase/header discovery & Four public candidate header locations; framing, reserved fields, bounds, authentication and ambiguity rejection. & Regression tests passed. & Evidence for the implemented self-location routine under the tested phase and packet cases.\\
+Mutation and malformed-packet tests & Wrong keys/nonces; modified header, directory, HMAC tag, payload carrier and non-carrier bytes; malformed codec identifiers, reserved fields, lengths and authenticated compressed input. & Regression tests passed. & Tests verify rejection and bounded parsing for the covered deterministic cases.\\
+Coverage-guided parser fuzzing & 20,000 Atheris inputs. & Zero crashes; 121 coverage counters and 188 feature counters. & Parser robustness evidence; not an exhaustive input-space test or security proof.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[t]
+\centering
 \caption{Native EDR2 net-capacity results over the full 243-image corpus.}
 \label{tab:capacity}
 \small
@@ -429,6 +447,27 @@ Exact image-and-payload trials & 978/978\\
 \subsection{Capacity heterogeneity across image strata}
 
 Capacity varied substantially with image dimensions and corpus family. Positive-net coverage was 45/62 at $256\times256$, 108/152 at $512\times512$ and 10/29 at $1024\times1024$. The $1024\times1024$ stratum had a negative mean signed rate and a low mean usable rate. This is not evidence of a monotonic resolution law: the image families and directory compression costs differ across strata. Constructed texture mosaics were more difficult than the natural-labelled subset: 4/11 constructed images and 159/232 natural-labelled images had positive net capacity. The constructed and natural-labelled categories are curation labels and should not be interpreted as a controlled natural-versus-synthetic experiment.
+
+
+\begin{table}[t]
+\centering
+\caption{Mean bootstrap and carrier-cost decomposition over all 243 images. Per-image rates are arithmetic means; pooled rates divide total bits by total pixels. Metadata wire storage is descriptive and is not subtracted a second time in the net equation.}
+\label{tab:overhead}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Quantity & Mean bits/image & Mean per-image rate (bpp) & Pooled rate (bpp)\\
+\midrule
+Gross ordinary carrier slots $G_0$ & 383,672 & 1.28949 & 1.25451\\
+Bootstrap opportunity cost $F$ & 140,541 & 0.46177 & 0.45953\\
+Physical in-band metadata wire storage $8H$ & 224,836 & 0.71718 & 0.73515\\
+Original bootstrap-byte backup $B=8H$ & 224,836 & 0.71718 & 0.73515\\
+Total charged overhead $F+B$ & 365,377 & 1.17895 & 1.19469\\
+\midrule
+Signed net payload $N_{\mathrm{net}}$ & 18,295 & 0.11054 & 0.05982\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{table}[t]
 \centering
@@ -583,7 +622,7 @@ The external results must be interpreted with their source-level distinctions. M
 
 \subsection{Runtime and memory}
 
-The original predictor-only benchmark measured the CNN-3$\times$3 at 708.479 ms per full $512\times512$ map and MED at 3.826 ms on a synthetic grayscale input using the same four-thread comparison harness. This is approximately 185.2 times slower than MED. The CNN contains 46,881 parameters and requires 122,816 MACs per patch (245,632 FLOPs under the convention of two FLOPs per MAC). The full-map operation count is approximately 64.39 billion FLOPs, excluding patch extraction, memory copies, normalisation and nonlinear operations.
+The original predictor-only benchmark measured the CNN-3$\times$3 at 708.479 ms for a full $512\times512$ prediction map and MED at 3.826 ms on the same synthetic grayscale input using the four-thread comparison harness. This is approximately 185.2 times slower than MED. The CNN contains 46,881 parameters and requires 122,816 MACs per patch (245,632 FLOPs under the convention of two FLOPs per MAC). The predictor-only benchmark evaluates 262,144 image positions and therefore counts approximately 64.39 billion Conv2d/Linear FLOPs, excluding patch extraction, memory copies, normalisation and nonlinear operations. By contrast, the native EDR2 step-2 lattice contains 65,025 candidate patches per phase on a $512\times512$ image. Its predictor arithmetic is 7.986 billion MACs (15.972 billion FLOPs) for one phase and 31.944 billion MACs (63.889 billion FLOPs) for the owner's four-phase selection. These are operation-count estimates from the frozen model, not independently timed per-phase measurements.
 
 A later vectorised sliding-window patch extractor was validated against the original slice-and-stack implementation. The extracted patch arrays were identical and the optimisation sweep found zero rounded-prediction mismatches under the tested settings. The optimised active configuration uses two CPU threads and a batch size of 2,048. On one native $512\times512$ USC-SIPI image, the full in-memory E2E pipeline measured 1.114019 s mean (standard deviation 0.058079 s; median 1.120437 s) across ten repeats, embedding 39,655 bits (0.151272 bpp) each time with 10/10 exact image and payload recoveries. Mean stage times were 0.582318 s for prediction/directory preparation, 0.070166 s for reservation/encryption, 0.043262 s for encrypted-domain embedding/authentication and 0.418273 s for receiver authentication/extraction/recovery. Sampled RSS increased by 10.87 MiB. This is a single-image warmed CPU benchmark, not a multi-resolution scalability study.
 
@@ -599,6 +638,7 @@ Measurement & Value & Scope and limitation\\
 MED predictor & 3.826 ms mean & Synthetic $512\times512$ input; four threads; predictor-only.\\
 CNN-3$\times$3 predictor & 708.479 ms mean & Same original predictor-only comparison harness; approximately 185.2$\times$ MED.\\
 CNN-3$\times$3 complexity & 46,881 params; 122,816 MAC/patch & Conv2d and Linear MACs; non-matrix operations excluded.\\
+EDR2 lattice operations & 7.986B MAC/phase; 31.944B MAC/all four phases & 65,025 candidate patches per phase on a $512\times512$ image; estimated, not timed separately.\\
 Optimised E2E & 1.114019 s mean; SD 0.058079 s & One native $512\times512$ image; two warm-ups and ten measured repeats; model resident.\\
 E2E stages & 0.5823 / 0.0702 / 0.0433 / 0.4183 s & Prediction+directory / reserve+encrypt / embed+authenticate / receiver.\\
 E2E memory & +10.87 MiB sampled RSS & 5-ms sampling; transient peaks may be missed.\\
