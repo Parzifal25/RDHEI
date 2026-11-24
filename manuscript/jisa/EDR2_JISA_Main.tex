@@ -1,0 +1,658 @@
+\documentclass[preprint,12pt]{elsarticle}
+
+% JISA-oriented Elsevier initial-submission source.
+% Single-column preprint layout; numerical references; editable tables and vector figures.
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,tabularx,array,multirow,makecell}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,shapes.geometric,patterns,matrix}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+
+\journal{Journal of Information Security and Applications}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newcommand{\EDR}{\textsc{EDR2}}
+\newcommand{\RDHEI}{\textsc{RDHEI}}
+\newcommand{\RRBE}{\textsc{RRBE}}
+\newcommand{\bpp}{\text{bpp}}
+\newcommand{\Linf}{\ell_{\infty}}
+\newcommand{\Kauth}{K_{\mathrm{auth}}}
+\newcommand{\Kimg}{K_{\mathrm{img}}}
+\newcommand{\Kh}{K_{\mathrm{h}}}
+\newcommand{\Nnet}{N_{\mathrm{net}}}
+\newcommand{\Ggross}{G_0}
+\newcommand{\Fboot}{F}
+\newcommand{\Bback}{B}
+\newcommand{\Hboot}{H}
+\newcommand{\Savail}{S}
+\sisetup{detect-all,group-separator={,},group-minimum-digits=4}
+\setlength{\emergencystretch}{3em}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Context-invariant prediction and authenticated phase discovery for reversible data hiding in encrypted images}
+
+\author[inst1]{[Author name]}
+\ead{[Corresponding author email]}
+\author[inst1]{[Co-author name]}
+\address[inst1]{[Department, institution, city, country]}
+
+\begin{abstract}
+Prediction-based reversible data hiding in encrypted images (RDHEI) requires the sender and receiver to reproduce compatible prediction contexts after embedding has modified carrier samples. This paper presents \EDR, a reserve-room-before-encryption grayscale protocol using a frozen residual convolutional neural network with a centre-masked $3\times3$ input patch. Candidate carrier centres lie on one of four step-2 phases. Within a phase, distinct centres are separated by at least two pixels in Chebyshev distance; masking the candidate centre therefore makes every candidate's predictor input invariant to writes at all selected carrier centres. The owner evaluates the four phases separately and selects the phase with the greatest signed net payload after charging the compressed label directory, bootstrap-carrier opportunity cost and original-bootstrap backup. An encrypted, phase-bound HMAC header identifies the selected phase in-band, so the receiver is not supplied with image-dependent sidecar maps. On 243 hash-verified native 8-bit grayscale USC-SIPI images, 163 images had positive net capacity and 978 of 978 receiver trials on those accepted images recovered both host and payload exactly. Mean and pooled usable rates were 0.1432 and 0.0955 bpp. Relative to a fixed phase-0 choice, adaptive selection improved the measured net budget on 192 images, tied on 51 and did not reduce it on any image, but increased positive-capacity coverage by only two images. Same-corpus reproductions of Multi-MSB+Huffman and corrected PPMR achieved substantially higher rates under their native protocol accounting. A separate matched-grid predictor study also found that a $5\times5$ ablation outperformed the selected $3\times3$ predictor in MAE and positive-net coverage. The contribution is therefore limited to the stated prediction-input invariance condition and its implemented packet/recovery composition; no state-of-the-art capacity or predictor-superiority claim is made.
+\end{abstract}
+
+\begin{keyword}
+reversible data hiding \sep encrypted images \sep prediction invariance \sep authenticated metadata \sep exact recovery \sep multimedia security
+\end{keyword}
+
+\end{frontmatter}
+
+\section{Introduction}
+\label{sec:intro}
+
+Reversible data hiding (RDH) embeds an auxiliary message in a host signal while preserving the ability to reconstruct the original host exactly after extraction. In encrypted-image RDH, confidentiality must be maintained while the data hider works on an encrypted representation. A common system separates three roles: the content owner prepares and encrypts the image, an independent hider inserts the user payload, and an authorised receiver extracts the payload and reconstructs the original image. The reserve-room-before-encryption (\RRBE) architecture creates embedding room while the image is still available to the owner, then allows the hider to insert data after encryption \cite{zhang2011,ma2013,puteaux2021survey}.
+
+Prediction-based schemes exploit spatial redundancy in the plaintext image. A predictor estimates a candidate pixel from its neighbours; the prediction error determines how many most-significant bits (MSBs) can be replaced while retaining enough information for exact recovery. Learned predictors, including CNN-based predictors, have also been used in RDHEI \cite{ping2024,cheng2025masked}. However, an encoder and decoder that use the same checkpoint can still disagree if embedding changes samples in the predictor's receptive field. The relevant requirement is not merely shared weights: it is that the prediction inputs used during preparation and recovery remain compatible.
+
+This paper studies a concrete spatial condition for a fixed centre-masked $3\times3$ CNN predictor. Only centres on one selected step-2 phase may be modified. Every pair of distinct centres in that phase is separated by at least two pixels in the Chebyshev metric, while the value at the candidate centre is masked before inference. Hence, no other mutable candidate is inside the $3\times3$ patch, and the candidate's own value is hidden from the predictor. The resulting proposition guarantees equality of the masked predictor inputs before and after arbitrary writes to the selected carrier centres, subject to the stated fixed inference procedure.
+
+Four phases provide equal geometric candidate density but can produce different prediction labels, compressed directory lengths and bootstrap opportunity costs. The owner therefore evaluates all four phases independently and chooses the phase with the highest signed net payload. The phase is not sent as an external field: the receiver tests the four public header locations and accepts exactly one location whose framing, phase-bound HMAC and bounded directory validation succeed. All image-dependent recovery information, including the encrypted header, compressed label directory, authentication tag and bootstrap-byte backup, is stored in the marked encrypted image.
+
+The aim is deliberately not to present \EDR as a high-capacity alternative to recent RDHEI methods. On the evaluated corpus, its usable rates are much lower than those of two reproduced external implementations and than several rates reported in recent JISA papers. The paper instead evaluates a narrow synchronisation condition, the exact-recovery contract that uses it, the gain from phase selection, and the full cost of in-band recovery metadata. The empirical comparison is reported without suppressing the negative-capacity images or the weaker predictor ablation.
+
+The paper makes four bounded contributions:
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item A formal input-invariance proposition for a frozen, centre-masked radius-one predictor when all mutable carrier centres in a phase are pairwise Chebyshev-separated by at least two.
+\item A four-phase maximum-density candidate construction and a deterministic rule that selects the phase with the greatest signed net payload after directory and bootstrap costs.
+\item An encrypted in-band packet in which the candidate phase is inferred from the authenticated header location; the receiver's per-image semantic inputs are the marked encrypted image, a 32-byte master key and a 128-bit nonce.
+\item A reproducible evaluation on 243 native grayscale images, including phase ablation, predictor comparisons, native-protocol external reproductions, exact-recovery trials, parser robustness and runtime measurements.
+\end{enumerate}
+
+The claims have important boundaries. Checkerboard sampling, MSB replacement, prediction-error coding, CNN prediction for RDHEI, masked image prediction, compressed auxiliary maps, authenticated RDHEI and adaptive block selection have prior art \cite{yi2018,puteaux2018,yin2020,yin2021,ren2023,sui2023,ping2024,ren2025auth,ankur2025,huang2025bfe,ren2026abpde}. \EDR does not claim any of these as independently new. Nor does it claim a formal cryptographic proof, independent cryptographic certification, resistance to a malicious authorised hider, or state-of-the-art capacity.
+
+\section{Related work}
+\label{sec:related}
+
+\subsection{RDH and encrypted-image architectures}
+
+Zhang's early encrypted-image RDH construction established that data can be embedded in an encrypted image while preserving reversibility \cite{zhang2011}. Ma et al. developed the RRBE architecture in which reversible room is prepared before encryption and subsequently used by an independent hider \cite{ma2013}. Surveys by Shi et al. and Puteaux et al. describe the broader RDH and RDHEI design space, including encryption order, receiver capabilities and recovery side information \cite{shi2016,puteaux2021survey}. These distinctions matter when comparing rates: a reported bpp value depends on the method's definition of payload, whether auxiliary data are charged, and whether host reconstruction is exact.
+
+\subsection{Prediction, checkerboard sampling and MSB coding}
+
+Prediction and MSB replacement are established RDHEI mechanisms. Yi and Zhou's checkerboard-based adaptive prediction partitions the image into reference and embeddable positions \cite{yi2018}. Puteaux and Puech use MSB prediction to reserve capacity \cite{puteaux2018}. Yin et al. combine multi-MSB prediction with Huffman coding, and later propose pixel prediction with multi-MSB-plane rearrangement (PPMR) \cite{yin2020,yin2021}. Multi-prediction and hybrid prediction with Huffman-coded labels are also studied by Ren et al. and Sui et al. \cite{ren2023,sui2023}. Thus, the use of a spatial partition, the prediction of MSBs, and compression of a location/label representation are not new in isolation.
+
+\subsection{Learned and masked predictors}
+
+Ping et al. introduce an asymmetric CNN-based predictor and an adaptive-mean second stage for RDHEI \cite{ping2024}. Cheng et al. use a pixel-level masked autoencoder with polar coding \cite{cheng2025masked}. These works preclude a broad novelty claim based on either CNN use or masking. The narrower question addressed here is whether a fixed local predictor can be given a carrier geometry that guarantees unchanged per-candidate predictor inputs after the carrier-centre values are altered. The $3\times3$ centre-masked construction provides one specific answer; it is not a general claim about all masked predictors or all receptive-field shapes.
+
+\subsection{Authentication and recovery integrity}
+
+Ren et al. combine prediction-error compression with image and ciphertext authentication in RDHEI \cite{ren2025auth}. This is particularly relevant because it demonstrates that authentication is already part of the RDHEI literature. \EDR uses HKDF-derived subkeys, AES-256-CTR and HMAC-SHA256 in its packet implementation. These standard cryptographic mechanisms are not claimed as new. AES-CTR does not itself provide integrity; the HMAC is a separate packet-authentication layer. The authenticated hider key is held by the authorised data hider, so a malicious authorised hider is outside the present threat model.
+
+\subsection{Recent JISA RDHEI methods}
+
+Recent JISA papers are especially important to the intended venue positioning. Ankur et al. use a hybrid predictor and bit-plane label maps with an optimal block-size encoding strategy, reporting average rates of 3.8770 bpp on BOSSBase and 3.7944 bpp on BOWS-2 \cite{ankur2025}. Huang et al. combine a hybrid predictor, stream-cipher encryption, block scrambling and bidirectional flag encoding, reporting 3.76 and 3.37 bpp on the same datasets \cite{huang2025bfe}. Ren et al.'s adaptive block-level pixel-difference encoding (ABPDE) retains local redundancy through block modulation/permutation, codes pixel differences with adaptive Huffman coding, and reports 2.4938 and 2.3508 bpp on BOSSBase and BOWS-2 \cite{ren2026abpde}. Gao and Gao combine multiple linear regression, multi-bit prediction and an adaptive Huffman-coded location map \cite{gao2025mlr}. Kim et al.'s pixel-shifting approach embeds four bits per block through encrypted-block permutation rather than MSB substitution \cite{kim2024psa}. Other JISA contributions include key-controlled balanced Huffman coding, 2D label/block classification, and redundancy-free cipher pixel rotation with multi-MSB replacement \cite{yang2024kbhc,yang2024label,qu2025rotation}.
+
+Table~\ref{tab:jisa-prior} summarises selected direct JISA comparators. The rates are copied from the respective papers' own descriptions. They are not a controlled comparison with \EDR: the datasets, encryption orders, carrier constructions and net-rate definitions differ. Nevertheless, the gap is material and must be acknowledged.
+
+\begin{table}[t]
+\centering
+\caption{Selected recent JISA RDHEI methods relevant to EDR2 positioning. Reported rates are each paper's native values, not harmonised net-rate measurements.}
+\label{tab:jisa-prior}
+\small
+\begin{tabularx}{\textwidth}{p{2.35cm}p{5.05cm}p{2.55cm}X}
+\toprule
+Work & Main mechanism & Native reported result & Relation to EDR2 / comparison limit\\
+\midrule
+Ankur et al. (2025) \cite{ankur2025} & Hybrid prediction; bit-plane-wise label maps; block-based label-map coding with an optimal block-size choice. & 3.8770 bpp (BOSSBase); 3.7944 bpp (BOWS-2). & Closely related to EDR2's predictor labels and in-band guidance. Uses a different block-code and carrier budget.\\
+Huang et al. (2025) \cite{huang2025bfe} & Hybrid prediction; stream cipher; block scrambling; bidirectional flag encoding. & 3.76 bpp (BOSSBase); 3.37 bpp (BOWS-2). & High-capacity comparator; protocol and native payload accounting differ.\\
+Ren et al. (2026) \cite{ren2026abpde} & VRAE block modulation/permutation; adaptive Huffman encoding of encrypted pixel differences; in-band reference/side information. & 2.4938 bpp (BOSSBase); 2.3508 bpp (BOWS-2). & Different encryption/reservation order and carrier construction; rates are native.\\
+Gao and Gao (2025) \cite{gao2025mlr} & MLR prediction, multi-bit prediction, adaptive pixel labels and Huffman coding. & No single numerical rate quoted here. & Relevant to adaptive prediction and compressed location maps; full metric normalisation is not attempted.\\
+Kim et al. (2024) \cite{kim2024psa} & Pixel permutation within encrypted non-overlapping blocks. & Four bits per block. & Different pixel-rearrangement family; not a prediction-error bpp comparison.\\
+Yang et al. (2024) \cite{yang2024kbhc,yang2024label} & Key-controlled balanced Huffman coding; 2D labelling and block classification. & No numerical rate quoted here. & Demonstrates prior art in key-dependent coding and block/label representations.\\
+Qu et al. (2025) \cite{qu2025rotation} & Redundancy-free cipher, pixel rotation and multi-MSB replacement. & No numerical rate quoted here. & Relevant to encrypted-domain rotations and multi-MSB embedding.\\
+Gao et al. (2026) \cite{gao2026emd} & Exploiting modification direction with polynomial secret-image sharing. & Up to 2 bpp for the EMD-RDHP variant; that variant is not lossless. The modified lossless variant's rate is not isolated in the abstract. & Multi-share fault-tolerance and separability differ from the single-image EDR2 receiver contract.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The JISA comparisons sharpen the publication risk: even where the rate definitions cannot be equated, EDR2's 0.0955 pooled usable bpp is far below the native rates reported by several recent methods. The present work must therefore stand on the specific synchronization and receiver-contract contribution and on rigorous empirical evidence, not on a capacity-superiority narrative.
+
+\subsection{Novelty boundary and research question}
+
+The narrow research question is: under what spatial condition do arbitrary writes to selected carrier centres leave every input patch of a fixed centre-masked radius-one predictor unchanged, and how can the phase be located by the receiver without per-image sidecar metadata? \EDR provides a proof for one fixed $3\times3$ predictor and four step-2 phases. The signed-net phase selection and authenticated packet are necessary parts of the implemented composition, not claims of independently unprecedented adaptive partitioning, in-band metadata or authentication.
+
+\section{System model and protocol requirements}
+\label{sec:model}
+
+\subsection{Parties and per-image information}
+
+Let the original image be $X\in\{0,\ldots,255\}^{H\times W}$, with even $H$ and $W$ and native 8-bit grayscale samples. The content owner holds $X$, a 32-byte master key $K$, a 128-bit nonce $V$ that must be unique under $K$, and the preinstalled frozen CNN checkpoint. The owner prepares reversible room and encrypts the reserved image. The owner then provides the independent hider with the reserved encrypted image and a nonce-specific data-hiding capability key $\Kh$ over an assumed authenticated confidential key-delivery channel. The hider additionally receives the user payload. The hider does not receive the plaintext image or image-encryption key. The receiver's only per-image semantic inputs are the final marked encrypted image, $K$ and $V$; the decoder, fixed constants and checkpoint are shared installed software.
+
+The design is therefore receiver-side free of external image-dependent sidecars. It does not claim that no key handoff occurs between owner and hider. The owner-to-hider capability is cryptographic key material, not a prediction map, label map or per-image recovery file.
+
+\subsection{Security assumptions}
+
+The image and data-hiding keys are derived through HKDF-SHA256 with distinct context strings. AES-256-CTR encrypts the image, header stages, directory and payload under separate derived keys. HMAC-SHA256 authenticates the marked packet, binding the image dimensions and the selected lattice phase as well as the marked image bytes (with the tag carrier bytes zeroed for MAC computation). The receiver verifies the tag before decrypting or decompressing the label directory and before CNN inference.
+
+The protocol assumes nonce uniqueness under a master key. Reusing a nonce repeats derived keys and CTR keystreams and is prohibited. AES-CTR is a confidentiality transform, not an integrity mode; packet integrity is provided by the separate HMAC. The data hider possesses the authentication capability and can recompute a valid tag. EDR2 consequently does not claim resistance to a malicious authorised hider. The owner-to-hider key-delivery channel is assumed confidential and authenticated. These are implementation assumptions, not a formal cryptographic proof.
+
+\section{EDR2 method}
+\label{sec:method}
+
+\subsection{Masked CNN predictor}
+
+The active checkpoint is a frozen residual CNN-3$\times$3 with 46,881 trainable parameters. Each candidate's $3\times3$ grayscale patch is converted to float32 and divided by 255; the centre sample is then set to zero. The network applies a $3\times3$ convolution from one to 32 channels, batch normalisation and ReLU; a second $3\times3$ convolution, batch normalisation and ReLU; and a $1\times1$ residual projection from the input. The resulting tensor is flattened and passed through a 128-unit ReLU layer and a one-unit sigmoid output scaled to [0,255]. The centre is masked in the input patch, while the residual projection receives the same masked input. The checkpoint SHA-256 is \texttt{a9021862c753e11b0100fb11eba0d3b55800915654ed962fcdede8449b159d5d}.
+
+Inference is performed on CPU in evaluation mode with fixed preprocessing, a fixed batch size of 2,048, two CPU threads in the optimised implementation, and nearest-even rounding. Batch normalisation uses fixed running statistics. The four phases are evaluated as separate inference sequences; concatenating them into one batch sequence is avoided because batch-dependent numerical differences could compromise the prediction identity contract.
+
+\subsection{Four step-2 candidate phases}
+
+For phase $q\in\{0,1,2,3\}$, define
+\begin{equation}
+r_q=1+\left\lfloor\frac{q}{2}\right\rfloor,\qquad
+c_q=1+(q\bmod2).
+\end{equation}
+The candidate set is
+\begin{equation}
+\mathcal{G}_q=
+\{(y,x): y=r_q+2i,\;x=c_q+2j,\;
+1\le y\le H-2,\;1\le x\le W-2\}.
+\label{eq:grid}
+\end{equation}
+All coordinates are enumerated in row-major order. Only the candidate-centre bytes in the selected phase are mutable. For two distinct candidates $a,b\in\mathcal{G}_q$, the coordinate differences are even integers in each dimension and at least one coordinate differs by at least two, so
+\begin{equation}
+\|a-b\|_\infty\ge2.
+\label{eq:separation}
+\end{equation}
+
+\begin{proposition}[Prediction-input invariance]
+\label{prop:invariance}
+Consider a predictor input at each $a\in\mathcal{G}_q$ formed from the $3\times3$ patch centred at $a$, with the centre entry replaced by a fixed mask value. Suppose embedding modifies image samples only at coordinates in $\mathcal{G}_q$. Then every candidate's masked $3\times3$ predictor input is identical before and after embedding.
+\end{proposition}
+\begin{proof}
+Fix $a\in\mathcal{G}_q$. Its patch support is the Chebyshev-radius-one set $B_\infty(a,1)$. The sample at $a$ is replaced by the same mask value before and after embedding. For any other mutable candidate $b\in\mathcal{G}_q$, \cref{eq:separation} gives $\|a-b\|_\infty\ge2$, hence $b\notin B_\infty(a,1)$. No other mutable candidate occurs in the remaining eight patch entries. All noncandidate image samples remain unchanged by assumption. Therefore every entry of the masked patch is unchanged. Since $a$ was arbitrary, the property holds for every candidate.
+\end{proof}
+
+The proposition concerns equality of predictor inputs. Under the same checkpoint, CPU execution, model evaluation mode, preprocessing, batching and rounding, the implementation obtains matching prediction values. It is not a claim of bitwise equivalence across arbitrary hardware, libraries or floating-point implementations.
+
+\begin{corollary}[Maximum candidate count for even dimensions]
+For even $H$ and $W$, each phase in \cref{eq:grid} contains exactly
+\begin{equation}
+C_{\max}=\frac{H-2}{2}\frac{W-2}{2}
+\label{eq:cmax}
+\end{equation}
+valid candidate centres. Any set satisfying pairwise Chebyshev separation of at least two on the valid-centre rectangle has at most this many centres.
+\end{corollary}
+\begin{proof}
+Partition the valid-centre rectangle of size $(H-2)\times(W-2)$ into disjoint $2\times2$ tiles. Any two integer coordinates in one tile have Chebyshev distance at most one, so at most one member of a mutually separated candidate set can occupy each tile. This gives the upper bound in \cref{eq:cmax}. Each of the four parity phases selects exactly one point per tile and attains the bound.
+\end{proof}
+
+For a $512\times512$ image, each phase contains $255^2=65,025$ candidates, or 24.81\% of all pixels. This is a geometric density bound, not a guarantee of positive net payload.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=0.72]
+\foreach \q/\xo/\yo in {0/0/0,1/1/0,2/0/1,3/1/1}{
+  \begin{scope}[xshift={\xo*5.0cm},yshift={-\yo*3.7cm}]
+    \node[font=\small\bfseries] at (2,3.65) {Phase \q};
+    \foreach \i in {0,...,5}{
+      \foreach \j in {0,...,5}{
+        \draw[gray!60] (\i,\j) rectangle ++(0.8,0.8);
+      }
+    }
+    \foreach \i in {0,...,2}{
+      \foreach \j in {0,...,2}{
+        \fill[blue!60] ({0.4+\xo+2*\i},{0.4+\yo+2*\j}) circle (0.12);
+      }
+    }
+  \end{scope}
+}
+\end{tikzpicture}
+\caption{Four parity-offset step-2 candidate phases. The four phases are alternatives: one phase is selected for a packet, and only its candidate centres are mutable. The dots illustrate a schematic lattice and are not to scale with the full image dimensions.}
+\label{fig:phases}
+\end{figure}
+
+\subsection{Prediction labels and exact reconstruction}
+
+At candidate $i$, the rounded prediction is $p_i$ and the absolute prediction error is $e_i=|X_i-p_i|$. The fixed allocation function maps each $e_i$ to $(n_i,\ell_i,u_i)$, where $n_i$ is the number of MSBs available for replacement and $[\ell_i,u_i]$ is the admissible prediction-error interval used during inverse reconstruction. The 15 distinct triples form the fixed codebook in \cref{tab:codebook}. One four-bit label is stored per candidate. Labels are packed two per byte, high nibble first; the unused low nibble for an odd number of candidates is zero. The packed directory is compressed with zlib level 9 only when the compressed representation is strictly shorter than the raw packed directory.
+
+\begin{table}[t]
+\centering
+\caption{EDR2's 15-class allocation codebook, sorted lexicographically by $(n,\ell,u)$.}
+\label{tab:codebook}
+\small
+\begin{tabular}{rrrr|rrrr}
+\toprule
+Class & $n$ & $\ell$ & $u$ & Class & $n$ & $\ell$ & $u$\\
+\midrule
+0 & 0 & 0 & 0 & 8 & 4 & 4 & 4\\
+1 & 0 & 64 & 64 & 9 & 4 & 9 & 15\\
+2 & 1 & 32 & 32 & 10 & 5 & 2 & 2\\
+3 & 1 & 65 & 127 & 11 & 5 & 5 & 7\\
+4 & 2 & 16 & 16 & 12 & 6 & 1 & 1\\
+5 & 2 & 33 & 63 & 13 & 6 & 3 & 3\\
+6 & 3 & 8 & 8 & 14 & 7 & 0 & 0\\
+7 & 3 & 17 & 31 & & & &\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Given the retained low-bit residue $s_i$, prediction $p_i$ and label $(n_i,\ell_i,u_i)$, the decoder searches
+\begin{equation}
+\mathcal{R}_i=\left\{v\in\{0,\ldots,255\}:
+v\bmod 2^{8-n_i}=s_i,\quad
+\ell_i\le |v-p_i|\le u_i\right\}.
+\label{eq:inverse-set}
+\end{equation}
+For $n_i>0$, reconstruction is accepted only when $|\mathcal{R}_i|=1$. Candidates with $n_i=0$ are unmodified. The implementation audit exhaustively enumerated all 65,536 original/prediction pairs and 396,032 payload words under positive allocation; it reported zero reconstruction-uniqueness failures and confirmed that the production mapping matched the independently enumerated mapping. This is a finite-domain implementation check, not a general proof for arbitrary future codebooks.
+
+\subsection{In-band packet and cryptographic processing}
+
+The encrypted header is 20 bytes with big-endian layout \texttt{>4sB3sIQ}: a four-byte magic value (\texttt{EDR2}), one-byte codec identifier, three reserved zero bytes, a four-byte directory length $L$, and an eight-byte payload length in bits $P$. The next $L$ candidate bytes store the encrypted packed-label directory, followed by a 32-byte HMAC-SHA256 tag. Thus the bootstrap uses
+\begin{equation}
+H=20+L+32=52+L
+\label{eq:bootstrap}
+\end{equation}
+candidate bytes. A separate bootstrap-header key and final-header key are derived to avoid reusing a CTR keystream for the two header states.
+
+Let $s$ be the 16-byte big-endian encoding of $V$. The implementation derives $K_{\mathrm{root}}$ from $(K,s)$ using HKDF-SHA256 and derives separate image and data-hiding domains with distinct context strings. Five additional hider keys are derived for bootstrap header, final header, directory, payload and authentication. The image key is not derivable from $\Kh$ under the stated HKDF domain separation. AES-256-CTR is used independently under each derived key with a zero initial counter. Nonce uniqueness under $K$ is mandatory.
+
+The HMAC input binds the image dimensions, the one-byte phase index and the complete row-major marked-image bytes, with the tag-carrier bytes for that phase set to zero before computation. The receiver tests the four public header locations. At each location it decrypts the fixed-size header and validates framing fields and bounds; it then verifies HMAC before directory decryption/decompression or CNN inference. Exactly one phase must pass. Zero or multiple valid phases are rejected. The hider has the authentication key and is therefore trusted to produce valid packets; malicious-hider resistance is not claimed.
+
+\subsection{Signed net-capacity accounting}
+
+Let $C$ be the number of candidates in a phase and $n_i$ the ordinary replaceable bits at candidate $i$. Define gross ordinary slots
+\begin{equation}
+G_0=\sum_{i=0}^{C-1}n_i.
+\end{equation}
+The bootstrap occupies $H=52+L$ candidate bytes. The ordinary slots forgone at those carrier candidates are
+\begin{equation}
+F=\sum_{i=0}^{H-1}n_i.
+\end{equation}
+The remaining ordinary stream contains $S=G_0-F$ bits. To restore the original $H$ bootstrap candidate bytes, the owner preserves $B=8H$ bits in the ordinary stream. The signed net user-payload budget is
+\begin{equation}
+N_{\mathrm{net}}=S-B=G_0-F-8H.
+\label{eq:net}
+\end{equation}
+An image is rejected if $N_{\mathrm{net}}\le0$. We report signed net rate $N_{\mathrm{net}}/(HW)$ and usable net rate $\max(0,N_{\mathrm{net}})/(HW)$.
+
+The physical metadata occupies $8H$ bits in the bootstrap. Its opportunity cost in ordinary carrier slots is $F$, because the first $H$ candidates no longer supply their usual $n_i$ bits. The bootstrap backup is the separate cost $B=8H$. The ledger reports physical metadata storage, foregone ordinary slots and backup bits separately. The physical metadata storage is not subtracted a second time from \cref{eq:net}; doing so would double-count the same bootstrap region.
+
+For each phase $q$, the owner independently recomputes predictions, labels, compressed directory, $H_q$, $F_q$ and $N_q$, and selects
+\begin{equation}
+q^\star=\arg\max_{q\in\{0,1,2,3\}}N_q,
+\label{eq:phase-select}
+\end{equation}
+using the lowest phase index to break ties. The image is rejected if $\max_qN_q\le0$.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=0.78cm,y=0.72cm,>=Latex]
+  \node[font=\small\bfseries] at (5.8,3.0) {First $H=52+L$ candidate bytes};
+  \draw[thick] (0,2) rectangle (11.6,2.6);
+  \fill[blue!20] (0,2) rectangle (1.8,2.6);
+  \fill[blue!12] (1.8,2) rectangle (7.7,2.6);
+  \fill[red!18] (7.7,2) rectangle (11.6,2.6);
+  \node[font=\scriptsize] at (0.9,2.3) {Header};
+  \node[font=\scriptsize] at (4.75,2.3) {Encrypted directory};
+  \node[font=\scriptsize] at (9.65,2.3) {HMAC tag};
+  \node[font=\small\bfseries] at (5.8,1.35) {Remaining ordinary candidate slots $S=G_0-F$};
+  \draw[thick] (0,0.55) rectangle (11.6,1.0);
+  \fill[green!20] (0,0.55) rectangle (3.1,1.0);
+  \fill[orange!20] (3.1,0.55) rectangle (11.6,1.0);
+  \node[font=\scriptsize] at (1.55,0.78) {Backup $B=8H$};
+  \node[font=\scriptsize] at (7.35,0.78) {Payload $N_{\mathrm{net}}=S-B$};
+  \draw[<->] (0,-0.1) -- (11.6,-0.1);
+  \node[below,font=\scriptsize] at (5.8,-0.1) {Ordinary slots after bootstrap opportunity cost};
+\end{tikzpicture}
+\caption{Schematic packet and signed-net accounting. The bootstrap occupies $8H$ physical metadata bits; it forfeits $F$ ordinary replacement bits at the bootstrap candidates. The original bootstrap bytes are restored using a separate $B=8H$-bit prefix of the remaining ordinary stream.}
+\label{fig:packet}
+\end{figure}
+
+\subsection{Owner, hider and receiver procedure}
+
+The owner validates native uint8 grayscale mode and even image dimensions; evaluates all four phases separately; builds and losslessly codes each label directory; chooses the maximum signed net phase; saves the original bootstrap bytes in the backup prefix; writes zero reservation bits; encrypts the reserved image; and installs the encrypted bootstrap header, directory and HMAC tag. The owner has no user-payload argument during reservation.
+
+The hider authenticates the bootstrap packet, decrypts and validates the bounded directory, reconstructs the ordinary slot stream, checks that the payload length does not exceed the reserved net capacity, encrypts the padded payload under its dedicated subkey, writes ciphertext bits into the reserved ordinary slots, and replaces the bootstrap header with the final payload length and recomputed HMAC. The hider does not decrypt the image or require the CNN.
+
+The receiver derives its keys from $(K,V)$, tests the four possible final-header locations, accepts exactly one authenticated and bounded directory, extracts and decrypts payload bits, checks payload padding, restores the known-zero reservation positions before image decryption, reconstructs candidate pixels using \cref{eq:inverse-set}, restores the original bootstrap bytes from the backup prefix and returns both host and payload. The receiver process uses the marked image as its only per-image data file.
+
+\section{Experimental design}
+\label{sec:experiments}
+
+\subsection{Corpus and curation}
+
+The evaluation corpus contains 243 distinct native 8-bit grayscale USC-SIPI images. The final curation labels 232 images as natural-labelled and 11 as constructed texture mosaics. Two source files with duplicate decoded pixel arrays were removed from 245 catalogue-curated inputs; five nonconforming files were skipped. Images were read in native mode L without resizing, cropping, colour conversion or recompression. The dimensions were 256$\times$256 for 62 images, 512$\times$512 for 152 images and 1024$\times$1024 for 29 images. The image ledger contains 29 provenance/correlation clusters. The 232 natural-labelled cases include sequences and rotated texture series; they should not be interpreted as 232 independent natural photographs.
+
+The final evaluation manifest records the six canonical small-image baseline stems (Airplane, Baboon, Goldhill, Jetplane, Lena and Peppers) as absent from this expanded corpus. Accordingly, the paper does not claim that these six classic images are part of the 243-image evaluation. Per-file source SHA-256 and decoded-pixel SHA-256 values were retained for all 243 accepted images.
+
+\begin{table}[t]
+\centering
+\caption{Final grayscale corpus composition.}
+\label{tab:corpus}
+\small
+\begin{tabular}{lrr}
+\toprule
+Stratum & Images & Percentage\\
+\midrule
+Natural-labelled & 232 & 95.47\\
+Constructed texture mosaics & 11 & 4.53\\
+\midrule
+Total & 243 & 100.00\\
+\addlinespace
+$256\times256$ & 62 & 25.51\\
+$512\times512$ & 152 & 62.55\\
+$1024\times1024$ & 29 & 11.93\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation protocol and estimands}
+
+All final evaluations used frozen checkpoints; no training or fine-tuning was performed during the evaluation runs. The active CNN-3$\times$3 checkpoint SHA-256 and model architecture are reported in \cref{sec:method}. The training corpus, source-image inventory, train/validation split, random seed and full checkpoint-selection history were not available in the final evaluation artifacts. The manuscript therefore does not claim that training/test leakage has been independently excluded; this provenance must be supplied before submission.
+
+For image $j$, let $N_j$ be its signed net payload and $P_j=H_jW_j$ its pixel count. The paper reports (i) positive-net coverage, (ii) all-image mean signed rate, (iii) mean usable rate with rejected images set to zero, (iv) pooled usable rate $\sum_j\max(0,N_j)/\sum_jP_j$, and (v) the median and quartiles of per-image usable rates. Positive-only averages are not used as the primary capacity claim. Uncertainty is estimated by cluster bootstrap over the 29 provenance/correlation clusters with 10,000 replicates and seed 20261119. The reported intervals are descriptive for this corpus; they do not eliminate dataset-selection or training-provenance limitations.
+
+\subsection{Predictor comparison}
+
+The predictor-only comparison uses a common step-4 grid with 16 phases and a three-pixel border so that the largest tested $7\times7$ predictor and classical predictors use the same candidate positions. This experiment evaluates prediction MAE and positive-net coverage under a shared comparison grid. It is separate from native \EDR, which uses its step-2/four-phase grid. The CALIC reference is a simplified CALIC-style predictor, not a full canonical CALIC implementation. The compared learned models are frozen checkpoints; the $5\times5$ no-weighted-loss model is included as an ablation.
+
+\subsection{External native-protocol replications}
+
+Multi-MSB+Huffman and PPMR were reproduced on the same 243 decoded source images and pixel arrays as \EDR. The Multi-MSB+Huffman upstream code was pinned to commit \texttt{1e69ae2713dededa56595ff09255cda1e17896d9}; its evaluation adapter passes the actually embedded payload count returned by the source method to the source extractor. PPMR was pinned to \texttt{21f397890289049798ced0f98d1482d629f93b06}. Four narrow compatibility repairs were applied to a temporary copy: two repairs to bit-plane 7/8 encoder/decoder branch structure and two active-plane extraction-order corrections. The results are labelled corrected PPMR, not an unmodified upstream run. The reproduction used GNU Octave on Linux; equivalence of Octave and MATLAB random-number streams is not claimed.
+
+The paired comparison checks exact source-file and decoded-pixel hashes. The final merge contains 243 unique image IDs, no missing or duplicate rows, and 243 exact image and payload passes for both external methods. Rates remain each method's native protocol rates. This is a matched-corpus comparison, not identical carrier geometry, packet cost, encryption order, authentication or receiver-side-information assumptions.
+
+\subsection{Correctness, security tests and runtime}
+
+The native EDR2 ledger records six payload cases for each positive-net image: empty, one-bit, short, partial, near-maximum and full measured-capacity. The total is $163\times6=978$ receiver trials. Image and payload equality are checked independently.
+
+The finite-domain mapping audit enumerates all 65,536 prediction/original pairs and 396,032 valid payload words under positive allocations. A 20,000-input Atheris parser-fuzz campaign reports zero crashes, with 121 coverage counters and 188 feature counters. Deterministic malformed-packet and mutation tests additionally exercise header bounds, reserved bytes, directory codec/length handling, authentication failures, wrong key/nonce cases and bounded compressed-directory rejection. These are implementation robustness tests, not a formal cryptographic proof.
+
+Two performance measurements have different scopes and are kept separate. The predictor-only benchmark used a deterministic synthetic $512\times512$ grayscale image, five warm-up runs and ten CPU repeats with four PyTorch threads. The later E2E benchmark used USC-SIPI image 5.2.08.tiff, two warm-ups and ten measured CPU repetitions with the model resident, two threads and vectorised patch extraction. The optimisation was checked against the original patch-extraction path and produced identical patch arrays and zero rounded-prediction mismatches under the validated settings. The E2E benchmark excludes process startup, checkpoint loading, file I/O and dataset acquisition. RSS was sampled every 5 ms, so short-lived peaks may be missed.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Native EDR2 grayscale capacity and exact recovery}
+
+The native EDR2 capacity ledger contains 243 images. Positive signed net capacity was obtained for 163 images (67.08\%); 80 images were rejected because the signed net budget was non-positive. The mean signed net rate over all images was 0.11054 bpp, the mean usable rate was 0.14322 bpp and the pooled usable rate was 0.09550 bpp. The median per-image usable rate was 0.04705 bpp, with first quartile 0 and third quartile 0.19497 bpp. The mean usable-rate cluster-bootstrap 95\% interval was 0.06139--0.25038 bpp; the positive-coverage interval was 50.19--82.39\%.
+
+All 978 receiver trials on the positive-capacity subset recovered both the original image and payload exactly. This result applies to the six tested payload cases on the 163 accepted images; it does not imply that every one of the 243 images could carry a positive payload.
+
+\begin{table}[t]
+\centering
+\caption{Native EDR2 net-capacity results over the full 243-image corpus.}
+\label{tab:capacity}
+\small
+\begin{tabular}{lr}
+\toprule
+Metric & Result\\
+\midrule
+Images & 243\\
+Positive-net images & 163/243 (67.08\%)\\
+Non-positive images & 80/243\\
+Mean signed net rate (all images) & 0.11054 bpp\\
+Mean usable rate (all images, rejected set to zero) & 0.14322 bpp\\
+Pooled usable rate & 0.09550 bpp\\
+Median usable rate & 0.04705 bpp\\
+First / third quartile & 0.00000 / 0.19497 bpp\\
+95\% CI: mean usable rate (29-cluster bootstrap) & [0.06139, 0.25038] bpp\\
+95\% CI: positive-net coverage & [50.19\%, 82.39\%]\\
+Exact image-and-payload trials & 978/978\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Capacity heterogeneity across image strata}
+
+Capacity varied substantially with image dimensions and corpus family. Positive-net coverage was 45/62 at $256\times256$, 108/152 at $512\times512$ and 10/29 at $1024\times1024$. The $1024\times1024$ stratum had a negative mean signed rate and a low mean usable rate. This is not evidence of a monotonic resolution law: the image families and directory compression costs differ across strata. Constructed texture mosaics were more difficult than the natural-labelled subset: 4/11 constructed images and 159/232 natural-labelled images had positive net capacity. The constructed and natural-labelled categories are curation labels and should not be interpreted as a controlled natural-versus-synthetic experiment.
+
+\begin{table}[t]
+\centering
+\caption{EDR2 capacity by image dimension. Mean usable rate is the arithmetic per-image mean; pooled usable rate divides total usable bits by total pixels.}
+\label{tab:resolution}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Resolution & Images & Positive & Coverage & Mean / pooled usable bpp\\
+\midrule
+$256\times256$ & 62 & 45 & 72.58\% & 0.19549 / 0.19549\\
+$512\times512$ & 152 & 108 & 71.05\% & 0.14624 / 0.14624\\
+$1024\times1024$ & 29 & 10 & 34.48\% & 0.01564 / 0.01564\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{EDR2 capacity by final curation label.}
+\label{tab:classification}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Curation label & Images & Positive & Coverage & Mean usable bpp\\
+\midrule
+Natural-labelled & 232 & 159 & 68.53\% & 0.14902\\
+Constructed texture mosaics & 11 & 4 & 36.36\% & 0.02088\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Effect of four-phase selection}
+
+Table~\ref{tab:phases} compares each fixed phase with the adaptive maximum-net rule. The four fixed phases each contain the same number of geometric candidate positions, but their prediction-error labels and bootstrap opportunity costs differ. Phase 2 had the highest fixed-phase mean usable rate among the four. Adaptive selection increased mean usable rate to 0.14322 bpp and positive coverage to 163 images. Against phase 0, the selected phase produced a larger signed net budget for 192 images, tied for 51 images and never produced a smaller budget. The mean gain was 761.4 bits per image and the median gain was 544 bits. Positive coverage increased from 161 to 163 images, a gain of two cases. This is a measurable but modest gain, not a large capacity improvement.
+
+\begin{table}[t]
+\centering
+\caption{Fixed-phase and adaptive EDR2 outcomes.}
+\label{tab:phases}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Selection rule & Positive images & Mean signed bpp & Mean usable bpp & Pooled usable bpp\\
+\midrule
+Fixed phase 0 & 161/243 & 0.10735 & 0.14070 & 0.09367\\
+Fixed phase 1 & 158/243 & 0.10311 & 0.13709 & 0.09056\\
+Fixed phase 2 & 161/243 & 0.10917 & 0.14231 & 0.09501\\
+Fixed phase 3 & 159/243 & 0.10624 & 0.13981 & 0.09297\\
+Adaptive maximum signed net & 163/243 & 0.11054 & 0.14322 & 0.09550\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  width=0.88\textwidth,height=6.2cm,
+  ymin=0,ymax=180,
+  ylabel={Images with positive net capacity},
+  symbolic x coords={Phase 0,Phase 1,Phase 2,Phase 3,Adaptive},
+  xtick=data,
+  x tick label style={font=\small},
+  nodes near coords,
+  nodes near coords style={font=\scriptsize},
+  bar width=15pt,
+  enlarge x limits=0.12,
+  ymajorgrids=true,
+  grid style={gray!20}
+]
+\addplot coordinates {(Phase 0,161) (Phase 1,158) (Phase 2,161) (Phase 3,159) (Adaptive,163)};
+\end{axis}
+\end{tikzpicture}
+\caption{Positive-net coverage for each fixed phase and the adaptive four-phase choice. Adaptive selection increases coverage by two images relative to phase 0.}
+\label{fig:phase-results}
+\end{figure}
+
+\subsection{Matched-grid predictor comparison}
+
+The predictor comparison uses the common step-4/16-phase grid and must not be interpreted as the native step-2/four-phase EDR2 experiment. The CNN predictors reduced candidate MAE relative to MED, GAP and the simplified CALIC-style baseline. However, the selected CNN-3$\times$3 checkpoint did not achieve the best learned-predictor MAE or positive-net coverage. The CNN-5$\times$5 no-weighted-loss ablation achieved MAE 4.6233 and 140/243 positive-net outcomes, compared with 4.8130 and 133/243 for the CNN-3$\times$3 EDR2 checkpoint. Thus the smaller model is retained for the radius-one synchronization construction, not because it is the most accurate predictor.
+
+\begin{table}[t]
+\centering
+\caption{Predictor comparison on a common step-4/16-phase grid. Positive-net outcomes and MAE are measured within this separate predictor study; they are not native EDR2 step-2/four-phase capacity results.}
+\label{tab:predictors}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Predictor & Mean candidate MAE & Positive-net images & Coverage\\
+\midrule
+MED & 7.9503 & 49/243 & 20.16\%\\
+GAP & 7.8408 & 58/243 & 23.87\%\\
+Simplified CALIC-style & 8.2021 & 49/243 & 20.16\%\\
+CNN-5$\times$5 residual & 4.6324 & 138/243 & 56.79\%\\
+CNN-5$\times$5 no residual & 4.6573 & 139/243 & 57.20\%\\
+CNN-5$\times$5 no weighted loss & 4.6233 & 140/243 & 57.61\%\\
+CNN-3$\times$3 EDR2 checkpoint & 4.8130 & 133/243 & 54.73\%\\
+CNN-7$\times$7 residual & 4.6882 & 140/243 & 57.61\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.9\textwidth,height=7.0cm,
+  xlabel={Mean candidate MAE (lower is better)},
+  ylabel={Positive-net images (out of 243)},
+  xmin=4.3,xmax=8.5,ymin=35,ymax=150,
+  grid=both,grid style={gray!20},
+  legend style={at={(0.98,0.02)},anchor=south east,font=\scriptsize},
+  every axis plot/.append style={mark=*}
+]
+\addplot coordinates {(7.9503,49)};\addlegendentry{MED}
+\addplot coordinates {(7.8408,58)};\addlegendentry{GAP}
+\addplot coordinates {(8.2021,49)};\addlegendentry{Simplified CALIC}
+\addplot coordinates {(4.6324,138)};\addlegendentry{CNN-5$\times$5 residual}
+\addplot coordinates {(4.6573,139)};\addlegendentry{CNN-5$\times$5 no residual}
+\addplot coordinates {(4.6233,140)};\addlegendentry{CNN-5$\times$5 no weighted loss}
+\addplot[mark=square*,thick] coordinates {(4.8130,133)};\addlegendentry{EDR2 CNN-3$\times$3}
+\addplot coordinates {(4.6882,140)};\addlegendentry{CNN-7$\times$7}
+\end{axis}
+\end{tikzpicture}
+\caption{Predictor MAE against positive-net outcomes under the common step-4 comparison grid. The EDR2 CNN-3$\times$3 point is highlighted; the 5$\times$5 no-weighted-loss ablation is better on both reported measures.}
+\label{fig:predictor}
+\end{figure}
+
+\subsection{Same-corpus native-protocol external comparison}
+
+Table~\ref{tab:external} reports the 243-image native-protocol comparison. All three methods use the same source files and decoded pixel arrays, and the comparison merger verified 243 exact image and payload passes for each method. Multi-MSB+Huffman is positive on 243 images; corrected PPMR is positive on 238; EDR2 is positive on 163. The external methods have substantially higher native usable rates. The paired mean difference in usable rate relative to EDR2 was 1.9453 bpp for Multi-MSB+Huffman (29-cluster bootstrap 95\% interval 1.6837--2.2412) and 2.0850 bpp for corrected PPMR (interval 1.7697--2.4031). These are paired same-image comparisons, but not identical-packet or identical-security-model comparisons.
+
+\begin{table}[t]
+\centering
+\caption{Paired same-corpus native-protocol results over 243 hash-matched images. Each method retains its native carrier and overhead expression; rates are not a same-packet-cost or same-security-model leaderboard.}
+\label{tab:external}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Method & Positive images & Mean usable bpp & Pooled usable bpp & Exact recoveries\\
+\midrule
+EDR2 step-2/four-phase & 163/243 & 0.14322 & 0.09550 & 978/978 accepted-case trials\\
+Multi-MSB+Huffman & 243/243 & 2.08848 & 1.97350 & 243/243 host and payload\\
+Corrected PPMR & 238/243 & 2.22817 & 2.11817 & 243/243 host and payload\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The external results must be interpreted with their source-level distinctions. Multi-MSB+Huffman was pinned to the upstream implementation and its adapter passed the returned embedded payload count to extraction rather than the longer requested count in the upstream demonstration driver. PPMR required four narrowly scoped compatibility repairs in a temporary checkout: separate bit-plane 7 and 8 encoder/decoder branches and active-plane extraction-order corrections in the uniform and non-uniform extraction paths. The original upstream repositories were not modified. The Octave execution environment does not claim equivalence to MATLAB's pseudorandom stream. These details do not invalidate the reproduction, but they limit how strongly the external rates can be interpreted.
+
+\subsection{Runtime and memory}
+
+The original predictor-only benchmark measured the CNN-3$\times$3 at 708.479 ms per full $512\times512$ map and MED at 3.826 ms on a synthetic grayscale input using the same four-thread comparison harness. This is approximately 185.2 times slower than MED. The CNN contains 46,881 parameters and requires 122,816 MACs per patch (245,632 FLOPs under the convention of two FLOPs per MAC). The full-map operation count is approximately 64.39 billion FLOPs, excluding patch extraction, memory copies, normalisation and nonlinear operations.
+
+A later vectorised sliding-window patch extractor was validated against the original slice-and-stack implementation. The extracted patch arrays were identical and the optimisation sweep found zero rounded-prediction mismatches under the tested settings. The optimised active configuration uses two CPU threads and a batch size of 2,048. On one native $512\times512$ USC-SIPI image, the full in-memory E2E pipeline measured 1.114019 s mean (standard deviation 0.058079 s; median 1.120437 s) across ten repeats, embedding 39,655 bits (0.151272 bpp) each time with 10/10 exact image and payload recoveries. Mean stage times were 0.582318 s for prediction/directory preparation, 0.070166 s for reservation/encryption, 0.043262 s for encrypted-domain embedding/authentication and 0.418273 s for receiver authentication/extraction/recovery. Sampled RSS increased by 10.87 MiB. This is a single-image warmed CPU benchmark, not a multi-resolution scalability study.
+
+\begin{table}[t]
+\centering
+\caption{Runtime and memory measurements. The predictor-only and end-to-end entries use different measurement scopes and must not be directly interpreted as one benchmark series.}
+\label{tab:runtime}
+\small
+\begin{tabularx}{\textwidth}{l r X}
+\toprule
+Measurement & Value & Scope and limitation\\
+\midrule
+MED predictor & 3.826 ms mean & Synthetic $512\times512$ input; four threads; predictor-only.\\
+CNN-3$\times$3 predictor & 708.479 ms mean & Same original predictor-only comparison harness; approximately 185.2$\times$ MED.\\
+CNN-3$\times$3 complexity & 46,881 params; 122,816 MAC/patch & Conv2d and Linear MACs; non-matrix operations excluded.\\
+Optimised E2E & 1.114019 s mean; SD 0.058079 s & One native $512\times512$ image; two warm-ups and ten measured repeats; model resident.\\
+E2E stages & 0.5823 / 0.0702 / 0.0433 / 0.4183 s & Prediction+directory / reserve+encrypt / embed+authenticate / receiver.\\
+E2E memory & +10.87 MiB sampled RSS & 5-ms sampling; transient peaks may be missed.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Security analysis and limitations}
+\label{sec:security}
+
+\subsection{What the implementation tests establish}
+
+The implementation tests support four separate statements. First, the stated geometry makes the masked predictor input invariant under writes at candidate centres. Second, the finite allocation table was exhaustively checked over the 8-bit prediction/original domain and tested valid payload words. Third, the packet implementation checks header bounds, reserved fields, phase-bound authentication and bounded directory parsing before decompression. Fourth, the tested end-to-end receiver trials produced exact host and payload recovery for all accepted corpus cases. The 20,000-input Atheris campaign completed with zero reported crashes and 121 coverage counters and 188 feature counters. These are finite test results and implementation evidence, not proofs against all possible inputs or attacks.
+
+\subsection{Cryptographic interpretation}
+
+HKDF context separation prevents accidental reuse of one derived key across image encryption, staged headers, directory, payload and authentication. AES-256-CTR provides confidentiality only under the required unique-key/nonce discipline; it is malleable and is not treated as an integrity mechanism. The HMAC-SHA256 tag authenticates the marked packet against parties lacking the authentication key. Since the authorised hider has that key, it can recompute a valid tag after changing the packet; EDR2 therefore trusts the hider. The owner-to-hider key handoff is assumed confidential and authenticated. No formal cryptographic reduction, side-channel analysis, nonce-misuse test suite or independent cryptographic audit is claimed.
+
+\subsection{Main limitations}
+
+The principal limitations are:
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Net payload is low relative to the two reproduced external methods and the recent JISA literature; only 163/243 images have positive net capacity.
+\item The four-phase selection rule improves positive coverage by only two images relative to fixed phase 0, although it increases the net budget on 192 images.
+\item The selected CNN-3$\times$3 is not the best predictor in the matched-grid ablation; the $5\times5$ no-weighted-loss checkpoint has lower MAE and seven additional positive-net outcomes.
+\item The predictor-only CPU time is approximately 185 times the MED time in the original common timing harness. The later optimised E2E time is a single-image benchmark, not a corpus or deployment latency estimate.
+\item The protocol currently supports even-sized native 8-bit grayscale images only. RGB work is exploratory; odd dimensions, 16-bit images and cross-platform predictor identity are not established.
+\item Dataset source and decoded-pixel hashes are recorded, but the training manifest for the frozen checkpoint (training images, split, seed, optimiser, loss and checkpoint-selection record) was not present in the final evidence bundle. Training/test leakage therefore cannot be independently excluded from the supplied artifacts.
+\item The corpus contains related texture rotations and sequence frames. Cluster-level bootstrap partially addresses dependence, but the results remain corpus-specific.
+\item HMAC and mutation/fuzz tests do not constitute a formal security proof or independent cryptographic review.
+\item The external baseline comparison is matched by image identity but not by packet-cost, encryption order, carrier construction, authentication model or receiver-side-information assumptions.
+\end{enumerate}
+
+\subsection{JISA suitability and rejection risk}
+
+The system falls within multimedia security, but its strongest possible JISA argument is the concrete connection between a local predictor's receptive field, a deterministic carrier geometry, authenticated in-band phase discovery and a receiver-side recovery contract. JISA's current scope emphasises substantive technical contributions and practical security relevance, while excluding work that is only a formal model or routine application of an off-the-shelf ML model \cite{jisaScope}. EDR2 includes an implementation and empirical validation, but the current results do not show high payload capacity and the narrow novelty may be judged incremental beside recent JISA methods. A submission should be attempted only if the authors can complete the checkpoint training provenance, strengthen the prior-art distinction with full-text review, and defend why the synchronization property constitutes a nontrivial security/engineering contribution despite the payload gap. The present manuscript does not recommend a high-capacity or state-of-the-art framing.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper presented \EDR, an RRBE protocol using a centre-masked residual CNN-3$\times$3, four maximum-density step-2 candidate phases, signed net-capacity phase selection and authenticated in-band phase discovery. The central mathematical result is that, within a phase, arbitrary modifications to candidate-centre values cannot alter any candidate's masked $3\times3$ predictor input, because the centre is masked and no other mutable centre lies within Chebyshev radius one. The owner chooses the phase with the largest signed net payload after the compressed directory, bootstrap opportunity cost and bootstrap-byte backup are charged.
+
+On 243 curated native grayscale images, 163 images had positive net capacity and 978/978 receiver trials on those images were exact. Adaptive selection improved the net budget over phase 0 on 192 images, tied on 51 and never reduced it, but added only two positive-capacity cases. The mean and pooled usable rates were 0.1432 and 0.0955 bpp. Two external methods reproduced on the same source/pixel corpus achieved much higher native-protocol rates, while a separate predictor study found that the $5\times5$ no-weighted-loss model outperformed the selected $3\times3$ model in MAE and positive-net coverage. These results preclude capacity or predictor-superiority claims. The current contribution is therefore a bounded prediction-synchronization and packet/recovery construction with implementation evidence; its publication value depends on whether that contribution is sufficiently distinct and practically useful in a high-capacity RDHEI field.
+
+\section*{CRediT authorship contribution statement}
+[Complete using the actual contributions of each author. Do not infer roles.]
+
+\section*{Declaration of competing interest}
+[Insert the authors' actual declaration.]
+
+\section*{Data availability}
+The evaluation uses hash-pinned source and decoded-pixel manifests, a per-image capacity ledger, exact-recovery records, baseline comparison tables, runtime evidence and parser-test evidence archived with the project repository. Add a persistent release/DOI for the final source and supplement before submission; a GitHub Actions artifact alone should not be treated as a permanent archival repository.
+
+\section*{Funding}
+[Insert funding information or state that no specific funding was received, if accurate.]
+
+\section*{Acknowledgements}
+[Insert acknowledgements or remove this section.]
+
+\bibliographystyle{elsarticle-num}
+\bibliography{EDR2_JISA_References}
+
+\end{document}
