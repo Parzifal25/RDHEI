@@ -112,21 +112,18 @@ Table~\ref{tab:jisa-prior} summarises selected direct JISA comparators. The rate
 
 \begin{table}[t]
 \centering
-\caption{Selected recent JISA RDHEI methods relevant to EDR2 positioning. Reported rates are each paper's native values, not harmonised net-rate measurements.}
+\caption{Selected JISA RDHEI comparators. Quoted rates use each paper's own dataset and accounting convention and are not harmonised with EDR2.}
 \label{tab:jisa-prior}
-\small
-\begin{tabularx}{\textwidth}{p{2.35cm}p{5.05cm}p{2.55cm}X}
+\footnotesize
+\begin{tabularx}{\textwidth}{p{2.15cm}Y p{2.55cm}Y}
 \toprule
-Work & Main mechanism & Native reported result & Relation to EDR2 / comparison limit\\
+Work & Main mechanism & Native reported result & Comparison boundary\\
 \midrule
-Ankur et al. (2025) \cite{ankur2025} & Hybrid prediction; bit-plane-wise label maps; block-based label-map coding with an optimal block-size choice. & 3.8770 bpp (BOSSBase); 3.7944 bpp (BOWS-2). & Closely related to EDR2's predictor labels and in-band guidance. Uses a different block-code and carrier budget.\\
-Huang et al. (2025) \cite{huang2025bfe} & Hybrid prediction; stream cipher; block scrambling; bidirectional flag encoding. & 3.76 bpp (BOSSBase); 3.37 bpp (BOWS-2). & High-capacity comparator; protocol and native payload accounting differ.\\
-Ren et al. (2026) \cite{ren2026abpde} & VRAE block modulation/permutation; adaptive Huffman encoding of encrypted pixel differences; in-band reference/side information. & 2.4938 bpp (BOSSBase); 2.3508 bpp (BOWS-2); reported margins +0.2845/+0.2900 bpp. & Different encryption/reservation order and carrier construction; rates are native.\\
-Gao and Gao (2025) \cite{gao2025mlr} & MLR prediction, multi-bit prediction, adaptive pixel labels and Huffman coding. & No single numerical rate quoted here. & Relevant to adaptive prediction and compressed location maps; full metric normalisation is not attempted.\\
-Kim et al. (2024) \cite{kim2024psa} & Pixel permutation within encrypted non-overlapping blocks. & Four bits per block. & Different pixel-rearrangement family; not a prediction-error bpp comparison.\\
-Yang et al. (2024) \cite{yang2024kbhc,yang2024label} & Key-controlled balanced Huffman coding; 2D labelling and block classification. & No numerical rate quoted here. & Demonstrates prior art in key-dependent coding and block/label representations.\\
-Qu et al. (2025) \cite{qu2025rotation} & Redundancy-free cipher, pixel rotation and multi-MSB replacement. & No numerical rate quoted here. & Relevant to encrypted-domain rotations and multi-MSB embedding.\\
-Gao et al. (2026) \cite{gao2026emd} & Exploiting modification direction with polynomial secret-image sharing. & Up to 2 bpp for the EMD-RDHP variant; that variant is not lossless. The modified lossless variant's rate is not isolated in the abstract. & Multi-share fault-tolerance and separability differ from the single-image EDR2 receiver contract.\\
+Ankur et al. (2025) \cite{ankur2025} & Hybrid prediction; bit-plane label maps; optimal block-size coding. & 3.8770 bpp BOSSBase; 3.7944 bpp BOWS-2. & Close to EDR2's label representation, but a different block code and carrier budget.\\
+Huang et al. (2025) \cite{huang2025bfe} & Hybrid prediction; stream cipher; block scrambling; bidirectional flags. & 3.76 bpp BOSSBase; 3.37 bpp BOWS-2. & High-capacity comparator with different protocol and native accounting.\\
+Ren et al. (2026) \cite{ren2026abpde} & Adaptive block-level pixel differences; block modulation/permutation; adaptive Huffman coding. & 2.4938 bpp BOSSBase; 2.3508 bpp BOWS-2. & Different reservation and carrier construction; reported margins over its comparators are +0.2845/+0.2900 bpp.\\
+Gao and Gao (2025) \cite{gao2025mlr} & Multiple linear regression, multi-bit prediction and adaptive Huffman-coded location map. & No single rate quoted here. & Relevant prior art for adaptive predictors and compressed maps.\\
+Kim et al. (2024) \cite{kim2024psa} & Pixel permutation in encrypted non-overlapping blocks. & 4 bits per block. & Different pixel-rearrangement family, not prediction-error bpp.\\
 \bottomrule
 \end{tabularx}
 \end{table}
