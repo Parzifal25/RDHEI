@@ -5,36 +5,28 @@
 \usetikzlibrary{arrows.meta,positioning,calc,fit}
 \begin{document}
 \begin{tikzpicture}[
-  x=0.72cm,y=0.72cm,transform shape,
+  x=0.75cm,y=0.75cm,transform shape,
   font=\sffamily,
   flow/.style={-Latex,very thick,draw=black!70},
   mainbox/.style={draw=#1,fill=#1!5,rounded corners=2mm,thick,
-    text width=4.55cm,minimum height=1.45cm,align=center,inner sep=5pt},
-  infobox/.style={draw=gray!60,fill=gray!5,rounded corners=2mm,
-    text width=4.55cm,minimum height=1.35cm,align=center,inner sep=5pt},
+    text width=5.6cm,minimum height=2.05cm,align=center,inner sep=6pt},
+  footer/.style={draw=gray!60,fill=gray!5,rounded corners=2mm,
+    text width=12.8cm,minimum height=0.8cm,align=center,inner sep=5pt}
 ]
-\node[font=\bfseries\large] at (9,2.0) {EDR2: prediction-context invariance and authenticated phase discovery};
+\node[font=\bfseries\large] at (4,2.35) {EDR2: invariant prediction inputs and authenticated phase discovery};
 
-\node[mainbox=blue] (owner) at (0,0) {\textbf{Content owner}\\Frozen centre-masked CNN-$3\times3$\\Evaluate four step-2 phases\\Select maximum signed net payload};
-\node[mainbox=blue] (reserved) at (6,0) {\textbf{Reserved encrypted image}\\20-byte header\\Encrypted label directory\\32-byte HMAC tag and bootstrap backup};
-\node[mainbox=orange] (hider) at (12,0) {\textbf{Independent hider}\\Authenticate bootstrap\\Insert encrypted payload\\Update final header and HMAC};
-\node[mainbox=green!50!black] (receiver) at (18,0) {\textbf{Authorised receiver}\\Marked image + master key + nonce\\Probe four phases and authenticate\\Extract payload and recover image};
+\node[mainbox=blue] (owner) at (0,0) {\textbf{1. Content owner}\\Frozen centre-masked CNN-$3\times3$\\Evaluate four step-2 phases\\Select the maximum signed net payload};
+\node[mainbox=blue] (reserved) at (8,0) {\textbf{2. Reserved encrypted image}\\20-byte header + encrypted label directory\\32-byte HMAC tag + bootstrap-byte backup};
+\node[mainbox=orange] (hider) at (8,-4.8) {\textbf{3. Independent hider}\\Authenticate bootstrap before directory decoding\\Insert the encrypted user payload\\Write final header and recompute HMAC};
+\node[mainbox=green!50!black] (receiver) at (0,-4.8) {\textbf{4. Authorised receiver}\\Marked image + master key + nonce\\Probe four phase locations and authenticate\\Extract payload and reconstruct the original image};
 
 \draw[flow] (owner.east) -- (reserved.west);
-\draw[flow] (reserved.east) -- (hider.west);
-\draw[flow] (hider.east) -- (receiver.west);
+\draw[flow] (reserved.south) -- (hider.north);
+\draw[flow] (hider.west) -- (receiver.east);
 
-\node[infobox] (geometry) at (0,-3.25) {\textbf{Spatial non-interference}\\Candidate centre is masked; all other mutable centres satisfy $\|a-b\|_\infty\geq2$.};
-\node[infobox] (budget) at (6,-3.25) {\textbf{Signed net accounting}\\$N_q=G_{0,q}-F_q-8H_q$. Reject if $N_q\leq0$.};
-\node[infobox] (integrity) at (12,-3.25) {\textbf{Packet integrity}\\HKDF-separated keys; AES-CTR encryption; HMAC verified before directory decoding.};
-\node[infobox] (evidence) at (18,-3.25) {\textbf{Measured evidence}\\243 grayscale images; 163 positive-net; 978/978 exact accepted-case trials.};
-
-\draw[dashed,gray!75,-Latex] (owner.south) -- (geometry.north);
-\draw[dashed,gray!75,-Latex] (reserved.south) -- (budget.north);
-\draw[dashed,gray!75,-Latex] (hider.south) -- (integrity.north);
-\draw[dashed,gray!75,-Latex] (receiver.south) -- (evidence.north);
-
-\node[font=\scriptsize,text=gray!80!black] at (9,-4.8)
-{Mean usable rate 0.1432 bpp; pooled usable rate 0.0955 bpp.};
+\node[footer] at (4,-7.05) {\textbf{Why prediction is synchronised:} mask the candidate centre; every other mutable centre is at Chebyshev distance $\geq2$. \quad
+\textbf{Net budget:} $N_q=G_{0,q}-F_q-8H_q$; reject if $N_q\leq0$.};
+\node[font=\scriptsize,text=gray!80!black] at (4,-8.0)
+{243 grayscale images; 163 positive-net cases; 978/978 exact accepted-case trials. Mean usable rate 0.1432 bpp; pooled usable rate 0.0955 bpp.};
 \end{tikzpicture}
 \end{document}
