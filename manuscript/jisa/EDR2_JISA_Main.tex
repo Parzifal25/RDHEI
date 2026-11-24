@@ -135,7 +135,7 @@ The design is therefore receiver-side free of external image-dependent sidecars.
 
 The image and data-hiding keys are derived through HKDF-SHA256 with distinct context strings. AES-256-CTR encrypts the image, header stages, directory and payload under separate derived keys. HMAC-SHA256 authenticates the marked packet, binding the image dimensions and the selected lattice phase as well as the marked image bytes (with the tag carrier bytes zeroed for MAC computation). The receiver verifies the tag before decrypting or decompressing the label directory and before CNN inference.
 
-The protocol assumes nonce uniqueness under a master key. Reusing a nonce repeats derived keys and CTR keystreams and is prohibited. AES-CTR is a confidentiality transform, not an integrity mode; packet integrity is provided by the separate HMAC. The data hider possesses the authentication capability and can recompute a valid tag. the proposed system consequently does not claim resistance to a malicious authorised hider. The owner-to-hider key-delivery channel is assumed confidential and authenticated. These are implementation assumptions, not a formal cryptographic proof.
+The protocol assumes nonce uniqueness under a master key. Reusing a nonce repeats derived keys and CTR keystreams and is prohibited. AES-CTR is a confidentiality transform, not an integrity mode; packet integrity is provided by the separate HMAC. The data hider possesses the authentication capability and can recompute a valid tag. Accordingly, the proposed system does not claim resistance to a malicious authorised hider. The owner-to-hider key-delivery channel is assumed confidential and authenticated. These are implementation assumptions, not a formal cryptographic proof.
 
 \section{Proposed System}
 \label{sec:method}
@@ -224,7 +224,7 @@ At candidate $i$, the rounded prediction is $p_i$ and the absolute prediction er
 
 \begin{table}[t]
 \centering
-\caption{the proposed system's 15-class allocation codebook, sorted lexicographically by $(n,\ell,u)$.}
+\caption{Fifteen-class allocation codebook used by the proposed system, sorted lexicographically by $(n,\ell,u)$.}
 \label{tab:codebook}
 \small
 \begin{tabular}{rrrr|rrrr}
