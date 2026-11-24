@@ -1,0 +1,99 @@
+name: Build JISA manuscript package
+
+on:
+  push:
+    branches:
+      - paper/edr2-manuscript-submission
+    paths:
+      - "manuscript/jisa/**"
+      - ".github/workflows/build-jisa-manuscript.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "manuscript/jisa/**"
+      - ".github/workflows/build-jisa-manuscript.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout manuscript source
+        uses: actions/checkout@v4
+
+      - name: Install LaTeX toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexmk texlive-latex-recommended texlive-latex-extra \
+            texlive-publishers texlive-science texlive-pictures
+
+      - name: Validate citation keys and highlights
+        working-directory: manuscript/jisa
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+          tex = pathlib.Path("EDR2_JISA_Main.tex").read_text()
+          bib = pathlib.Path("EDR2_JISA_References.bib").read_text()
+          cited = set()
+          for m in re.finditer(r"\\cite[a-zA-Z]*\{([^}]+)\}", tex):
+              cited.update(x.strip() for x in m.group(1).split(",") if x.strip())
+          entries = set(re.findall(r"@\w+\s*\{\s*([^,\s]+)", bib))
+          missing = sorted(cited - entries)
+          if missing:
+              print("Missing BibTeX keys:", missing)
+              sys.exit(1)
+          raw = [x.strip() for x in pathlib.Path("Highlights.txt").read_text().splitlines() if x.strip()]
+          lines = [re.sub(r"^-\s*", "", x) for x in raw if not x.lower().startswith("highlights")]
+          if not 3 <= len(lines) <= 5:
+              raise SystemExit(f"Expected 3–5 highlights, found {len(lines)}")
+          long = [(len(x), x) for x in lines if len(x) > 85]
+          if long:
+              raise SystemExit(f"Highlights exceed 85 characters: {long}")
+          print(f"Citations validated: {len(cited)} used; {len(entries)} bibliography entries.")
+          print(f"Highlights validated: {len(lines)} items, all <=85 characters.")
+          PY
+
+      - name: Compile main JISA manuscript
+        working-directory: manuscript/jisa
+        run: |
+          pdflatex -interaction=nonstopmode -halt-on-error EDR2_JISA_Main.tex
+          bibtex EDR2_JISA_Main
+          pdflatex -interaction=nonstopmode -halt-on-error EDR2_JISA_Main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error EDR2_JISA_Main.tex
+
+      - name: Compile graphical abstract
+        working-directory: manuscript/jisa
+        run: |
+          pdflatex -interaction=nonstopmode -halt-on-error Graphical_Abstract.tex
+
+      - name: Package sources and compiled PDFs
+        run: |
+          mkdir -p build/jisa
+          cp manuscript/jisa/EDR2_JISA_Main.tex build/jisa/
+          cp manuscript/jisa/EDR2_JISA_References.bib build/jisa/
+          cp manuscript/jisa/Highlights.txt build/jisa/
+          cp manuscript/jisa/JISA_Submission_Readiness.md build/jisa/
+          cp manuscript/jisa/Graphical_Abstract.tex build/jisa/
+          cp manuscript/jisa/EDR2_JISA_Main.pdf build/jisa/
+          cp manuscript/jisa/Graphical_Abstract.pdf build/jisa/
+          cp manuscript/jisa/EDR2_JISA_Main.log build/jisa/
+          cp manuscript/jisa/EDR2_JISA_Main.bbl build/jisa/
+          git rev-parse HEAD > build/jisa/source_commit.txt
+          cd build && zip -r EDR2_JISA_Submission_Package.zip jisa
+
+      - name: Upload compiled manuscript and package
+        uses: actions/upload-artifact@v4
+        with:
+          name: EDR2-JISA-Submission-Package
+          path: |
+            manuscript/jisa/EDR2_JISA_Main.pdf
+            manuscript/jisa/Graphical_Abstract.pdf
+            build/EDR2_JISA_Submission_Package.zip
+            manuscript/jisa/EDR2_JISA_Main.log
+          if-no-files-found: error
+          retention-days: 90
