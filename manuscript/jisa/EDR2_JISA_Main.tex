@@ -140,36 +140,7 @@ The protocol assumes nonce uniqueness under a master key. Reusing a nonce repeat
 \section{Proposed System}
 \label{sec:method}
 
-\begin{figure}[t]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  x=1cm,y=1cm,
-  flow/.style={-{Latex[length=2.5mm]},very thick,draw=black!75},
-  mainbox/.style={draw=#1,fill=#1!5,rounded corners=2mm,thick,
-    text width=5.35cm,minimum height=2.45cm,align=center,inner sep=6pt,font=\small},
-  footer/.style={draw=gray!60,fill=gray!5,rounded corners=2mm,
-    text width=12.2cm,minimum height=0.72cm,align=center,inner sep=5pt,font=\small}
-]
-\node[mainbox=blue] (owner) at (0,0)
-  {\textbf{1. Content owner}\\Original native 8-bit grayscale host\\Frozen centre-masked CNN-$3\times3$\\Evaluate four step-2 safe-zone phases\\Choose maximum signed-net phase};
-\node[mainbox=blue] (reserved) at (8.2,0)
-  {\textbf{2. Reserved encrypted image}\\Compressed labels and bootstrap backup\\HKDF-derived image key\\AES-256-CTR reserved image\\Encrypted header, directory and HMAC};
-\node[mainbox=orange] (hider) at (8.2,-5.2)
-  {\textbf{3. Independent data hider}\\Authenticate bootstrap packet\\Encrypt payload with $K_{\rm payload}$\\Embed ciphertext in reserved slots\\Update final header + HMAC};
-\node[mainbox=green!50!black] (receiver) at (0,-5.2)
-  {\textbf{4. Authorised receiver}\\Marked image + master key + nonce\\Probe four header locations\\Authenticate packet and decode labels\\Extract payload + recover host};
-\draw[flow] (owner.east) -- (reserved.west);
-\draw[flow] (reserved.south) -- (hider.north);
-\draw[flow] (hider.west) -- (receiver.east);
-\node[footer] at (4.1,-7.85)
-  {\textbf{Exact outputs:} recovered host $\widehat{X}=X$ and recovered payload $\widehat{D}=D$.};
-\end{tikzpicture}%
-}
-\caption{Overview of the proposed system. The owner establishes reversible room and encrypts the reserved image; the independent hider embeds encrypted payload bits in the ciphertext domain; the receiver authenticates the selected phase, extracts the payload and reconstructs the original host.}
-\label{fig:system-overview}
-\end{figure}
-
+\input{figures/EDR2_Architecture_Diagram.tex}
 
 \subsection{Masked CNN predictor}
 
@@ -496,7 +467,7 @@ Mutation and malformed-packet tests & Wrong keys/nonces; header, directory, tag 
 Coverage-guided parser fuzzing & 20,000 Atheris inputs. & Zero crashes; 121 coverage and 188 feature counters.\\
 \bottomrule
 \end{tabularx}
-\end{table}\end{table}
+\end{table}
 
 \begin{table}[t]
 \centering
@@ -545,7 +516,7 @@ Total charged overhead $F+B$ & 365,377 & 1.17895 & 1.19469\\
 Signed net payload $N_{\mathrm{net}}$ & 18,295 & 0.11054 & 0.05982\\
 \bottomrule
 \end{tabularx}
-\end{table}\end{table}
+\end{table}
 
 \begin{table}[t]
 \centering
@@ -598,7 +569,7 @@ Fixed phase 3 & 159/243 & 0.10624 & 0.13981\\
 Adaptive max-net & 163/243 & 0.11054 & 0.14322\\
 \bottomrule
 \end{tabularx}
-\end{table}\end{table}
+\end{table}
 
 \begin{figure}[t]
 \centering
@@ -695,7 +666,7 @@ Multi-MSB+Huffman & 243/243 & 2.08848 & 1.97350 & 243/243\\
 Corrected PPMR & 238/243 & 2.22817 & 2.11817 & 243/243\\
 \bottomrule
 \end{tabular}
-\end{table}\end{table}
+\end{table}
 
 All three methods passed the image/payload equality checks recorded in the comparison ledger. The PPMR result is labelled as corrected because four compatibility repairs were applied in a temporary checkout; the upstream repository was not modified.
 
@@ -742,7 +713,7 @@ Recovered payload & Bit-wise equality with the 39,655-bit input payload. & 10/10
 Total pipeline & Mean 1.1140 s; SD 0.0581 s; median 1.1204 s. Sampled RSS increased by 10.87 MiB. & 1.1140 s\\
 \bottomrule
 \end{tabularx}
-\end{table}\end{table}
+\end{table}
 
 \section{Security analysis}
 \label{sec:security}
