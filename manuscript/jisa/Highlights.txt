@@ -3,4 +3,4 @@ Highlights
 - Four phases are selected using signed net payload after bootstrap costs.
 - An in-band HMAC header locates the selected phase without a map sidecar.
 - 243 images yield 163 positive-net cases and 978/978 exact trials.
-- EDR2's usable rate is below both reproduced native-protocol baselines.
+- The proposed system's usable rate is below both reproduced native-protocol baselines.
