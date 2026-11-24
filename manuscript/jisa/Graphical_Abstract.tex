@@ -1,0 +1,31 @@
+\documentclass[tikz,border=7pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,fit}
+\begin{document}
+\begin{tikzpicture}[
+  x=0.75cm,y=0.75cm,transform shape,
+  font=\sffamily,
+  flow/.style={-{Latex[length=2.4mm]},very thick,draw=black!75},
+  mainbox/.style={draw=#1,fill=#1!5,rounded corners=2mm,thick,
+    text width=5.35cm,minimum height=1.8cm,align=center,inner sep=5pt,font=\small},
+  footer/.style={draw=gray!60,fill=gray!5,rounded corners=2mm,
+    text width=12.2cm,minimum height=0.72cm,align=center,inner sep=4pt,font=\small}
+]
+\node[font=\bfseries\large] at (4.1,2.0) {Proposed system: invariant prediction inputs and authenticated phase discovery};
+
+\node[mainbox=blue] (owner) at (0,0) {\textbf{1. Content owner}\\Frozen masked CNN-$3\times3$\\Score four step-2 phases\\Choose the best signed net budget};
+\node[mainbox=blue] (reserved) at (8.2,0) {\textbf{2. Reserved encrypted image}\\20-byte header + encrypted label directory\\32-byte HMAC tag + bootstrap backup};
+\node[mainbox=orange] (hider) at (8.2,-4.0) {\textbf{3. Independent hider}\\Authenticate bootstrap\\Embed encrypted payload\\Update final header and HMAC};
+\node[mainbox=green!50!black] (receiver) at (0,-4.0) {\textbf{4. Authorised receiver}\\Marked image + master key + nonce\\Probe four phases and authenticate\\Extract payload and reconstruct image};
+
+\draw[flow] (owner.east) -- (reserved.west);
+\draw[flow] (reserved.south) -- (hider.north);
+\draw[flow] (hider.west) -- (receiver.east);
+
+\node[footer] at (4.1,-6.1) {\textbf{Invariant context:} mask the candidate centre; all other mutable centres are at Chebyshev distance $\geq2$. \quad $N_q=G_{0,q}-F_q-8H_q$; reject if $N_q\leq0$.};
+\node[font=\scriptsize,text=gray!80!black] at (4.1,-6.95)
+{243 grayscale images; 163 positive-net cases; 978/978 exact accepted-case trials. Mean usable 0.1432 bpp; pooled usable 0.0955 bpp.};
+\end{tikzpicture}
+\end{document}
