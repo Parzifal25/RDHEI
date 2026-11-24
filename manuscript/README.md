@@ -8,6 +8,7 @@ The **current submission-oriented manuscript** is in `manuscript/jisa/`:
 - `EDR2_JISA_References.bib` — bibliography (34 entries; 34 keys are cited in the manuscript).
 - `Highlights.txt` — five Elsevier/JISA-style highlights.
 - `Graphical_Abstract.tex` — separate vector graphical abstract.
+- `figures/EDR2_Architecture_Diagram.tex` — editable TikZ architecture diagram used by the main manuscript.
 - `JISA_Submission_Readiness.md` — fit and acceptance-risk note.
 - `../.github/workflows/build-jisa-manuscript.yml` — citation/highlight checks, LaTeX/BibTeX compilation and PDF/source-package build.
 
