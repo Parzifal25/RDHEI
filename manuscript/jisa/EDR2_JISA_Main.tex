@@ -1,8 +1,9 @@
-\documentclass[preprint,12pt]{elsarticle}
+\documentclass[preprint,12pt,a4paper]{elsarticle}
 
 % JISA-oriented Elsevier initial-submission source.
 % Single-column preprint layout; numerical references; editable tables and vector figures.
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage{booktabs,tabularx,array,multirow,makecell}
@@ -195,7 +196,7 @@ The proposition concerns equality of predictor inputs. Under the same checkpoint
 \begin{corollary}[Maximum candidate count for even dimensions]
 For even $H$ and $W$, each phase in \cref{eq:grid} contains exactly
 \begin{equation}
-C_{\max}=\frac{H-2}{2}\frac{W-2}{2}
+C_{\max}=\left(\frac{H-2}{2}\right)\left(\frac{W-2}{2}\right)
 \label{eq:cmax}
 \end{equation}
 valid candidate centres. Any set satisfying pairwise Chebyshev separation of at least two on the valid-centre rectangle has at most this many centres.
@@ -209,23 +210,28 @@ For a $512\times512$ image, each phase contains $255^2=65,025$ candidates, or 24
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[scale=0.72]
-\foreach \q/\xo/\yo in {0/0/0,1/1/0,2/0/1,3/1/1}{
-  \begin{scope}[xshift={\xo*5.0cm},yshift={-\yo*3.7cm}]
-    \node[font=\small\bfseries] at (2,3.65) {Phase \q};
-    \foreach \i in {0,...,5}{
-      \foreach \j in {0,...,5}{
-        \draw[gray!60] (\i,\j) rectangle ++(0.8,0.8);
+\foreach \q/\xo/\yo/\xs/\ys in {
+  0/1/1/0/0,
+  1/1/2/5.2/0,
+  2/2/1/0/-5.5,
+  3/2/2/5.2/-5.5
+}{
+  \begin{scope}[xshift=\xs cm,yshift=\ys cm]
+    \node[font=\small\bfseries] at (2.4,5.35) {Phase \q};
+    \foreach \i in {0,...,4}{
+      \foreach \j in {0,...,4}{
+        \draw[gray!65,line width=0.45pt] (\i,\j) rectangle ++(0.8,0.8);
       }
     }
-    \foreach \i in {0,...,2}{
-      \foreach \j in {0,...,2}{
-        \fill[blue!60] ({0.4+\xo+2*\i},{0.4+\yo+2*\j}) circle (0.12);
+    \foreach \i in {0,1}{
+      \foreach \j in {0,1}{
+        \fill[blue!65] ({\xo+2*\i+0.4},{\yo+2*\j+0.4}) circle (0.105);
       }
     }
   \end{scope}
 }
 \end{tikzpicture}
-\caption{Four parity-offset step-2 candidate phases. The four phases are alternatives: one phase is selected for a packet, and only its candidate centres are mutable. The dots illustrate a schematic lattice and are not to scale with the full image dimensions.}
+\caption{Four parity-offset step-2 candidate phases. Each panel shows a five-by-five schematic valid-centre lattice; each phase selects one of four positions from the two-by-two parity classes. The four phases are alternatives: only one phase is selected for a packet, and only its candidate centres are mutable.}
 \label{fig:phases}
 \end{figure}
 
